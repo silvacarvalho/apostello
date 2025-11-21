@@ -1,0 +1,80 @@
+# ============================================================
+# BACKEND - Dependências Python
+# Sistema de Gestão de Escalas de Pregação - IASD
+# ============================================================
+
+# FastAPI e servidor
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Banco de Dados
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Validação de dados
+pydantic==2.5.3
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# Autenticação e Segurança
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+bcrypt==4.1.2
+
+# HTTP Requests
+httpx==0.26.0
+requests==2.31.0
+
+# Datas e Timezone
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Geração de PDF
+reportlab==4.0.9
+weasyprint==60.2
+
+# Excel/CSV
+openpyxl==3.1.2
+pandas==2.2.0
+
+# WhatsApp/SMS
+twilio==8.11.1
+
+# Email
+python-decouple==3.8
+aiosmtplib==3.0.1
+
+# Tasks assíncronas
+celery==5.3.6
+redis==5.0.1
+
+# Utilitários
+python-slugify==8.0.2
+Pillow==10.2.0
+
+# Logs
+loguru==0.7.2
+
+# CORS
+python-cors==1.0.0
+
+# Testes
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+httpx==0.26.0
+
+# Code Quality
+black==24.1.1
+flake8==7.0.0
+mypy==1.8.0
+
+# Monitoramento (opcional)
+sentry-sdk[fastapi]==1.39.2
+
+# Documentação
+mkdocs==1.5.3
+mkdocs-material==9.5.6
