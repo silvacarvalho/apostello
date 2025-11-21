@@ -1,0 +1,175 @@
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                    APOSTELLO - DIAGRAMA DE BANCO DE DADOS                             ║
+║                    Sistema de Gestão de Escalas - Igreja Adventista                   ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────┐
+│    Usuario       │
+├──────────────────┤
+│ PK id            │
+│    username      │◄─────┐
+│    email         │      │
+│    senha_hash    │      │ 1:1
+│    nome          │      │
+│    sobrenome     │      │
+│    telefone      │      │
+│    whatsapp      │      │
+│    ativo         │      │
+└──────────────────┘      │
+         │                │
+         │ 1:N            │
+         ▼                │
+┌──────────────────┐      │
+│   Notificacao    │      │
+├──────────────────┤      │
+│ PK id            │      │
+│ FK usuario_id    │      │
+│    tipo_notif    │      │
+│    canal         │      │
+│    titulo        │      │
+│    mensagem      │      │
+│    status        │      │
+│ FK escala_id     │      │
+│ FK slot_id       │      │
+└──────────────────┘      │
+         │                │
+         │ 1:1            │
+         ▼                │
+┌──────────────────┐      │
+│ MensagemWhatsApp │      │
+├──────────────────┤      │
+│ PK id            │      │
+│ FK notificacao_id│      │
+│    numero_destino│      │
+│    message_sid   │      │
+│    status_twilio │      │
+└──────────────────┘      │
+                          │
+                          │
+┌──────────────────┐      │
+│     Membro       │◄─────┘
+├──────────────────┤
+│ PK id            │
+│ FK usuario_id    │──────┐
+│ FK igreja_id     │      │ 1:1
+│    cargo         │      │
+└──────────────────┘      │
+         │                │
+         │ 1:1            ▼
+         ▼         ┌──────────────────┐
+┌──────────────────┐│    Pregador      │ ★ ESSENCIAL PARA GERAÇÃO AUTOMÁTICA
+│     Igreja       ││├──────────────────┤│
+├──────────────────┤││ PK id            │◄───┐
+│ PK id            │││ FK membro_id     │    │
+│ FK distrito_id   │││    score ★★★     │    │ 1:N
+│    nome          │││    notas_disponi.│    │
+│    endereco      │││    ativo         │    │
+│    cidade        │││    total_pregacoe│    │
+│    estado        │││    data_ultima_pr│    │
+│    telefone      │││└──────────────────┘    │
+│    email         ││                         │
+└──────────────────┘│                         │
+         │          │                         │
+         │ N:1      │                         │
+         ▼          │                         │
+┌──────────────────┐│                         │
+│    Distrito      ││                         │
+├──────────────────┤│                         │
+│ PK id            ││                         │
+│    nome          ││                         │
+│    codigo        ││                         │
+│    descricao     ││                         │
+└──────────────────┘│                         │
+                    │                         │
+                    │                         │
+         ┌──────────┼─────────────────────────┘
+         │          │
+         │ 1:N      │
+         ▼          │
+┌──────────────────┐│
+│     Escala       ││ ★ NÚCLEO DO SISTEMA - GERAÇÃO AUTOMÁTICA
+├──────────────────┤│
+│ PK id            ││
+│ FK igreja_id     ││
+│    titulo        ││
+│    mes           ││
+│    ano           ││
+│    status        ││
+│    gerada_autom. ││ ★★★ Flag de geração automática
+│    publicado_em  ││
+└──────────────────┘│
+         │          │
+         │ 1:N      │
+         ▼          │
+┌──────────────────┐│
+│   SlotEscala     ││
+├──────────────────┤│
+│ PK id            ││
+│ FK escala_id     ││
+│    data          ││
+│    tipo_slot     ││
+│ FK pregador_id   │├────────┘ N:1 (pregador designado automaticamente)
+│ FK tema_id       │├────────┐
+│    observacoes   ││        │ N:1
+│    confirmado    ││        │
+└──────────────────┘│        │
+         │          │        ▼
+         │ 1:N      │ ┌──────────────────┐
+         ▼          │ │      Tema        │
+┌──────────────────┐│ ├──────────────────┤
+│    Conflito      ││ │ PK id            │
+├──────────────────┤│ │    titulo        │
+│ PK id            ││ │    descricao     │
+│ FK slot_id       ││ │    referencias_bi│
+│    tipo_conflito ││ │    categoria     │
+│    descricao     ││ │    nivel_dificul.│
+│    resolvido     ││ │    ativo         │
+└──────────────────┘│ └──────────────────┘
+                    │
+         ┌──────────┘
+         │ 1:N
+         ▼
+┌──────────────────┐
+│  GeracaoEscala   │ ★ MÉTRICAS E RASTREABILIDADE
+├──────────────────┤
+│ PK id            │
+│ FK escala_id     │
+│    versao_alg    │
+│    parametros    │
+│    conflitos_enc.│
+│    tempo_economiz│ ★★★ Calcula 94% de economia (16h → 1h)
+└──────────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                              FLUXO DE GERAÇÃO AUTOMÁTICA                              ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+1️⃣  POST /api/escalas/gerar
+    ├─ Busca Pregadores (ordenados por SCORE ↓)
+    ├─ Calcula domingos do mês
+    ├─ Distribui pregadores (score maior = prioridade)
+    ├─ Atribui Temas automaticamente
+    └─ Detecta Conflitos
+
+2️⃣  Cria Escala + SlotEscala + GeracaoEscala
+    └─ tempo_economizado = 16h - 1h = 15h (94%)
+
+3️⃣  POST /api/escalas/{id}/publicar
+    ├─ Status → PUBLICADO
+    └─ Envia WhatsApp para cada pregador via Twilio
+
+4️⃣  GET /api/escalas/{id}/pdf
+    └─ Gera PDF profissional com ReportLab
+
+
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║                                   LEGENDAS                                            ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+
+PK = Primary Key (Chave Primária)
+FK = Foreign Key (Chave Estrangeira)
+★  = Funcionalidade importante
+★★★ = CRÍTICO para geração automática e economia de 94%
+
