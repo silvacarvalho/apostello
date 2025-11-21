@@ -1,0 +1,10 @@
+.env
+venv/
+backend/venv/
+
+database/DIAGRAMA_ER.png
+DICIONARIO_DE_DADOS.md
+EXEMPLOS_QUERIES.md
+schema.sql
+.env.example
+

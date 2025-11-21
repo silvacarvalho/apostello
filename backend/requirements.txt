@@ -59,7 +59,7 @@ Pillow==10.2.0
 loguru==0.7.2
 
 # CORS
-python-cors==1.0.0
+flask-cors
 
 # Testes
 pytest==7.4.4
