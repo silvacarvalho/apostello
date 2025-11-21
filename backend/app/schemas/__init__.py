@@ -15,6 +15,12 @@ from .avaliacao import AvaliacaoCreate, AvaliacaoResponse
 from .troca import TrocaCreate, TrocaResponse, TrocaAceitarRejeitar
 from .notificacao import NotificacaoCreate, NotificacaoResponse
 from .indisponibilidade import IndisponibilidadeCreate, IndisponibilidadeResponse
+from .horario_culto import (
+    HorarioCultoCreate,
+    HorarioCultoUpdate,
+    HorarioCultoResponse,
+    HorarioCultoPadraoRequest
+)
 
 __all__ = [
     # Associação
@@ -65,4 +71,9 @@ __all__ = [
     # Indisponibilidade
     "IndisponibilidadeCreate",
     "IndisponibilidadeResponse",
+    # Horário de Culto
+    "HorarioCultoCreate",
+    "HorarioCultoUpdate",
+    "HorarioCultoResponse",
+    "HorarioCultoPadraoRequest",
 ]
