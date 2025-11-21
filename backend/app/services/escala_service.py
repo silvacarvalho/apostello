@@ -78,52 +78,74 @@ def gerar_escala_automatica(
         ultimo_dia = date(ano + 1, 1, 1) - timedelta(days=1)
     else:
         ultimo_dia = date(ano, mes + 1, 1) - timedelta(days=1)
-    
-    # 7. Para cada dia do mês
+
+    # 7. Coletar todas as datas do mês separadas por dia da semana
+    datas_por_dia = {
+        "sabado": [],
+        "domingo": [],
+        "quarta": []
+    }
+
     data_atual = primeiro_dia
-    contador_pregacoes_mes = {}  # Controlar limite mensal por pregador
-    
     while data_atual <= ultimo_dia:
         dia_semana = data_atual.strftime("%A").lower()
         dia_semana_pt = mapear_dia_semana(dia_semana)
-        
-        # Para cada igreja
-        for igreja in igrejas:
-            # Buscar horários de culto deste dia
-            horarios_dia = [h for h in horarios_cultos if h["dia_semana"] == dia_semana_pt and h["igreja_id"] == igreja.id]
-            
-            for horario in horarios_dia:
-                # Buscar pregador disponível com maior score
-                pregador_selecionado = selecionar_pregador_disponivel(
-                    db,
-                    pregadores,
-                    data_atual,
-                    contador_pregacoes_mes
-                )
-                
-                if pregador_selecionado:
-                    usuario, perfil_pregador = pregador_selecionado
-                    
-                    # Buscar temática sugestiva
-                    tematica = buscar_tematica_para_data(db, distrito_id, data_atual, dia_semana_pt)
-                    
-                    # Criar pregação
-                    pregacao = Pregacao(
-                        escala_id=nova_escala.id,
-                        igreja_id=igreja.id,
-                        pregador_id=usuario.id,
-                        tematica_id=tematica.id if tematica else None,
-                        data_pregacao=data_atual,
-                        horario_pregacao=horario["horario"],
-                        nome_culto=horario["nome_culto"],
-                        status="agendado"
-                    )
-                    db.add(pregacao)
-                    
-                    # Incrementar contador
-                    contador_pregacoes_mes[usuario.id] = contador_pregacoes_mes.get(usuario.id, 0) + 1
-        
+
+        if dia_semana_pt in datas_por_dia:
+            datas_por_dia[dia_semana_pt].append(data_atual)
+
         data_atual += timedelta(days=1)
+
+    # 8. Processar por PRIORIDADE: Sábado > Domingo > Quarta
+    # Isso garante que pregadores com maior score sejam escalados primeiro para os sábados
+    contador_pregacoes_mes = {}  # Controlar limite mensal por pregador
+
+    dias_prioridade = ["sabado", "domingo", "quarta"]
+
+    for dia_semana_pt in dias_prioridade:
+        datas_deste_dia = datas_por_dia.get(dia_semana_pt, [])
+
+        for data_pregacao in datas_deste_dia:
+            # Para cada igreja
+            for igreja in igrejas:
+                # Buscar horários de culto deste dia
+                horarios_dia = [
+                    h for h in horarios_cultos
+                    if h["dia_semana"] == dia_semana_pt and h["igreja_id"] == igreja.id
+                ]
+
+                for horario in horarios_dia:
+                    # Buscar pregador disponível com maior score
+                    pregador_selecionado = selecionar_pregador_disponivel(
+                        db,
+                        pregadores,
+                        data_pregacao,
+                        contador_pregacoes_mes
+                    )
+
+                    if pregador_selecionado:
+                        usuario, perfil_pregador = pregador_selecionado
+
+                        # Buscar temática sugestiva
+                        tematica = buscar_tematica_para_data(
+                            db, distrito_id, data_pregacao, dia_semana_pt
+                        )
+
+                        # Criar pregação
+                        pregacao = Pregacao(
+                            escala_id=nova_escala.id,
+                            igreja_id=igreja.id,
+                            pregador_id=usuario.id,
+                            tematica_id=tematica.id if tematica else None,
+                            data_pregacao=data_pregacao,
+                            horario_pregacao=horario["horario"],
+                            nome_culto=horario["nome_culto"],
+                            status="agendado"
+                        )
+                        db.add(pregacao)
+
+                        # Incrementar contador
+                        contador_pregacoes_mes[usuario.id] = contador_pregacoes_mes.get(usuario.id, 0) + 1
     
     db.commit()
     db.refresh(nova_escala)

@@ -28,6 +28,7 @@ from app.api.v1 import (
     avaliacoes,
     notificacoes,
     trocas,
+    horarios_cultos,
 )
 
 # ============================================================
@@ -135,6 +136,12 @@ app.include_router(
     trocas.router,
     prefix=f"{settings.API_V1_PREFIX}/trocas",
     tags=["Trocas de Escala"]
+)
+
+app.include_router(
+    horarios_cultos.router,
+    prefix=f"{settings.API_V1_PREFIX}",
+    tags=["Horários de Cultos"]
 )
 
 # ============================================================
