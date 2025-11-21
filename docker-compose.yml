@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: apostello-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-apostello}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apostello_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-apostello_db}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=pt_BR.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema_pt.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - apostello-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apostello}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis (para Celery)
+  redis:
+    image: redis:7-alpine
+    container_name: apostello-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - apostello-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: apostello-backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-apostello}:${POSTGRES_PASSWORD:-apostello_dev_password}@postgres:5432/${POSTGRES_DB:-apostello_db}
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production_12345678901234567890}
+      REDIS_URL: redis://redis:6379/0
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:19006}
+
+      # Twilio (WhatsApp/SMS)
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_WHATSAPP_FROM: ${TWILIO_WHATSAPP_FROM:-}
+      TWILIO_SMS_FROM: ${TWILIO_SMS_FROM:-}
+
+      # SMTP (Email)
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@apostello.com}
+
+      # Firebase (Push Notifications)
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
+    volumes:
+      - ./backend:/app
+      - backend_static:/app/static
+    ports:
+      - "8000:8000"
+    networks:
+      - apostello-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker (processamento assíncrono)
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: apostello-celery-worker
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-apostello}:${POSTGRES_PASSWORD:-apostello_dev_password}@postgres:5432/${POSTGRES_DB:-apostello_db}
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production_12345678901234567890}
+      REDIS_URL: redis://redis:6379/0
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    volumes:
+      - ./backend:/app
+    networks:
+      - apostello-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app worker --loglevel=info
+
+  # Celery Beat (agendamento de tarefas)
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: apostello-celery-beat
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-apostello}:${POSTGRES_PASSWORD:-apostello_dev_password}@postgres:5432/${POSTGRES_DB:-apostello_db}
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production_12345678901234567890}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    networks:
+      - apostello-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_static:
+    driver: local
+
+networks:
+  apostello-network:
+    driver: bridge

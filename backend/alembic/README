@@ -1,0 +1,53 @@
+# Alembic Migrations
+
+Este diretório contém as migrations do banco de dados usando Alembic.
+
+## Comandos Úteis
+
+### Criar uma nova migration
+```bash
+alembic revision --autogenerate -m "descrição da mudança"
+```
+
+### Aplicar migrations
+```bash
+# Aplicar todas migrations pendentes
+alembic upgrade head
+
+# Aplicar migration específica
+alembic upgrade <revision_id>
+
+# Aplicar próxima migration
+alembic upgrade +1
+```
+
+### Reverter migrations
+```bash
+# Reverter última migration
+alembic downgrade -1
+
+# Reverter para revision específica
+alembic downgrade <revision_id>
+
+# Reverter todas
+alembic downgrade base
+```
+
+### Ver histórico
+```bash
+# Ver histórico de migrations
+alembic history
+
+# Ver status atual
+alembic current
+
+# Ver migrations pendentes
+alembic show head
+```
+
+## Estrutura
+
+- `env.py` - Configuração do ambiente Alembic
+- `script.py.mako` - Template para novos arquivos de migration
+- `versions/` - Diretório com os arquivos de migration
+- `alembic.ini` - Arquivo de configuração principal (na raiz do backend)
