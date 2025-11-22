@@ -301,3 +301,158 @@ def obter_url_avaliacao(
         "pregacao_id": pregacao_id,
         "pregador_id": pregador_id
     }
+
+
+# ============================================================
+# QR CODE UNIVERSAL POR DISTRITO
+# ============================================================
+
+@router.get("/distrito/{distrito_id}/universal", response_class=Response)
+def gerar_qrcode_universal_distrito(
+    distrito_id: str,
+    tamanho: Optional[int] = Query(300, ge=100, le=1000),
+    incluir_logo: Optional[bool] = Query(True),
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Gera QR Code UNIVERSAL para todo o distrito
+
+    Este QR Code é único e serve para todas as igrejas do distrito.
+    Quando escaneado, o sistema detecta automaticamente:
+    - A igreja do membro (pelo login)
+    - A pregação mais recente/atual daquela igreja
+    - Direciona para o formulário de avaliação correto
+
+    Vantagens:
+    - Um único QR Code para todo o distrito
+    - Pode ser impresso e usado indefinidamente
+    - Identifica automaticamente a pregação a avaliar
+    - Mais prático para os membros
+    """
+    from app.models.distrito import Distrito
+
+    # Verificar se distrito existe
+    distrito = db.query(Distrito).filter(
+        Distrito.id == uuid.UUID(distrito_id)
+    ).first()
+
+    if not distrito:
+        raise HTTPException(status_code=404, detail="Distrito não encontrado")
+
+    # Verificar permissão (pastor distrital ou membro da associação)
+    if (current_user.distrito_id != distrito.id and
+            'membro_associacao' not in [p.value for p in current_user.perfis]):
+        raise HTTPException(
+            status_code=403,
+            detail="Você não tem permissão para gerar QR Code deste distrito"
+        )
+
+    # URL para detecção automática
+    base_url = settings.FRONTEND_URL or "https://app.apostello.com"
+    url = f"{base_url}/avaliar/auto"
+
+    # Gerar QR Code
+    qr_code_bytes = QRCodeService.gerar_qrcode(
+        url=url,
+        tamanho=tamanho,
+        incluir_logo=incluir_logo,
+        logo_path=None
+    )
+
+    return Response(
+        content=qr_code_bytes,
+        media_type="image/png",
+        headers={
+            "Content-Disposition": f'inline; filename="qrcode_universal_distrito_{distrito_id}.png"'
+        }
+    )
+
+
+@router.get("/distrito/{distrito_id}/universal/base64")
+def gerar_qrcode_universal_distrito_base64(
+    distrito_id: str,
+    tamanho: Optional[int] = Query(300, ge=100, le=1000),
+    incluir_logo: Optional[bool] = Query(True),
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Gera QR Code UNIVERSAL em formato base64
+
+    Retorna o QR Code em formato base64 para embedding em HTML/Email
+    """
+    from app.models.distrito import Distrito
+
+    distrito = db.query(Distrito).filter(
+        Distrito.id == uuid.UUID(distrito_id)
+    ).first()
+
+    if not distrito:
+        raise HTTPException(status_code=404, detail="Distrito não encontrado")
+
+    if (current_user.distrito_id != distrito.id and
+            'membro_associacao' not in [p.value for p in current_user.perfis]):
+        raise HTTPException(
+            status_code=403,
+            detail="Você não tem permissão para gerar QR Code deste distrito"
+        )
+
+    base_url = settings.FRONTEND_URL or "https://app.apostello.com"
+    url = f"{base_url}/avaliar/auto"
+
+    qr_code_base64 = QRCodeService.gerar_qrcode_base64(
+        url=url,
+        tamanho=tamanho,
+        incluir_logo=incluir_logo,
+        logo_path=None
+    )
+
+    return {
+        "qrcode_base64": qr_code_base64,
+        "url": url,
+        "distrito_id": distrito_id,
+        "distrito_nome": distrito.nome,
+        "tipo": "universal",
+        "descricao": "QR Code universal para todo o distrito. Detecta automaticamente a pregação a avaliar."
+    }
+
+
+@router.get("/meu-distrito/universal", response_class=Response)
+def gerar_qrcode_universal_meu_distrito(
+    tamanho: Optional[int] = Query(300, ge=100, le=1000),
+    incluir_logo: Optional[bool] = Query(True),
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Gera QR Code UNIVERSAL para o distrito do usuário atual
+
+    Atalho conveniente que usa o distrito do usuário logado
+    """
+    return gerar_qrcode_universal_distrito(
+        distrito_id=str(current_user.distrito_id),
+        tamanho=tamanho,
+        incluir_logo=incluir_logo,
+        current_user=current_user,
+        db=db
+    )
+
+
+@router.get("/meu-distrito/universal/base64")
+def gerar_qrcode_universal_meu_distrito_base64(
+    tamanho: Optional[int] = Query(300, ge=100, le=1000),
+    incluir_logo: Optional[bool] = Query(True),
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Gera QR Code UNIVERSAL em base64 para o distrito do usuário atual
+    """
+    return gerar_qrcode_universal_distrito_base64(
+        distrito_id=str(current_user.distrito_id),
+        tamanho=tamanho,
+        incluir_logo=incluir_logo,
+        current_user=current_user,
+        db=db
+    )
