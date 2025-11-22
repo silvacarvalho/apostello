@@ -22,7 +22,7 @@ from app.models import (
     Usuario, Associacao, Distrito, Igreja, PerfilPregador,
     Avaliacao, Tematica, HorarioCulto, Escala, Pregacao,
     PeriodoIndisponibilidade, TrocaEscala, Notificacao,
-    Relatorio, AuditLog
+    Configuracao, LogAuditoria, LogImportacao
 )
 
 # Alembic Config object

@@ -3,9 +3,10 @@ Configurações da Aplicação
 Sistema de Gestão de Escalas de Pregação - IASD
 """
 
-from typing import List, Optional
-from pydantic import field_validator
+from typing import List, Optional, Any, Union
+from pydantic import field_validator, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import json
 
 
 class Settings(BaseSettings):
@@ -43,21 +44,33 @@ class Settings(BaseSettings):
     # ============================================================
     # CORS
     # ============================================================
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[List[str], str] = Field(default=[
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:8080"
-    ]
+    ])
     CORS_ALLOW_CREDENTIALS: bool = True
-    CORS_ALLOW_METHODS: List[str] = ["*"]
-    CORS_ALLOW_HEADERS: List[str] = ["*"]
+    CORS_ALLOW_METHODS: Union[List[str], str] = Field(default=["*"])
+    CORS_ALLOW_HEADERS: Union[List[str], str] = Field(default=["*"])
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ORIGINS", "CORS_ALLOW_METHODS", "CORS_ALLOW_HEADERS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v):
+    def parse_list_from_env(cls, v: Any) -> List[str]:
+        if isinstance(v, list):
+            return v
         if isinstance(v, str):
-            return [i.strip() for i in v.split(",")]
-        return v
+            # Remove espaços e tenta parsear como JSON primeiro
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith('[') and v.endswith(']'):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            # Se não for JSON, trata como CSV
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v if isinstance(v, list) else []
 
     # ============================================================
     # WHATSAPP (Twilio)
@@ -97,7 +110,24 @@ class Settings(BaseSettings):
     # ============================================================
     UPLOAD_DIR: str = "/app/uploads"
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
-    ALLOWED_EXTENSIONS: List[str] = [".xlsx", ".xls", ".csv", ".pdf", ".jpg", ".jpeg", ".png"]
+    ALLOWED_EXTENSIONS: Union[List[str], str] = Field(default=[".xlsx", ".xls", ".csv", ".pdf", ".jpg", ".jpeg", ".png"])
+
+    @field_validator("ALLOWED_EXTENSIONS", mode="before")
+    @classmethod
+    def parse_allowed_extensions(cls, v: Any) -> List[str]:
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith('[') and v.endswith(']'):
+                try:
+                    return json.loads(v)
+                except Exception:
+                    pass
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v if isinstance(v, list) else []
 
     # ============================================================
     # LOGS
@@ -157,7 +187,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=True
+        case_sensitive=True,
+        extra="ignore"  # Ignora campos extras do .env que não estão no modelo
     )
 
 
