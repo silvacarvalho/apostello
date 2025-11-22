@@ -17,6 +17,9 @@ from . import (
     notificacoes,
     trocas,
     horarios_cultos,
+    importacoes,
+    configuracoes,
+    qrcodes,
 )
 
 __all__ = [
@@ -33,4 +36,7 @@ __all__ = [
     "notificacoes",
     "trocas",
     "horarios_cultos",
+    "importacoes",
+    "configuracoes",
+    "qrcodes",
 ]
