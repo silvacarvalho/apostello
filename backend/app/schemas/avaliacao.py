@@ -2,8 +2,8 @@
 Schemas: Avaliacao
 """
 
-from typing import Optional
-from datetime import datetime
+from typing import Optional, List
+from datetime import datetime, date, time
 from pydantic import BaseModel, Field, UUID4
 from decimal import Decimal
 
@@ -38,3 +38,40 @@ class AvaliacaoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================
+# SCHEMAS PARA DETECÇÃO AUTOMÁTICA DE PREGAÇÃO
+# ============================================================
+
+class PregadorInfo(BaseModel):
+    """Informações do pregador"""
+    id: str
+    nome_completo: str
+
+
+class IgrejaInfo(BaseModel):
+    """Informações da igreja"""
+    id: str
+    nome: str
+
+
+class PregacaoDetectadaResponse(BaseModel):
+    """Resposta da detecção automática de pregação"""
+    pregacao_id: str
+    pregador: PregadorInfo
+    igreja: IgrejaInfo
+    data_pregacao: date
+    horario_pregacao: time
+    nome_culto: Optional[str] = None
+    tematica_titulo: Optional[str] = None
+    pode_avaliar: bool
+    motivo_nao_pode_avaliar: Optional[str] = None
+    dias_restantes_avaliacao: Optional[int] = None
+
+
+class PregacoesDisponiveisResponse(BaseModel):
+    """Lista de pregações disponíveis para avaliação"""
+    total: int
+    pregacoes: List[PregacaoDetectadaResponse]
+    mensagem: str
