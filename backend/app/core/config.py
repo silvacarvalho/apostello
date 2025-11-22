@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # ============================================================
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "Apostello API"
+    FRONTEND_URL: Optional[str] = "http://localhost:3000"
 
     # ============================================================
     # BANCO DE DADOS
