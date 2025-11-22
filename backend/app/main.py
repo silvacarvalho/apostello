@@ -29,6 +29,9 @@ from app.api.v1 import (
     notificacoes,
     trocas,
     horarios_cultos,
+    importacoes,
+    configuracoes,
+    qrcodes,
 )
 
 # ============================================================
@@ -142,6 +145,24 @@ app.include_router(
     horarios_cultos.router,
     prefix=f"{settings.API_V1_PREFIX}",
     tags=["Horários de Cultos"]
+)
+
+app.include_router(
+    importacoes.router,
+    prefix=f"{settings.API_V1_PREFIX}/importacoes",
+    tags=["Importações"]
+)
+
+app.include_router(
+    configuracoes.router,
+    prefix=f"{settings.API_V1_PREFIX}/configuracoes",
+    tags=["Configurações"]
+)
+
+app.include_router(
+    qrcodes.router,
+    prefix=f"{settings.API_V1_PREFIX}/qrcodes",
+    tags=["QR Codes"]
 )
 
 # ============================================================
