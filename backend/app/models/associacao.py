@@ -2,7 +2,7 @@
 Model: Associacao
 """
 
-from sqlalchemy import Column, String, Boolean, Text, Integer
+from sqlalchemy import Column, String, Boolean, Text, Integer, Sequence
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -18,7 +18,7 @@ class Associacao(Base, TimestampMixin):
 
     # Chaves
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    codigo = Column(Integer, unique=True, nullable=False, autoincrement=True)
+    codigo = Column(Integer, Sequence('associacoes_codigo_seq'), unique=True, nullable=False)
 
     # Dados da associação
     nome = Column(String(200), nullable=False)

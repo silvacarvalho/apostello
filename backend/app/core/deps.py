@@ -12,6 +12,7 @@ from jose import JWTError
 from .database import SessionLocal
 from .security import decode_token
 from app.models import Usuario
+from app.models.usuario import StatusAprovacao, PerfilUsuario
 
 # ============================================================
 # OAUTH2
@@ -103,7 +104,7 @@ def get_current_active_user(
             detail="Usuário inativo"
         )
 
-    if current_user.status_aprovacao != "aprovado":
+    if current_user.status_aprovacao != StatusAprovacao.APROVADO:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Usuário ainda não foi aprovado"
@@ -117,7 +118,7 @@ def require_perfil(perfis_permitidos: list):
     Dependency factory para verificar perfis do usuário.
 
     Args:
-        perfis_permitidos: Lista de perfis permitidos
+        perfis_permitidos: Lista de perfis permitidos (como strings ou enums)
 
     Returns:
         Função dependency que verifica perfis
@@ -134,8 +135,14 @@ def require_perfil(perfis_permitidos: list):
     ) -> Usuario:
         # Verifica se usuário tem algum dos perfis permitidos
         user_perfis = current_user.perfis or []
+        
+        # Normalizar perfis para strings (valores dos enums)
+        user_perfis_values = [
+            p.value if isinstance(p, PerfilUsuario) else p 
+            for p in user_perfis
+        ]
 
-        if not any(perfil in perfis_permitidos for perfil in user_perfis):
+        if not any(perfil in user_perfis_values for perfil in perfis_permitidos):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Acesso negado. Perfis permitidos: {', '.join(perfis_permitidos)}"

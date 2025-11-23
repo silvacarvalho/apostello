@@ -4,7 +4,8 @@ Schemas: Associacao
 
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, UUID4
+from uuid import UUID
+from pydantic import BaseModel, EmailStr, Field
 
 
 class AssociacaoBase(BaseModel):
@@ -43,7 +44,7 @@ class AssociacaoUpdate(BaseModel):
 
 class AssociacaoResponse(AssociacaoBase):
     """Schema de resposta para Associação"""
-    id: UUID4
+    id: UUID
     codigo: int
     ativo: bool
     criado_em: datetime

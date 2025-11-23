@@ -2,9 +2,9 @@
 Schemas: Usuario
 """
 
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime, date
-from pydantic import BaseModel, EmailStr, Field, UUID4
+from pydantic import BaseModel, EmailStr, Field, UUID4, field_validator
 
 
 class UsuarioBase(BaseModel):
@@ -60,6 +60,20 @@ class UsuarioResponse(UsuarioBase):
     notif_email: bool
     criado_em: datetime
     atualizado_em: datetime
+
+    @field_validator('perfis', mode='before')
+    @classmethod
+    def convert_perfis_to_strings(cls, v: Any) -> List[str]:
+        """Converte enums de perfil para strings"""
+        if not v:
+            return []
+        return [item.value if hasattr(item, 'value') else item for item in v]
+    
+    @field_validator('status_aprovacao', mode='before')
+    @classmethod
+    def convert_status_to_string(cls, v: Any) -> str:
+        """Converte enum de status para string"""
+        return v.value if hasattr(v, 'value') else v
 
     class Config:
         from_attributes = True

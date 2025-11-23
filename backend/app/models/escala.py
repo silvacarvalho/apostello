@@ -2,7 +2,7 @@
 Model: Escala
 """
 
-from sqlalchemy import Column, String, Integer, Text, ForeignKey, Enum as SQLEnum, DateTime, CheckConstraint, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Text, ForeignKey, Enum as SQLEnum, DateTime, CheckConstraint, UniqueConstraint, Sequence
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -26,7 +26,7 @@ class Escala(Base, TimestampMixin):
 
     # Chaves
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    codigo = Column(Integer, unique=True, nullable=False, autoincrement=True)
+    codigo = Column(Integer, Sequence('escalas_codigo_seq'), unique=True, nullable=False)
     distrito_id = Column(UUID(as_uuid=True), ForeignKey("distritos.id", ondelete="CASCADE"), nullable=False)
 
     # Período de referência

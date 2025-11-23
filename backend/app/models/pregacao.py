@@ -2,7 +2,7 @@
 Model: Pregacao
 """
 
-from sqlalchemy import Column, String, Integer, Text, Date, Time, Boolean, ForeignKey, Enum as SQLEnum, DateTime
+from sqlalchemy import Column, String, Integer, Text, Date, Time, Boolean, ForeignKey, Enum as SQLEnum, DateTime, Sequence
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -28,7 +28,7 @@ class Pregacao(Base, TimestampMixin):
 
     # Chaves
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    codigo = Column(Integer, unique=True, nullable=False, autoincrement=True)
+    codigo = Column(Integer, Sequence('pregacoes_codigo_seq'), unique=True, nullable=False)
     escala_id = Column(UUID(as_uuid=True), ForeignKey("escalas.id", ondelete="CASCADE"), nullable=False)
     igreja_id = Column(UUID(as_uuid=True), ForeignKey("igrejas.id", ondelete="CASCADE"), nullable=False)
     pregador_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)

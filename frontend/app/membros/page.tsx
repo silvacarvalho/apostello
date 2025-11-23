@@ -72,7 +72,7 @@ export default function MembrosPage() {
     try {
       setLoading(true)
       const [membrosData, igrejasData] = await Promise.all([
-        api.get('/membros/').then(r => r.data),
+        api.get('/usuarios/').then(r => r.data),
         api.get('/igrejas/').then(r => r.data)
       ])
       setMembros(membrosData)
@@ -135,12 +135,13 @@ export default function MembrosPage() {
       }
 
       if (editingMembro) {
-        await api.put(`/membros/${editingMembro.id}`, payload)
+        await api.put(`/usuarios/${editingMembro.id}`, payload)
         showToast('success', 'Membro atualizado com sucesso!')
       } else {
-        await api.post('/membros/', payload)
+        await api.post('/usuarios/', payload)
         showToast('success', 'Membro cadastrado com sucesso!')
       }
+      // TODO: Endpoint POST /usuarios/ não existe, será necessário criar rota de registro
       await loadData()
       handleCloseDialog()
     } catch (err: any) {
@@ -154,7 +155,7 @@ export default function MembrosPage() {
     if (!deletingMembro) return
     try {
       setSubmitting(true)
-      await api.delete(`/membros/${deletingMembro.id}`)
+      await api.delete(`/usuarios/${deletingMembro.id}`)
       showToast('success', 'Membro excluído com sucesso!')
       await loadData()
       setDeleteDialogOpen(false)

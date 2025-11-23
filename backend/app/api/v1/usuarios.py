@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import require_pastor_distrital, get_current_active_user
 from app.models import Usuario
+from app.models.usuario import PerfilUsuario, StatusAprovacao
 from app.schemas.usuario import UsuarioUpdate, UsuarioResponse
 
 router = APIRouter()
@@ -28,7 +29,7 @@ def atualizar_usuario(usuario_id: str, data: UsuarioUpdate, db: Session = Depend
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     # Verificar permissão
-    if str(usuario.id) != str(current_user.id) and not current_user.tem_perfil("membro_associacao"):
+    if str(usuario.id) != str(current_user.id) and not current_user.tem_perfil(PerfilUsuario.MEMBRO_ASSOCIACAO):
         raise HTTPException(status_code=403, detail="Sem permissão para atualizar este usuário")
     
     for key, value in data.dict(exclude_unset=True).items():
@@ -43,7 +44,7 @@ def aprovar_usuario(usuario_id: str, db: Session = Depends(get_db), current_user
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
-    usuario.status_aprovacao = "aprovado"
+    usuario.status_aprovacao = StatusAprovacao.APROVADO
     usuario.aprovado_por = current_user.id
     from datetime import datetime
     usuario.aprovado_em = datetime.utcnow()

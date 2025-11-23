@@ -86,9 +86,13 @@ export default function AssociacoesPage() {
       setLoading(true)
       const data = await api.get('/associacoes/').then(r => r.data)
       setAssociacoes(data)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar associações:', err)
-      showToast('error', 'Erro ao carregar associações')
+      const errorMessage = err.response?.data?.detail || 'Erro ao carregar associações'
+      const message = Array.isArray(errorMessage) 
+        ? errorMessage.map((e: any) => e.msg).join(', ')
+        : errorMessage
+      showToast('error', message)
     } finally {
       setLoading(false)
     }

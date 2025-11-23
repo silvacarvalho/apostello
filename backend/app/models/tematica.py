@@ -2,7 +2,7 @@
 Model: Tematica
 """
 
-from sqlalchemy import Column, String, Integer, Text, Date, Boolean, ForeignKey, Enum as SQLEnum, CheckConstraint
+from sqlalchemy import Column, String, Integer, Text, Date, Boolean, ForeignKey, Enum as SQLEnum, CheckConstraint, Sequence
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -27,7 +27,7 @@ class Tematica(Base, TimestampMixin):
 
     # Chaves
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    codigo = Column(Integer, unique=True, nullable=False, autoincrement=True)
+    codigo = Column(Integer, Sequence('tematicas_codigo_seq'), unique=True, nullable=False)
     associacao_id = Column(UUID(as_uuid=True), ForeignKey("associacoes.id", ondelete="CASCADE"), nullable=False)
     criado_por = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
 
