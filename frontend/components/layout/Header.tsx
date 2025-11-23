@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Menu, Bell, User, LogOut, Settings, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -86,16 +87,14 @@ export function Header() {
                     </div>
 
                     <div className="p-2">
-                      <button
+                      <Link
+                        href="/perfil"
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
-                        onClick={() => {
-                          setUserMenuOpen(false)
-                          // Navigate to settings
-                        }}
+                        onClick={() => setUserMenuOpen(false)}
                       >
-                        <Settings className="h-4 w-4" />
-                        Configurações
-                      </button>
+                        <User className="h-4 w-4" />
+                        Meu Perfil
+                      </Link>
 
                       <button
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent text-destructive transition-colors"

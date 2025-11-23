@@ -14,7 +14,8 @@ import {
   Church,
   MapPin,
   BookOpen,
-  UserCheck
+  UserCheck,
+  Building2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
@@ -23,7 +24,8 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
 
   // Gestão
-  { name: 'Distritos', href: '/distritos', icon: MapPin, section: 'Gestão' },
+  { name: 'Associações', href: '/associacoes', icon: Building2, section: 'Gestão' },
+  { name: 'Distritos', href: '/distritos', icon: MapPin },
   { name: 'Igrejas', href: '/igrejas', icon: Church },
   { name: 'Membros', href: '/membros', icon: UserCheck },
   { name: 'Pregadores', href: '/pregadores', icon: Users },
