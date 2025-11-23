@@ -47,7 +47,7 @@ def criar_usuario_master():
             senha_hash=get_password_hash(senha),
             nome_completo="Administrador Master",
             cpf="000.000.000-00",
-            perfis=["MEMBRO_ASSOCIACAO", "PASTOR_DISTRITAL", "PREGADOR", "AVALIADOR"],
+            perfis=["membro_associacao", "pastor_distrital", "pregador", "avaliador"],
             status_aprovacao="aprovado",
             ativo=True
         )
