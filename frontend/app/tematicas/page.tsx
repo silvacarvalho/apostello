@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
@@ -16,6 +17,8 @@ import { formatDate } from '@/lib/utils'
 interface Tematica {
   id: string
   titulo: string
+  associacao_id: string
+  tipo_recorrencia: string
   descricao?: string
   referencias_biblicas?: string
   ativa: boolean
@@ -25,13 +28,21 @@ interface Tematica {
 
 interface TematicaFormData {
   titulo: string
+  associacao_id: string
+  tipo_recorrencia: string
   descricao?: string
   referencias_biblicas?: string
   ativa: boolean
 }
 
+interface Associacao {
+  id: string
+  nome: string
+}
+
 export default function TematicasPage() {
   const [tematicas, setTematicas] = useState<Tematica[]>([])
+  const [associacoes, setAssociacoes] = useState<Associacao[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -42,10 +53,19 @@ export default function TematicasPage() {
 
   const [formData, setFormData] = useState<TematicaFormData>({
     titulo: '',
+    associacao_id: '',
+    tipo_recorrencia: 'data_especifica',
     descricao: '',
     referencias_biblicas: '',
     ativa: true
   })
+
+  // Opções de tipo de recorrência
+  const tiposRecorrencia = [
+    { value: 'data_especifica', label: 'Data Específica' },
+    { value: 'semanal', label: 'Semanal' },
+    { value: 'mensal', label: 'Mensal' }
+  ]
 
   useEffect(() => {
     loadData()
@@ -54,10 +74,14 @@ export default function TematicasPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await api.get('/tematicas/').then(r => r.data)
-      setTematicas(data)
+      const [tematicasData, associacoesData] = await Promise.all([
+        api.get('/tematicas/').then(r => r.data),
+        api.get('/associacoes/').then(r => r.data)
+      ])
+      setTematicas(tematicasData)
+      setAssociacoes(associacoesData)
     } catch (err) {
-      console.error('Erro ao carregar temáticas:', err)
+      console.error('Erro ao carregar dados:', err)
     } finally {
       setLoading(false)
     }
@@ -68,6 +92,8 @@ export default function TematicasPage() {
       setEditingTematica(tematica)
       setFormData({
         titulo: tematica.titulo,
+        associacao_id: tematica.associacao_id,
+        tipo_recorrencia: tematica.tipo_recorrencia,
         descricao: tematica.descricao || '',
         referencias_biblicas: tematica.referencias_biblicas || '',
         ativa: tematica.ativa
@@ -76,6 +102,8 @@ export default function TematicasPage() {
       setEditingTematica(null)
       setFormData({
         titulo: '',
+        associacao_id: '',
+        tipo_recorrencia: 'data_especifica',
         descricao: '',
         referencias_biblicas: '',
         ativa: true
@@ -309,6 +337,39 @@ export default function TematicasPage() {
                 required
                 placeholder="Ex: O Amor de Deus"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="associacao_id">Associação *</Label>
+              <Select
+                id="associacao_id"
+                value={formData.associacao_id}
+                onChange={(e) => setFormData({ ...formData, associacao_id: e.target.value })}
+                required
+              >
+                <option value="">Selecione uma associação</option>
+                {associacoes.map((associacao) => (
+                  <option key={associacao.id} value={associacao.id}>
+                    {associacao.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tipo_recorrencia">Tipo de Recorrência *</Label>
+              <Select
+                id="tipo_recorrencia"
+                value={formData.tipo_recorrencia}
+                onChange={(e) => setFormData({ ...formData, tipo_recorrencia: e.target.value })}
+                required
+              >
+                {tiposRecorrencia.map((tipo) => (
+                  <option key={tipo.value} value={tipo.value}>
+                    {tipo.label}
+                  </option>
+                ))}
+              </Select>
             </div>
 
             <div className="space-y-2">
