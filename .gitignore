@@ -2,6 +2,19 @@
 venv/
 backend/venv/
 
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
 database/DIAGRAMA_ER.png
 DICIONARIO_DE_DADOS.md
 EXEMPLOS_QUERIES.md
