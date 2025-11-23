@@ -16,6 +16,7 @@ interface Distrito {
   id: string
   nome: string
   regiao: string
+  associacao_id: string
   responsavel?: string
   email?: string
   telefone?: string
@@ -27,14 +28,21 @@ interface Distrito {
 interface DistritoFormData {
   nome: string
   regiao: string
+  associacao_id: string
   responsavel?: string
   email?: string
   telefone?: string
   ativo: boolean
 }
 
+interface Associacao {
+  id: string
+  nome: string
+}
+
 export default function DistritosPage() {
   const [distritos, setDistritos] = useState<Distrito[]>([])
+  const [associacoes, setAssociacoes] = useState<Associacao[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -46,6 +54,7 @@ export default function DistritosPage() {
   const [formData, setFormData] = useState<DistritoFormData>({
     nome: '',
     regiao: '',
+    associacao_id: '',
     responsavel: '',
     email: '',
     telefone: '',
@@ -59,10 +68,14 @@ export default function DistritosPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await api.get('/distritos/').then(r => r.data)
-      setDistritos(data)
+      const [distritosData, associacoesData] = await Promise.all([
+        api.get('/distritos/').then(r => r.data),
+        api.get('/associacoes/').then(r => r.data)
+      ])
+      setDistritos(distritosData)
+      setAssociacoes(associacoesData)
     } catch (err) {
-      console.error('Erro ao carregar distritos:', err)
+      console.error('Erro ao carregar dados:', err)
     } finally {
       setLoading(false)
     }
@@ -74,6 +87,7 @@ export default function DistritosPage() {
       setFormData({
         nome: distrito.nome,
         regiao: distrito.regiao,
+        associacao_id: distrito.associacao_id,
         responsavel: distrito.responsavel || '',
         email: distrito.email || '',
         telefone: distrito.telefone || '',
@@ -84,6 +98,7 @@ export default function DistritosPage() {
       setFormData({
         nome: '',
         regiao: '',
+        associacao_id: '',
         responsavel: '',
         email: '',
         telefone: '',
@@ -327,6 +342,23 @@ export default function DistritosPage() {
                 required
                 placeholder="Ex: Distrito Central"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="associacao_id">Associação *</Label>
+              <Select
+                id="associacao_id"
+                value={formData.associacao_id}
+                onChange={(e) => setFormData({ ...formData, associacao_id: e.target.value })}
+                required
+              >
+                <option value="">Selecione uma associação</option>
+                {associacoes.map((associacao) => (
+                  <option key={associacao.id} value={associacao.id}>
+                    {associacao.nome}
+                  </option>
+                ))}
+              </Select>
             </div>
 
             <div className="space-y-2">

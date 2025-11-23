@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
 import api from '@/lib/api'
 
 interface Membro {
@@ -35,6 +36,7 @@ interface MembroFormData {
 }
 
 export default function MembrosPage() {
+  const { showToast } = useToast()
   const [membros, setMembros] = useState<Membro[]>([])
   const [igrejas, setIgrejas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -116,6 +118,13 @@ export default function MembrosPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // Validação: verificar se pelo menos um perfil foi selecionado
+    if (formData.perfis.length === 0) {
+      showToast('error', 'Selecione pelo menos um perfil para o membro')
+      return
+    }
+
     try {
       setSubmitting(true)
       const payload = { ...formData }
@@ -127,13 +136,15 @@ export default function MembrosPage() {
 
       if (editingMembro) {
         await api.put(`/membros/${editingMembro.id}`, payload)
+        showToast('success', 'Membro atualizado com sucesso!')
       } else {
         await api.post('/membros/', payload)
+        showToast('success', 'Membro cadastrado com sucesso!')
       }
       await loadData()
       handleCloseDialog()
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Erro ao salvar membro')
+      showToast('error', err.response?.data?.detail || 'Erro ao salvar membro')
     } finally {
       setSubmitting(false)
     }
@@ -144,11 +155,12 @@ export default function MembrosPage() {
     try {
       setSubmitting(true)
       await api.delete(`/membros/${deletingMembro.id}`)
+      showToast('success', 'Membro excluído com sucesso!')
       await loadData()
       setDeleteDialogOpen(false)
       setDeletingMembro(null)
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Erro ao excluir membro')
+      showToast('error', err.response?.data?.detail || 'Erro ao excluir membro')
     } finally {
       setSubmitting(false)
     }

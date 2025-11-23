@@ -16,6 +16,7 @@ import { formatDate } from '@/lib/utils'
 
 interface Pregacao {
   id: string
+  escala_id: string
   data_pregacao: string
   horario_pregacao: string
   culto_tipo: string
@@ -32,6 +33,7 @@ interface Pregacao {
 }
 
 interface PregacaoFormData {
+  escala_id: string
   data_pregacao: string
   horario_pregacao: string
   culto_tipo: string
@@ -44,6 +46,7 @@ interface PregacaoFormData {
 
 export default function PregacoesPage() {
   const [pregacoes, setPregacoes] = useState<Pregacao[]>([])
+  const [escalas, setEscalas] = useState<any[]>([])
   const [igrejas, setIgrejas] = useState<any[]>([])
   const [pregadores, setPregadores] = useState<any[]>([])
   const [tematicas, setTematicas] = useState<any[]>([])
@@ -56,6 +59,7 @@ export default function PregacoesPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const [formData, setFormData] = useState<PregacaoFormData>({
+    escala_id: '',
     data_pregacao: '',
     horario_pregacao: '10:00',
     culto_tipo: 'CULTO_DIVINO',
@@ -82,13 +86,15 @@ export default function PregacoesPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const [pregacoesData, igrejasData, pregadoresData, tematicasData] = await Promise.all([
+      const [pregacoesData, escalasData, igrejasData, pregadoresData, tematicasData] = await Promise.all([
         api.get('/pregacoes/').then(r => r.data),
+        api.get('/escalas/').then(r => r.data),
         api.get('/igrejas/').then(r => r.data),
         api.get('/membros/').then(r => r.data.filter((m: any) => m.perfis.includes('PREGADOR'))),
         api.get('/tematicas/').then(r => r.data)
       ])
       setPregacoes(pregacoesData)
+      setEscalas(escalasData)
       setIgrejas(igrejasData)
       setPregadores(pregadoresData)
       setTematicas(tematicasData)
@@ -103,6 +109,7 @@ export default function PregacoesPage() {
     if (pregacao) {
       setEditingPregacao(pregacao)
       setFormData({
+        escala_id: pregacao.escala_id,
         data_pregacao: pregacao.data_pregacao,
         horario_pregacao: pregacao.horario_pregacao,
         culto_tipo: pregacao.culto_tipo,
@@ -115,6 +122,7 @@ export default function PregacoesPage() {
     } else {
       setEditingPregacao(null)
       setFormData({
+        escala_id: escalas[0]?.id || '',
         data_pregacao: new Date().toISOString().split('T')[0],
         horario_pregacao: '10:00',
         culto_tipo: 'CULTO_DIVINO',
@@ -403,6 +411,23 @@ export default function PregacoesPage() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="escala_id">Escala *</Label>
+              <Select
+                id="escala_id"
+                value={formData.escala_id}
+                onChange={(e) => setFormData({ ...formData, escala_id: e.target.value })}
+                required
+              >
+                <option value="">Selecione uma escala</option>
+                {escalas.map((escala) => (
+                  <option key={escala.id} value={escala.id}>
+                    {escala.mes_referencia}/{escala.ano_referencia} - {escala.distrito?.nome || 'Sem distrito'}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="data_pregacao">Data *</Label>
