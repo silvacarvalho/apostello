@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   FileText,
   Download,
@@ -17,28 +17,39 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import api from '@/lib/api'
+import { exportToExcel, exportToPDF, formatDataForExport } from '@/lib/export'
+import { formatDate } from '@/lib/utils'
 
 export default function RelatoriosPage() {
   const [periodo, setPeriodo] = useState('mensal')
+  const [loading, setLoading] = useState(true)
+  const [pregacoes, setPregacoes] = useState<any[]>([])
+  const [membros, setMembros] = useState<any[]>([])
+  const [avaliacoes, setAvaliacoes] = useState<any[]>([])
+  const [igrejas, setIgrejas] = useState<any[]>([])
 
   // Mock data for charts and statistics
   const estatisticasGerais = {
-    total_pregacoes: 156,
-    total_pregadores: 45,
-    media_avaliacoes: 4.6,
-    taxa_participacao: 94,
-    igrejas_ativas: 8,
-    avaliacoes_recebidas: 142
+    total_pregacoes: pregacoes.length,
+    total_pregadores: membros.filter(m => m.perfis?.includes('PREGADOR')).length,
+    media_avaliacoes: avaliacoes.length > 0
+      ? (avaliacoes.reduce((sum, a) => sum + a.nota, 0) / avaliacoes.length)
+      : 0,
+    taxa_participacao: pregacoes.length > 0
+      ? Math.round((pregacoes.filter(p => p.confirmada).length / pregacoes.length) * 100)
+      : 0,
+    igrejas_ativas: igrejas.filter(i => i.ativa).length,
+    avaliacoes_recebidas: avaliacoes.length
   }
 
-  const pregadoresPorIgreja = [
-    { igreja: 'Igreja Central', pregadores: 12, pregacoes: 45 },
-    { igreja: 'Igreja Norte', pregadores: 8, pregacoes: 32 },
-    { igreja: 'Igreja Sul', pregadores: 7, pregacoes: 28 },
-    { igreja: 'Igreja Leste', pregadores: 6, pregacoes: 22 },
-    { igreja: 'Igreja Oeste', pregadores: 5, pregacoes: 18 },
-    { igreja: 'Igreja Centro', pregadores: 4, pregacoes: 11 }
-  ]
+  const pregadoresPorIgreja = igrejas.map(igreja => ({
+    igreja: igreja.nome,
+    pregadores: membros.filter(m =>
+      m.igreja_id === igreja.id && m.perfis?.includes('PREGADOR')
+    ).length,
+    pregacoes: pregacoes.filter(p => p.igreja_id === igreja.id).length
+  })).filter(item => item.pregacoes > 0)
 
   const evolucaoMensal = [
     { mes: 'Jan', pregacoes: 52, avaliacoes: 48, media: 4.5 },
@@ -49,20 +60,120 @@ export default function RelatoriosPage() {
     { mes: 'Jun', pregacoes: 56, avaliacoes: 51, media: 4.5 }
   ]
 
-  const distribuicaoNotas = [
-    { nota: 5, quantidade: 85, percentual: 60 },
-    { nota: 4, quantidade: 42, percentual: 30 },
-    { nota: 3, quantidade: 12, percentual: 8 },
-    { nota: 2, quantidade: 2, percentual: 1 },
-    { nota: 1, quantidade: 1, percentual: 1 }
-  ]
+  const distribuicaoNotas = [1, 2, 3, 4, 5].map(nota => {
+    const quantidade = avaliacoes.filter(a => a.nota === nota).length
+    const percentual = avaliacoes.length > 0
+      ? Math.round((quantidade / avaliacoes.length) * 100)
+      : 0
+    return { nota, quantidade, percentual }
+  }).reverse()
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+      const [pregacoesData, membrosData, avaliacoesData, igrejasData] = await Promise.all([
+        api.get('/pregacoes/').then(r => r.data).catch(() => []),
+        api.get('/membros/').then(r => r.data).catch(() => []),
+        api.get('/avaliacoes/').then(r => r.data).catch(() => []),
+        api.get('/igrejas/').then(r => r.data).catch(() => [])
+      ])
+
+      setPregacoes(pregacoesData)
+      setMembros(membrosData)
+      setAvaliacoes(avaliacoesData)
+      setIgrejas(igrejasData)
+    } catch (err) {
+      console.error('Erro ao carregar relatórios:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   function handleExportPDF() {
-    alert('Exportando relatório em PDF...')
+    const columns = [
+      { key: 'data_pregacao', label: 'Data' },
+      { key: 'horario_pregacao', label: 'Horário' },
+      { key: 'igreja_nome', label: 'Igreja' },
+      { key: 'pregador_nome', label: 'Pregador' },
+      { key: 'culto_tipo', label: 'Tipo' },
+      { key: 'confirmada', label: 'Confirmada' }
+    ]
+
+    const data = pregacoes.map(p => ({
+      data_pregacao: formatDate(p.data_pregacao),
+      horario_pregacao: p.horario_pregacao,
+      igreja_nome: p.igreja?.nome || '',
+      pregador_nome: p.pregador?.nome_completo || '',
+      culto_tipo: p.culto_tipo?.replace('_', ' ') || '',
+      confirmada: p.confirmada ? 'Sim' : 'Não'
+    }))
+
+    exportToPDF('Relatório de Pregações', data, columns, 'relatorio-pregacoes')
   }
 
   function handleExportExcel() {
-    alert('Exportando relatório em Excel...')
+    const mappings = {
+      'data_pregacao': 'Data',
+      'horario_pregacao': 'Horário',
+      'igreja.nome': 'Igreja',
+      'pregador.nome_completo': 'Pregador',
+      'culto_tipo': 'Tipo de Culto',
+      'tematica.titulo': 'Temática',
+      'confirmada': 'Confirmada'
+    }
+
+    const formatted = formatDataForExport(
+      pregacoes.map(p => ({
+        ...p,
+        data_pregacao: formatDate(p.data_pregacao),
+        confirmada: p.confirmada ? 'Sim' : 'Não',
+        culto_tipo: p.culto_tipo?.replace('_', ' ')
+      })),
+      mappings
+    )
+
+    exportToExcel(formatted, 'relatorio-pregacoes', 'Pregações')
+  }
+
+  function handleExportAvaliacoes() {
+    const mappings = {
+      'pregacao.data_pregacao': 'Data da Pregação',
+      'pregacao.pregador.nome_completo': 'Pregador',
+      'pregacao.igreja.nome': 'Igreja',
+      'nota': 'Nota',
+      'comentario': 'Comentário',
+      'avaliador.nome_completo': 'Avaliador',
+      'anonima': 'Anônima'
+    }
+
+    const formatted = formatDataForExport(
+      avaliacoes.map(a => ({
+        ...a,
+        'pregacao.data_pregacao': formatDate(a.pregacao?.data_pregacao),
+        anonima: a.anonima ? 'Sim' : 'Não'
+      })),
+      mappings
+    )
+
+    exportToExcel(formatted, 'relatorio-avaliacoes', 'Avaliações')
+  }
+
+  function handleExportPregadores() {
+    const mappings = {
+      'nome_completo': 'Nome',
+      'email': 'E-mail',
+      'telefone': 'Telefone',
+      'igreja.nome': 'Igreja'
+    }
+
+    const pregadores = membros.filter(m => m.perfis?.includes('PREGADOR'))
+    const formatted = formatDataForExport(pregadores, mappings)
+
+    exportToExcel(formatted, 'relatorio-pregadores', 'Pregadores')
   }
 
   return (
@@ -397,51 +508,79 @@ export default function RelatoriosPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 md:grid-cols-2">
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="flex items-start gap-3 text-left">
-                  <FileText className="h-5 w-5 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Desempenho de Pregadores</p>
-                    <p className="text-xs text-muted-foreground">
-                      Ranking completo com estatísticas individuais
-                    </p>
+              <Button
+                variant="outline"
+                className="justify-start h-auto p-4"
+                onClick={handleExportPregadores}
+              >
+                <div className="flex items-start justify-between w-full">
+                  <div className="flex items-start gap-3 text-left">
+                    <Users className="h-5 w-5 mt-0.5 text-primary" />
+                    <div>
+                      <p className="font-medium">Desempenho de Pregadores</p>
+                      <p className="text-xs text-muted-foreground">
+                        Ranking completo com estatísticas individuais
+                      </p>
+                    </div>
                   </div>
+                  <Download className="h-4 w-4 text-muted-foreground" />
                 </div>
               </Button>
 
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="flex items-start gap-3 text-left">
-                  <FileText className="h-5 w-5 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Escalas Mensais</p>
-                    <p className="text-xs text-muted-foreground">
-                      Todas as escalas geradas e seu status
-                    </p>
+              <Button
+                variant="outline"
+                className="justify-start h-auto p-4"
+                onClick={handleExportExcel}
+              >
+                <div className="flex items-start justify-between w-full">
+                  <div className="flex items-start gap-3 text-left">
+                    <Calendar className="h-5 w-5 mt-0.5 text-primary" />
+                    <div>
+                      <p className="font-medium">Pregações Completo</p>
+                      <p className="text-xs text-muted-foreground">
+                        Todas as pregações com detalhes
+                      </p>
+                    </div>
                   </div>
+                  <Download className="h-4 w-4 text-muted-foreground" />
                 </div>
               </Button>
 
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="flex items-start gap-3 text-left">
-                  <FileText className="h-5 w-5 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Avaliações Detalhadas</p>
-                    <p className="text-xs text-muted-foreground">
-                      Lista completa com comentários e notas
-                    </p>
+              <Button
+                variant="outline"
+                className="justify-start h-auto p-4"
+                onClick={handleExportAvaliacoes}
+              >
+                <div className="flex items-start justify-between w-full">
+                  <div className="flex items-start gap-3 text-left">
+                    <Star className="h-5 w-5 mt-0.5 text-primary" />
+                    <div>
+                      <p className="font-medium">Avaliações Detalhadas</p>
+                      <p className="text-xs text-muted-foreground">
+                        Lista completa com comentários e notas
+                      </p>
+                    </div>
                   </div>
+                  <Download className="h-4 w-4 text-muted-foreground" />
                 </div>
               </Button>
 
-              <Button variant="outline" className="justify-start h-auto p-4">
-                <div className="flex items-start gap-3 text-left">
-                  <FileText className="h-5 w-5 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Análise por Igreja</p>
-                    <p className="text-xs text-muted-foreground">
-                      Comparativo de desempenho entre igrejas
-                    </p>
+              <Button
+                variant="outline"
+                className="justify-start h-auto p-4"
+                onClick={handleExportPDF}
+              >
+                <div className="flex items-start justify-between w-full">
+                  <div className="flex items-start gap-3 text-left">
+                    <FileText className="h-5 w-5 mt-0.5 text-primary" />
+                    <div>
+                      <p className="font-medium">Relatório PDF</p>
+                      <p className="text-xs text-muted-foreground">
+                        Documento formatado para impressão
+                      </p>
+                    </div>
                   </div>
+                  <Download className="h-4 w-4 text-muted-foreground" />
                 </div>
               </Button>
             </div>
