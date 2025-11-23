@@ -29,7 +29,7 @@ INSERT INTO usuarios (
     '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5ygOGdUvfkWiu',  -- Senha: Admin@123
     'Administrador Master',
     '000.000.000-00',
-    ARRAY['MEMBRO_ASSOCIACAO', 'PASTOR_DISTRITAL', 'PREGADOR', 'AVALIADOR']::perfil_usuario[],
+    ARRAY['membro_associacao', 'pastor_distrital', 'pregador', 'avaliador']::perfil_usuario[],
     'aprovado'::status_aprovacao,
     true,
     NOW(),
@@ -93,19 +93,21 @@ WHERE email = 'admin@apostello.com';
 --
 -- from app.core.security import get_password_hash
 -- from app.models import Usuario
--- from app.core.database import get_db
+-- from app.core.database import SessionLocal
 --
 -- # Criar usuário master
+-- db = SessionLocal()
 -- usuario = Usuario(
 --     email="admin@apostello.com",
 --     senha_hash=get_password_hash("Admin@123"),
 --     nome_completo="Administrador Master",
 --     cpf="000.000.000-00",
---     perfis=["MEMBRO_ASSOCIACAO", "PASTOR_DISTRITAL", "PREGADOR", "AVALIADOR"],
+--     perfis=["membro_associacao", "pastor_distrital", "pregador", "avaliador"],
 --     status_aprovacao="aprovado",
 --     ativo=True
 -- )
 -- db.add(usuario)
 -- db.commit()
+-- db.close()
 --
 -- ============================================================
