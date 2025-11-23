@@ -4,7 +4,7 @@ Este script cria o usuário diretamente no banco de dados usando SQLAlchemy
 """
 
 from app.core.database import SessionLocal
-from app.models.usuario import Usuario
+from app.models.usuario import Usuario, PerfilUsuario, StatusAprovacao
 from app.core.security import get_password_hash
 
 def criar_usuario_master():
@@ -47,8 +47,13 @@ def criar_usuario_master():
             senha_hash=get_password_hash(senha),
             nome_completo="Administrador Master",
             cpf="000.000.000-00",
-            perfis=["membro_associacao", "pastor_distrital", "pregador", "avaliador"],
-            status_aprovacao="aprovado",
+            perfis=[
+                PerfilUsuario.MEMBRO_ASSOCIACAO,
+                PerfilUsuario.PASTOR_DISTRITAL,
+                PerfilUsuario.PREGADOR,
+                PerfilUsuario.AVALIADOR
+            ],
+            status_aprovacao=StatusAprovacao.APROVADO,
             ativo=True
         )
 

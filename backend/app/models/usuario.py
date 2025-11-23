@@ -2,7 +2,7 @@
 Model: Usuario
 """
 
-from sqlalchemy import Column, String, Boolean, Integer, Date, ForeignKey, ARRAY, Enum as SQLEnum, DateTime
+from sqlalchemy import Column, String, Boolean, Integer, Date, ForeignKey, ARRAY, Enum as SQLEnum, DateTime, Sequence
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -34,7 +34,7 @@ class Usuario(Base, TimestampMixin):
 
     # Chaves
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    codigo = Column(Integer, unique=True, nullable=False, autoincrement=True)
+    codigo = Column(Integer, Sequence('usuarios_codigo_seq'), unique=True, nullable=False)
 
     # Relacionamentos organizacionais
     associacao_id = Column(UUID(as_uuid=True), ForeignKey("associacoes.id", ondelete="SET NULL"), nullable=True)
@@ -56,14 +56,14 @@ class Usuario(Base, TimestampMixin):
 
     # Perfis de acesso (array de ENUMs)
     perfis = Column(
-        ARRAY(SQLEnum(PerfilUsuario, name="perfil_usuario", create_type=False)),
+        ARRAY(SQLEnum(PerfilUsuario, name="perfil_usuario", create_type=False, values_callable=lambda x: [e.value for e in x])),
         nullable=False,
         default=[PerfilUsuario.PREGADOR]
     )
 
     # Status de aprovação
     status_aprovacao = Column(
-        SQLEnum(StatusAprovacao, name="status_aprovacao", create_type=False),
+        SQLEnum(StatusAprovacao, name="status_aprovacao", create_type=False, values_callable=lambda x: [e.value for e in x]),
         default=StatusAprovacao.PENDENTE
     )
     aprovado_por = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
