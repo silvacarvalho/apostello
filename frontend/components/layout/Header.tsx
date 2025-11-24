@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Menu, Bell, User, LogOut, Settings, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useStore } from '@/lib/store'
 import { useAuth } from '@/lib/auth'
 
@@ -46,6 +47,8 @@ export function Header() {
           <Button variant="ghost" size="icon">
             <Bell className="h-5 w-5" />
           </Button>
+
+          <ThemeToggle />
 
           {user && (
             <div className="relative">
