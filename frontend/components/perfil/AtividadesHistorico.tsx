@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Clock, User, Edit, Plus, Trash2, Filter } from 'lucide-react'
+import { Activity, Clock, User, Edit, Plus, Trash2, Filter, FileDown } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth'
+import { useToast } from '@/components/ui/toast'
 import api from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { exportarAtividadesPDF } from '@/lib/pdf-export'
 
 interface LogAtividade {
   id: string
@@ -21,6 +24,7 @@ interface LogAtividade {
 
 export function AtividadesHistorico() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [atividades, setAtividades] = useState<LogAtividade[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('todos')
@@ -58,6 +62,21 @@ export function AtividadesHistorico() {
       console.error('Erro ao carregar atividades:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  function handleExportPDF() {
+    if (!user || atividades.length === 0) {
+      showToast('error', 'Não há atividades para exportar')
+      return
+    }
+
+    try {
+      exportarAtividadesPDF(atividades, user.nome_completo, filter)
+      showToast('success', 'PDF exportado com sucesso!')
+    } catch (err) {
+      console.error('Erro ao exportar PDF:', err)
+      showToast('error', 'Erro ao exportar PDF')
     }
   }
 
@@ -142,20 +161,32 @@ export function AtividadesHistorico() {
           </p>
         </div>
 
-        <select
-          value={filter}
-          onChange={(e) => {
-            setFilter(e.target.value)
-            setPage(1)
-          }}
-          className="rounded-md border px-3 py-2 text-sm"
-        >
-          <option value="todos">Todas as ações</option>
-          <option value="criar">Criações</option>
-          <option value="editar">Edições</option>
-          <option value="excluir">Exclusões</option>
-          <option value="login">Login/Logout</option>
-        </select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPDF}
+            disabled={atividades.length === 0}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Exportar PDF
+          </Button>
+
+          <select
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value)
+              setPage(1)
+            }}
+            className="rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="todos">Todas as ações</option>
+            <option value="criar">Criações</option>
+            <option value="editar">Edições</option>
+            <option value="excluir">Exclusões</option>
+            <option value="login">Login/Logout</option>
+          </select>
+        </div>
       </div>
 
       {/* Timeline */}
