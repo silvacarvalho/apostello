@@ -5,6 +5,7 @@ import { Building2, Users, Church, MapPin, TrendingUp, Activity } from 'lucide-r
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AnalyticsCharts } from '@/components/charts/AnalyticsCharts'
+import { AdvancedFilters } from '@/components/dashboard/AdvancedFilters'
 import api from '@/lib/api'
 
 interface AssociacaoStats {
@@ -19,25 +20,50 @@ interface AssociacaoStats {
   crescimento_mensal?: number
 }
 
+interface FilterState {
+  dataInicio?: string
+  dataFim?: string
+  distritoId?: string
+  igrejaId?: string
+}
+
 export function AssociacaoAnalytics() {
   const [stats, setStats] = useState<AssociacaoStats[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('30')  // dias
+  const [filters, setFilters] = useState<FilterState>({})
 
   useEffect(() => {
     loadStats()
-  }, [selectedPeriod])
+  }, [selectedPeriod, filters])
 
   async function loadStats() {
     try {
       setLoading(true)
-      const data = await api.get(`/associacoes/analytics?periodo=${selectedPeriod}`).then(r => r.data)
+
+      // Construir query params
+      const params = new URLSearchParams({ periodo: selectedPeriod })
+
+      if (filters.dataInicio) params.append('dataInicio', filters.dataInicio)
+      if (filters.dataFim) params.append('dataFim', filters.dataFim)
+      if (filters.distritoId) params.append('distritoId', filters.distritoId)
+      if (filters.igrejaId) params.append('igrejaId', filters.igrejaId)
+
+      const data = await api.get(`/associacoes/analytics?${params}`).then(r => r.data)
       setStats(data)
     } catch (err) {
       console.error('Erro ao carregar analytics:', err)
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleFiltersChange(newFilters: FilterState) {
+    setFilters(newFilters)
+  }
+
+  function handleClearFilters() {
+    setFilters({})
   }
 
   const totals = stats.reduce((acc, assoc) => ({
@@ -71,6 +97,13 @@ export function AssociacaoAnalytics() {
           <option value="365">Último ano</option>
         </select>
       </div>
+
+      {/* Advanced Filters */}
+      <AdvancedFilters
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        onClearFilters={handleClearFilters}
+      />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
