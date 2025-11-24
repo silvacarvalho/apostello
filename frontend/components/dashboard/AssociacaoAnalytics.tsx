@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Building2, Users, Church, MapPin, TrendingUp, Activity } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AnalyticsCharts } from '@/components/charts/AnalyticsCharts'
 import api from '@/lib/api'
 
 interface AssociacaoStats {
@@ -125,6 +126,9 @@ export function AssociacaoAnalytics() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts */}
+      <AnalyticsCharts stats={stats} periodo={selectedPeriod} />
 
       {/* Detailed List */}
       <Card>
