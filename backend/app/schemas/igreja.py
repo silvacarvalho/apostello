@@ -51,6 +51,23 @@ class IgrejaResponse(IgrejaBase):
     ativo: bool
     criado_em: datetime
     atualizado_em: datetime
+    
+    # Relacionamento
+    distrito: Optional['DistritoSimple'] = None
 
     class Config:
         from_attributes = True
+
+
+class DistritoSimple(BaseModel):
+    """Schema simplificado de Distrito para uso em relacionamentos"""
+    id: UUID4
+    codigo: int
+    nome: str
+    
+    class Config:
+        from_attributes = True
+
+
+# Atualizar referências forward
+IgrejaResponse.model_rebuild()

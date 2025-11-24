@@ -172,6 +172,15 @@ def require_pastor_distrital(
     return current_user
 
 
+def require_gestor_distrital(
+    current_user: Usuario = Depends(
+        require_perfil(["pastor_distrital", "lider_distrital", "membro_associacao"])
+    )
+) -> Usuario:
+    """Dependency: Requer perfil Pastor Distrital, Líder Distrital ou Membro Associação"""
+    return current_user
+
+
 def require_pregador(
     current_user: Usuario = Depends(require_perfil(["pregador"]))
 ) -> Usuario:

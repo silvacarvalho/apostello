@@ -63,10 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     try {
-      const response = await api.post('/auth/login', {
-        username: email, // FastAPI espera 'username' no OAuth2
-        password
-      }, {
+      // Criar FormData no formato application/x-www-form-urlencoded
+      const formData = new URLSearchParams()
+      formData.append('username', email)
+      formData.append('password', password)
+
+      const response = await api.post('/auth/login', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
@@ -74,15 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { access_token, token_type } = response.data
 
-      // Buscar dados do usuário
-      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+      // IMPORTANTE: Salvar token no localStorage ANTES de fazer a requisição /auth/me
+      // O interceptor do axios lê o token do localStorage
+      localStorage.setItem('token', access_token)
+      
       const userResponse = await api.get('/auth/me')
       const userData = userResponse.data
 
-      // Salvar no estado e localStorage
+      // Salvar no estado
       setToken(access_token)
       setUser(userData)
-      localStorage.setItem('token', access_token)
       localStorage.setItem('user', JSON.stringify(userData))
 
       // Redirecionar para dashboard

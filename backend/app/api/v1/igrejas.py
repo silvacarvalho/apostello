@@ -1,16 +1,16 @@
 """Router: Igrejas"""
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
-from app.core.deps import require_pastor_distrital, get_current_active_user
+from app.core.deps import require_gestor_distrital, get_current_active_user
 from app.models import Igreja, Usuario
 from app.schemas.igreja import IgrejaCreate, IgrejaUpdate, IgrejaResponse
 
 router = APIRouter()
 
 @router.post("/", response_model=IgrejaResponse, status_code=status.HTTP_201_CREATED)
-def criar_igreja(data: IgrejaCreate, db: Session = Depends(get_db), current_user: Usuario = Depends(require_pastor_distrital)):
+def criar_igreja(data: IgrejaCreate, db: Session = Depends(get_db), current_user: Usuario = Depends(require_gestor_distrital)):
     nova_igreja = Igreja(**data.dict())
     db.add(nova_igreja)
     db.commit()
@@ -19,9 +19,20 @@ def criar_igreja(data: IgrejaCreate, db: Session = Depends(get_db), current_user
 
 @router.get("/", response_model=List[IgrejaResponse])
 def listar_igrejas(distrito_id: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):
-    query = db.query(Igreja).filter(Igreja.ativo == True)
+    query = db.query(Igreja).options(joinedload(Igreja.distrito)).filter(Igreja.ativo == True)
+    
+    # Se distrito_id foi passado como parâmetro, usar ele
     if distrito_id:
         query = query.filter(Igreja.distrito_id == distrito_id)
+    # Senão, filtrar pelo distrito do usuário logado
+    elif current_user.distrito_id:
+        query = query.filter(Igreja.distrito_id == current_user.distrito_id)
+    # Se usuário tem igreja_id, filtrar pelo distrito dessa igreja
+    elif current_user.igreja_id:
+        igreja_usuario = db.query(Igreja).filter(Igreja.id == current_user.igreja_id).first()
+        if igreja_usuario and igreja_usuario.distrito_id:
+            query = query.filter(Igreja.distrito_id == igreja_usuario.distrito_id)
+    
     igrejas = query.offset(skip).limit(limit).all()
     return igrejas
 
@@ -33,7 +44,7 @@ def obter_igreja(igreja_id: str, db: Session = Depends(get_db), current_user: Us
     return igreja
 
 @router.put("/{igreja_id}", response_model=IgrejaResponse)
-def atualizar_igreja(igreja_id: str, data: IgrejaUpdate, db: Session = Depends(get_db), current_user: Usuario = Depends(require_pastor_distrital)):
+def atualizar_igreja(igreja_id: str, data: IgrejaUpdate, db: Session = Depends(get_db), current_user: Usuario = Depends(require_gestor_distrital)):
     igreja = db.query(Igreja).filter(Igreja.id == igreja_id).first()
     if not igreja:
         raise HTTPException(status_code=404, detail="Igreja não encontrada")
@@ -44,7 +55,7 @@ def atualizar_igreja(igreja_id: str, data: IgrejaUpdate, db: Session = Depends(g
     return igreja
 
 @router.delete("/{igreja_id}", status_code=status.HTTP_204_NO_CONTENT)
-def deletar_igreja(igreja_id: str, db: Session = Depends(get_db), current_user: Usuario = Depends(require_pastor_distrital)):
+def deletar_igreja(igreja_id: str, db: Session = Depends(get_db), current_user: Usuario = Depends(require_gestor_distrital)):
     igreja = db.query(Igreja).filter(Igreja.id == igreja_id).first()
     if not igreja:
         raise HTTPException(status_code=404, detail="Igreja não encontrada")

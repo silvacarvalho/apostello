@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
+import { useAuth } from '@/lib/auth'
 import api from '@/lib/api'
 
 interface Igreja {
@@ -20,7 +21,7 @@ interface Igreja {
   estado: string
   distrito_id: string
   distrito?: { nome: string }
-  ativa: boolean
+  ativo: boolean
   created_at: string
 }
 
@@ -30,10 +31,17 @@ interface IgrejaFormData {
   cidade: string
   estado: string
   distrito_id: string
-  ativa: boolean
+  ativo: boolean
 }
 
 export default function IgrejasPage() {
+  const { user } = useAuth()
+  
+  // Verificar se usuário pode gerenciar igrejas
+  const canManage = user?.perfis?.some((p: string) => 
+    ['pastor_distrital', 'lider_distrital', 'membro_associacao'].includes(p)
+  ) ?? false
+  
   const [igrejas, setIgrejas] = useState<Igreja[]>([])
   const [distritos, setDistritos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,7 +58,7 @@ export default function IgrejasPage() {
     cidade: '',
     estado: 'SP',
     distrito_id: '',
-    ativa: true
+    ativo: true
   })
 
   useEffect(() => {
@@ -82,7 +90,7 @@ export default function IgrejasPage() {
         cidade: igreja.cidade,
         estado: igreja.estado,
         distrito_id: igreja.distrito_id,
-        ativa: igreja.ativa
+        ativo: igreja.ativo
       })
     } else {
       setEditingIgreja(null)
@@ -92,7 +100,7 @@ export default function IgrejasPage() {
         cidade: '',
         estado: 'SP',
         distrito_id: distritos[0]?.id || '',
-        ativa: true
+        ativo: true
       })
     }
     setDialogOpen(true)
@@ -137,9 +145,11 @@ export default function IgrejasPage() {
   }
 
   const filteredIgrejas = igrejas.filter(igreja =>
-    igreja.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    igreja.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    igreja.distrito?.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    igreja.ativo && (
+      igreja.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      igreja.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      igreja.distrito?.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   )
 
   const estados = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
@@ -152,13 +162,15 @@ export default function IgrejasPage() {
           <div>
             <h1 className="text-3xl font-bold">Igrejas</h1>
             <p className="text-muted-foreground">
-              Gerencie as igrejas do distrito
+              {canManage ? 'Gerencie as igrejas do distrito' : 'Visualize as igrejas do distrito'}
             </p>
           </div>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Igreja
-          </Button>
+          {canManage && (
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Igreja
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
@@ -180,7 +192,7 @@ export default function IgrejasPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {igrejas.filter(i => i.ativa).length}
+                {igrejas.filter(i => i.ativo).length}
               </div>
             </CardContent>
           </Card>
@@ -243,29 +255,35 @@ export default function IgrejasPage() {
                         <td className="p-4 text-sm">{igreja.cidade}/{igreja.estado}</td>
                         <td className="p-4 text-sm">{igreja.distrito?.nome}</td>
                         <td className="p-4">
-                          <Badge variant={igreja.ativa ? 'default' : 'outline'}>
-                            {igreja.ativa ? 'Ativa' : 'Inativa'}
+                          <Badge variant={igreja.ativo ? 'default' : 'outline'}>
+                            {igreja.ativo ? 'Ativa' : 'Inativa'}
                           </Badge>
                         </td>
                         <td className="p-4">
                           <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenDialog(igreja)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setDeletingIgreja(igreja)
-                                setDeleteDialogOpen(true)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canManage ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenDialog(igreja)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDeletingIgreja(igreja)
+                                    setDeleteDialogOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Somente visualização</span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -370,12 +388,12 @@ export default function IgrejasPage() {
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="ativa"
-                checked={formData.ativa}
-                onChange={(e) => setFormData({ ...formData, ativa: e.target.checked })}
+                id="ativo"
+                checked={formData.ativo}
+                onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
                 className="h-4 w-4 rounded border-gray-300"
               />
-              <Label htmlFor="ativa">Igreja ativa</Label>
+              <Label htmlFor="ativo">Igreja ativa</Label>
             </div>
 
             <div className="flex gap-3 pt-4">

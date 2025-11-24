@@ -19,13 +19,14 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
+import { useAuth } from '@/lib/auth'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
 
   // Gestão
-  { name: 'Associações', href: '/associacoes', icon: Building2, section: 'Gestão' },
-  { name: 'Distritos', href: '/distritos', icon: MapPin },
+  { name: 'Associações', href: '/associacoes', icon: Building2, section: 'Gestão', requiredPerfis: ['membro_associacao'] },
+  { name: 'Distritos', href: '/distritos', icon: MapPin, requiredPerfis: ['membro_associacao'] },
   { name: 'Igrejas', href: '/igrejas', icon: Church },
   { name: 'Membros', href: '/membros', icon: UserCheck },
   { name: 'Pregadores', href: '/pregadores', icon: Users },
@@ -46,6 +47,14 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname()
   const { sidebarOpen, setSidebarOpen } = useStore()
+  const { user } = useAuth()
+
+  // Filtrar navegação baseado nos perfis do usuário
+  const filteredNavigation = navigation.filter(item => {
+    if (!item.requiredPerfis) return true
+    // Verifica se o usuário tem pelo menos um dos perfis necessários
+    return item.requiredPerfis.some(perfil => user?.perfis?.includes(perfil))
+  })
 
   return (
     <>
@@ -66,9 +75,9 @@ export function Sidebar() {
       >
         <div className="flex h-full flex-col gap-2 overflow-y-auto p-4">
           <nav className="flex flex-col gap-1">
-            {navigation.map((item, index) => {
+            {filteredNavigation.map((item, index) => {
               const isActive = pathname === item.href
-              const showSection = item.section && (!navigation[index - 1] || navigation[index - 1].section !== item.section)
+              const showSection = item.section && (!filteredNavigation[index - 1] || filteredNavigation[index - 1].section !== item.section)
 
               return (
                 <div key={item.name}>

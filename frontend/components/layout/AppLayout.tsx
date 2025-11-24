@@ -7,7 +7,7 @@ import { ProtectedRoute } from '../auth/ProtectedRoute'
 interface AppLayoutProps {
   children: React.ReactNode
   requireAuth?: boolean
-  requiredPermission?: string
+  requiredPermission?: string | string[]
 }
 
 export function AppLayout({

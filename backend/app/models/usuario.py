@@ -16,6 +16,7 @@ class PerfilUsuario(str, enum.Enum):
     """Enum de perfis de usuário"""
     MEMBRO_ASSOCIACAO = "membro_associacao"
     PASTOR_DISTRITAL = "pastor_distrital"
+    LIDER_DISTRITAL = "lider_distrital"
     PREGADOR = "pregador"
     AVALIADOR = "avaliador"
 

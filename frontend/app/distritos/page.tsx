@@ -153,7 +153,7 @@ export default function DistritosPage() {
   )
 
   return (
-    <AppLayout>
+    <AppLayout requiredPermission="membro_associacao">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

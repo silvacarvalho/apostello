@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
+import { useAuth } from '@/lib/auth'
 import api from '@/lib/api'
 
 interface Membro {
@@ -37,6 +38,13 @@ interface MembroFormData {
 
 export default function MembrosPage() {
   const { showToast } = useToast()
+  const { user } = useAuth()
+  
+  // Verificar se usuário pode gerenciar membros
+  const canManage = user?.perfis?.some((p: string) => 
+    ['pastor_distrital', 'lider_distrital', 'membro_associacao'].includes(p)
+  ) ?? false
+  
   const [membros, setMembros] = useState<Membro[]>([])
   const [igrejas, setIgrejas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,15 +61,16 @@ export default function MembrosPage() {
     telefone: '',
     senha: '',
     igreja_id: '',
-    perfis: ['MEMBRO_ASSOCIACAO'],
+    perfis: ['membro_associacao'],
     ativo: true
   })
 
   const perfisDisponiveis = [
-    { value: 'MEMBRO_ASSOCIACAO', label: 'Membro da Associação' },
-    { value: 'PASTOR_DISTRITAL', label: 'Pastor Distrital' },
-    { value: 'PREGADOR', label: 'Pregador' },
-    { value: 'AVALIADOR', label: 'Avaliador' }
+    { value: 'membro_associacao', label: 'Membro da Associação' },
+    { value: 'pastor_distrital', label: 'Pastor Distrital' },
+    { value: 'lider_distrital', label: 'Líder Distrital' },
+    { value: 'pregador', label: 'Pregador' },
+    { value: 'avaliador', label: 'Avaliador' }
   ]
 
   useEffect(() => {
@@ -104,7 +113,7 @@ export default function MembrosPage() {
         telefone: '',
         senha: '',
         igreja_id: igrejas[0]?.id || '',
-        perfis: ['MEMBRO_ASSOCIACAO'],
+        perfis: ['membro_associacao'],
         ativo: true
       })
     }
@@ -141,7 +150,6 @@ export default function MembrosPage() {
         await api.post('/usuarios/', payload)
         showToast('success', 'Membro cadastrado com sucesso!')
       }
-      // TODO: Endpoint POST /usuarios/ não existe, será necessário criar rota de registro
       await loadData()
       handleCloseDialog()
     } catch (err: any) {
@@ -193,13 +201,15 @@ export default function MembrosPage() {
           <div>
             <h1 className="text-3xl font-bold">Membros</h1>
             <p className="text-muted-foreground">
-              Gerencie os membros do sistema
+              {canManage ? 'Gerencie os membros do sistema' : 'Visualize os membros do sistema'}
             </p>
           </div>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Membro
-          </Button>
+          {canManage && (
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Membro
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
@@ -325,23 +335,29 @@ export default function MembrosPage() {
                         </td>
                         <td className="p-4">
                           <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenDialog(membro)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setDeletingMembro(membro)
-                                setDeleteDialogOpen(true)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canManage ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenDialog(membro)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDeletingMembro(membro)
+                                    setDeleteDialogOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Somente visualização</span>
+                            )}
                           </div>
                         </td>
                       </tr>
