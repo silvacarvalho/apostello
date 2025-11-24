@@ -2,9 +2,10 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.core.database import get_db
 from app.core.deps import require_membro_associacao, get_current_active_user
-from app.models import Distrito, Usuario
+from app.models import Distrito, Usuario, Igreja
 from app.models.usuario import PerfilUsuario
 from app.schemas.distrito import DistritoCreate, DistritoUpdate, DistritoResponse
 
@@ -22,16 +23,25 @@ def criar_distrito(data: DistritoCreate, db: Session = Depends(get_db), current_
 def listar_distritos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):
     query = db.query(Distrito).filter(Distrito.ativo == True)
     
-    # Membros da associação veem todos os distritos da associação
-    if current_user.tem_perfil(PerfilUsuario.MEMBRO_ASSOCIACAO):
-        if current_user.associacao_id:
-            query = query.filter(Distrito.associacao_id == current_user.associacao_id)
-    # Outros usuários veem apenas seu distrito
-    elif current_user.distrito_id:
-        query = query.filter(Distrito.id == current_user.distrito_id)
+    # Filtrar por associação do usuário
+    if current_user.associacao_id:
+        query = query.filter(Distrito.associacao_id == current_user.associacao_id)
     
     distritos = query.offset(skip).limit(limit).all()
-    return distritos
+    
+    # Adicionar total de igrejas para cada distrito
+    resultado = []
+    for distrito in distritos:
+        distrito_dict = DistritoResponse.model_validate(distrito).model_dump()
+        # Contar igrejas ativas do distrito
+        total_igrejas = db.query(func.count(Igreja.id)).filter(
+            Igreja.distrito_id == distrito.id,
+            Igreja.ativo == True
+        ).scalar()
+        distrito_dict['total_igrejas'] = total_igrejas
+        resultado.append(DistritoResponse(**distrito_dict))
+    
+    return resultado
 
 @router.get("/{distrito_id}", response_model=DistritoResponse)
 def obter_distrito(distrito_id: str, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):

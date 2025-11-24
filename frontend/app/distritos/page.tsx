@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { MapPin, Plus, Edit, Trash2, Search, Church } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
+import { useAuth } from '@/lib/auth'
 import api from '@/lib/api'
 
 interface Distrito {
@@ -41,6 +43,11 @@ interface Associacao {
 }
 
 export default function DistritosPage() {
+  const { user } = useAuth()
+  
+  // Apenas membro da associação pode gerenciar distritos
+  const canManage = user?.perfis?.includes('membro_associacao') ?? false
+  
   const [distritos, setDistritos] = useState<Distrito[]>([])
   const [associacoes, setAssociacoes] = useState<Associacao[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,7 +70,7 @@ export default function DistritosPage() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [user])
 
   async function loadData() {
     try {
@@ -74,6 +81,7 @@ export default function DistritosPage() {
       ])
       setDistritos(distritosData)
       setAssociacoes(associacoesData)
+      
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
     } finally {
@@ -153,71 +161,105 @@ export default function DistritosPage() {
   )
 
   return (
-    <AppLayout requiredPermission="membro_associacao">
+    <AppLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Distritos</h1>
             <p className="text-muted-foreground">
-              Gerencie os distritos e suas igrejas
+              {canManage ? 'Gerencie os distritos e suas igrejas' : 'Visualize os distritos'}
             </p>
           </div>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Distrito
-          </Button>
+          {canManage && (
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Distrito
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Distritos</CardTitle>
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{distritos.length}</div>
-            </CardContent>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+          {user?.perfis?.includes('membro_associacao') ? (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Distritos</CardTitle>
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{distritos.length}</div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Distritos Ativos</CardTitle>
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {distritos.filter(d => d.ativo).length}
-              </div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Distritos Ativos</CardTitle>
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {distritos.filter(d => d.ativo).length}
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Igrejas</CardTitle>
-              <Church className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {distritos.reduce((sum, d) => sum + (d.total_igrejas || 0), 0)}
-              </div>
-            </CardContent>
-          </Card>
+              <Link href="/igrejas" className="block">
+                <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total de Igrejas</CardTitle>
+                    <Church className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {distritos.reduce((sum, d) => sum + (d.total_igrejas || 0), 0)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Média por Distrito</CardTitle>
-              <Church className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {distritos.length > 0
-                  ? Math.round(distritos.reduce((sum, d) => sum + (d.total_igrejas || 0), 0) / distritos.length)
-                  : 0}
-              </div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Média por Distrito</CardTitle>
+                  <Church className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {distritos.length > 0
+                      ? Math.round(distritos.reduce((sum, d) => sum + (d.total_igrejas || 0), 0) / distritos.length)
+                      : 0}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Distritos na Associação</CardTitle>
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{distritos.length}</div>
+                </CardContent>
+              </Card>
+
+              <Link href="/igrejas" className="block">
+                <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Igrejas no Seu Distrito</CardTitle>
+                    <Church className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {distritos.find(d => d.id === user?.distrito_id)?.total_igrejas || 0}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* List */}
@@ -272,7 +314,11 @@ export default function DistritosPage() {
                           {!distrito.email && !distrito.telefone && '-'}
                         </td>
                         <td className="p-4 text-sm">
-                          <Badge variant="outline">{distrito.total_igrejas || 0} igrejas</Badge>
+                          <Link href="/igrejas">
+                            <Badge variant="outline" className="cursor-pointer hover:bg-accent">
+                              {distrito.total_igrejas || 0} igrejas
+                            </Badge>
+                          </Link>
                         </td>
                         <td className="p-4">
                           <Badge variant={distrito.ativo ? 'default' : 'outline'}>
@@ -281,23 +327,29 @@ export default function DistritosPage() {
                         </td>
                         <td className="p-4">
                           <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenDialog(distrito)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setDeletingDistrito(distrito)
-                                setDeleteDialogOpen(true)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canManage ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenDialog(distrito)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDeletingDistrito(distrito)
+                                    setDeleteDialogOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Somente visualização</span>
+                            )}
                           </div>
                         </td>
                       </tr>

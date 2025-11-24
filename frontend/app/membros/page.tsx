@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Users, Plus, Edit, Trash2, Search, Mail, Phone } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -65,13 +66,20 @@ export default function MembrosPage() {
     ativo: true
   })
 
-  const perfisDisponiveis = [
-    { value: 'membro_associacao', label: 'Membro da Associação' },
-    { value: 'pastor_distrital', label: 'Pastor Distrital' },
-    { value: 'lider_distrital', label: 'Líder Distrital' },
-    { value: 'pregador', label: 'Pregador' },
-    { value: 'avaliador', label: 'Avaliador' }
-  ]
+  // Perfis disponíveis baseado no perfil do usuário logado
+  const perfisDisponiveis = user?.perfis?.includes('membro_associacao') 
+    ? [
+        { value: 'membro_associacao', label: 'Membro da Associação' },
+        { value: 'pastor_distrital', label: 'Pastor Distrital' },
+        { value: 'lider_distrital', label: 'Líder Distrital' },
+        { value: 'pregador', label: 'Pregador' },
+        { value: 'avaliador', label: 'Avaliador' }
+      ]
+    : [
+        { value: 'lider_distrital', label: 'Líder Distrital' },
+        { value: 'pregador', label: 'Pregador' },
+        { value: 'avaliador', label: 'Avaliador' }
+      ]
 
   useEffect(() => {
     loadData()
@@ -242,9 +250,11 @@ export default function MembrosPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {membros.filter(m => m.perfis.includes('PREGADOR')).length}
-              </div>
+              <Link href="/pregadores" className="hover:underline">
+                <div className="text-2xl font-bold text-primary cursor-pointer">
+                  {membros.filter(m => m.perfis.includes('PREGADOR')).length}
+                </div>
+              </Link>
             </CardContent>
           </Card>
 

@@ -26,7 +26,7 @@ const navigation = [
 
   // Gestão
   { name: 'Associações', href: '/associacoes', icon: Building2, section: 'Gestão', requiredPerfis: ['membro_associacao'] },
-  { name: 'Distritos', href: '/distritos', icon: MapPin, requiredPerfis: ['membro_associacao'] },
+  { name: 'Distritos', href: '/distritos', icon: MapPin },
   { name: 'Igrejas', href: '/igrejas', icon: Church },
   { name: 'Membros', href: '/membros', icon: UserCheck },
   { name: 'Pregadores', href: '/pregadores', icon: Users },

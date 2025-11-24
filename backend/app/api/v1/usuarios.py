@@ -53,6 +53,45 @@ def criar_usuario(data: UsuarioCreate, db: Session = Depends(get_db), current_us
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Perfil inválido: {perfil_str}")
     
+    # REGRA 1: Validar perfil PASTOR_DISTRITAL
+    if PerfilUsuario.PASTOR_DISTRITAL in perfis_enum:
+        # Apenas MEMBRO_ASSOCIACAO pode criar PASTOR_DISTRITAL
+        if not current_user.tem_perfil(PerfilUsuario.MEMBRO_ASSOCIACAO):
+            raise HTTPException(
+                status_code=403, 
+                detail="Apenas Membros da Associação podem criar Pastores Distritais"
+            )
+        
+        # Verificar se já existe pastor no distrito
+        if data.distrito_id:
+            pastor_existente = db.query(Usuario).filter(
+                Usuario.distrito_id == data.distrito_id,
+                Usuario.perfis.contains([PerfilUsuario.PASTOR_DISTRITAL]),
+                Usuario.ativo == True
+            ).first()
+            
+            if pastor_existente:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Já existe um Pastor Distrital neste distrito: {pastor_existente.nome_completo}"
+                )
+    
+    # REGRA 2: Validar perfil MEMBRO_ASSOCIACAO
+    if PerfilUsuario.MEMBRO_ASSOCIACAO in perfis_enum:
+        # Apenas outro MEMBRO_ASSOCIACAO pode criar
+        if not current_user.tem_perfil(PerfilUsuario.MEMBRO_ASSOCIACAO):
+            raise HTTPException(
+                status_code=403,
+                detail="Apenas Membros da Associação podem criar outros Membros da Associação"
+            )
+        
+        # Deve ser da mesma associação
+        if data.associacao_id and data.associacao_id != current_user.associacao_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Você só pode criar Membros da Associação na sua própria associação"
+            )
+    
     # Criar usuário
     usuario = Usuario(
         email=data.email,
@@ -95,8 +134,13 @@ def atualizar_usuario(usuario_id: str, data: UsuarioUpdate, db: Session = Depend
     if str(usuario.id) != str(current_user.id) and not current_user.tem_perfil(PerfilUsuario.MEMBRO_ASSOCIACAO):
         raise HTTPException(status_code=403, detail="Sem permissão para atualizar este usuário")
     
+    # Atualizar campos
     for key, value in data.dict(exclude_unset=True).items():
+        # Converter strings vazias em None para campos opcionais
+        if isinstance(value, str) and value == "" and key in ['genero', 'telefone', 'whatsapp', 'cpf', 'url_foto']:
+            value = None
         setattr(usuario, key, value)
+    
     db.commit()
     db.refresh(usuario)
     return usuario

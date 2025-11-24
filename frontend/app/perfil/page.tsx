@@ -108,7 +108,16 @@ export default function PerfilPage() {
 
     try {
       setSubmitting(true)
-      await api.put(`/usuarios/${user.id}`, profileData)
+      
+      // Filtrar apenas campos com valores não vazios
+      const dataToSend: any = {}
+      Object.entries(profileData).forEach(([key, value]) => {
+        if (value !== '' && value !== null && value !== undefined) {
+          dataToSend[key] = value
+        }
+      })
+      
+      await api.put(`/usuarios/${user.id}`, dataToSend)
       showToast('success', 'Perfil atualizado com sucesso!')
 
       // Recarregar dados do usuário

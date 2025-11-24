@@ -33,6 +33,7 @@ class DistritoResponse(DistritoBase):
     codigo: int
     associacao_id: UUID4
     ativo: bool
+    total_igrejas: int = 0
     criado_em: datetime
     atualizado_em: datetime
 

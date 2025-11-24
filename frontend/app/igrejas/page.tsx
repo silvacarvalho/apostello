@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Church, Plus, Edit, Trash2, Search } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -51,6 +52,7 @@ export default function IgrejasPage() {
   const [editingIgreja, setEditingIgreja] = useState<Igreja | null>(null)
   const [deletingIgreja, setDeletingIgreja] = useState<Igreja | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [userDistrito, setUserDistrito] = useState<any>(null)
 
   const [formData, setFormData] = useState<IgrejaFormData>({
     nome: '',
@@ -74,6 +76,19 @@ export default function IgrejasPage() {
       ])
       setIgrejas(igrejasData)
       setDistritos(distritosData)
+      
+      // Buscar distrito do usuário logado para preencher automaticamente
+      if (user?.distrito_id) {
+        const distrito = distritosData.find((d: any) => d.id === user.distrito_id)
+        setUserDistrito(distrito)
+      } else if (user?.igreja_id) {
+        // Se não tem distrito direto, buscar pela igreja
+        const igreja = igrejasData.find((i: any) => i.id === user.igreja_id)
+        if (igreja?.distrito_id) {
+          const distrito = distritosData.find((d: any) => d.id === igreja.distrito_id)
+          setUserDistrito(distrito)
+        }
+      }
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
     } finally {
@@ -94,12 +109,13 @@ export default function IgrejasPage() {
       })
     } else {
       setEditingIgreja(null)
+      // Preencher automaticamente o distrito do usuário
       setFormData({
         nome: '',
         endereco: '',
         cidade: '',
         estado: 'SP',
-        distrito_id: distritos[0]?.id || '',
+        distrito_id: userDistrito?.id || distritos[0]?.id || '',
         ativo: true
       })
     }
@@ -175,15 +191,19 @@ export default function IgrejasPage() {
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Igrejas</CardTitle>
-              <Church className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{igrejas.length}</div>
-            </CardContent>
-          </Card>
+          <Link href="/igrejas" className="block">
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {user?.perfis?.includes('membro_associacao') ? 'Total de Igrejas' : 'Igrejas no Seu Distrito'}
+                </CardTitle>
+                <Church className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{igrejas.length}</div>
+              </CardContent>
+            </Card>
+          </Link>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -197,15 +217,21 @@ export default function IgrejasPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Distritos</CardTitle>
-              <Church className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{distritos.length}</div>
-            </CardContent>
-          </Card>
+          <Link href="/distritos" className="block">
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {user?.perfis?.includes('membro_associacao') ? 'Distritos' : 'Seu Distrito'}
+                </CardTitle>
+                <Church className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {user?.perfis?.includes('membro_associacao') ? distritos.length : (userDistrito?.nome || '-')}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* List */}
@@ -368,22 +394,32 @@ export default function IgrejasPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="distrito_id">Distrito *</Label>
-              <Select
-                id="distrito_id"
-                value={formData.distrito_id}
-                onChange={(e) => setFormData({ ...formData, distrito_id: e.target.value })}
-                required
-              >
-                <option value="">Selecione um distrito</option>
-                {distritos.map(distrito => (
-                  <option key={distrito.id} value={distrito.id}>
-                    {distrito.nome}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            {/* Só mostrar seleção de distrito para membro da associação */}
+            {user?.perfis?.includes('membro_associacao') ? (
+              <div className="space-y-2">
+                <Label htmlFor="distrito_id">Distrito *</Label>
+                <Select
+                  id="distrito_id"
+                  value={formData.distrito_id}
+                  onChange={(e) => setFormData({ ...formData, distrito_id: e.target.value })}
+                  required
+                >
+                  <option value="">Selecione um distrito</option>
+                  {distritos.map(distrito => (
+                    <option key={distrito.id} value={distrito.id}>
+                      {distrito.nome}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Distrito</Label>
+                <div className="p-3 bg-muted rounded-md text-sm">
+                  {userDistrito?.nome || 'Seu distrito'}
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <input
