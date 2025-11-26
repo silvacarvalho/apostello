@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.core.deps import require_pastor_distrital, get_current_active_user
 from app.core.security import get_password_hash
-from app.models import Usuario, Igreja
+from app.models import Usuario, Igreja, PerfilPregador
 from app.models.usuario import PerfilUsuario, StatusAprovacao
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioResponse
 
@@ -115,6 +115,18 @@ def criar_usuario(data: UsuarioCreate, db: Session = Depends(get_db), current_us
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
+    
+    # Criar PerfilPregador se o usuário tem perfil de pregador
+    if PerfilUsuario.PREGADOR in perfis_enum:
+        perfil_pregador = db.query(PerfilPregador).filter(PerfilPregador.usuario_id == usuario.id).first()
+        if not perfil_pregador:
+            perfil_pregador = PerfilPregador(
+                usuario_id=usuario.id,
+                ativo=True
+            )
+            db.add(perfil_pregador)
+            db.commit()
+    
     return usuario
 
 @router.get("/{usuario_id}", response_model=UsuarioResponse)
@@ -131,18 +143,67 @@ def atualizar_usuario(usuario_id: str, data: UsuarioUpdate, db: Session = Depend
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     # Verificar permissão
-    if str(usuario.id) != str(current_user.id) and not current_user.tem_perfil(PerfilUsuario.MEMBRO_ASSOCIACAO):
+    # Pode editar: o próprio usuário, pastor distrital ou líder distrital
+    pode_editar = (
+        str(usuario.id) == str(current_user.id) or
+        current_user.tem_perfil(PerfilUsuario.PASTOR_DISTRITAL) or
+        current_user.tem_perfil(PerfilUsuario.LIDER_DISTRITAL)
+    )
+    
+    if not pode_editar:
         raise HTTPException(status_code=403, detail="Sem permissão para atualizar este usuário")
     
     # Atualizar campos
+    perfis_atualizados = False
+    perfis_antigos = usuario.perfis.copy() if hasattr(usuario, 'perfis') else []
+    
     for key, value in data.dict(exclude_unset=True).items():
         # Converter strings vazias em None para campos opcionais
         if isinstance(value, str) and value == "" and key in ['genero', 'telefone', 'whatsapp', 'cpf', 'url_foto']:
             value = None
+        
+        # Converter perfis de string para enum
+        if key == 'perfis' and value is not None:
+            perfis_atualizados = True
+            perfis_enum = []
+            for perfil_str in value:
+                try:
+                    perfis_enum.append(PerfilUsuario(perfil_str.lower()))
+                except ValueError:
+                    raise HTTPException(status_code=400, detail=f"Perfil inválido: {perfil_str}")
+            value = perfis_enum
+        
         setattr(usuario, key, value)
     
     db.commit()
     db.refresh(usuario)
+    
+    # Gerenciar PerfilPregador baseado nos perfis
+    if perfis_atualizados:
+        perfil_pregador = db.query(PerfilPregador).filter(PerfilPregador.usuario_id == usuario.id).first()
+        
+        # Se o usuário TEM o perfil de pregador agora
+        if PerfilUsuario.PREGADOR in usuario.perfis:
+            if not perfil_pregador:
+                # Criar novo PerfilPregador
+                perfil_pregador = PerfilPregador(
+                    usuario_id=usuario.id,
+                    ativo=True
+                )
+                db.add(perfil_pregador)
+                db.commit()
+            elif not perfil_pregador.ativo:
+                # Reativar PerfilPregador existente
+                perfil_pregador.ativo = True
+                db.commit()
+        
+        # Se o usuário PERDEU o perfil de pregador
+        elif PerfilUsuario.PREGADOR in perfis_antigos and PerfilUsuario.PREGADOR not in usuario.perfis:
+            if perfil_pregador and perfil_pregador.ativo:
+                # Marcar como inativo (mantém histórico)
+                perfil_pregador.ativo = False
+                db.commit()
+    
     return usuario
 
 @router.post("/{usuario_id}/aprovar", response_model=UsuarioResponse)

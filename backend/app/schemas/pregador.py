@@ -18,9 +18,22 @@ class PregadorUpdate(BaseModel):
     observacoes: Optional[str] = None
 
 
+class IgrejaSimples(BaseModel):
+    """Schema simplificado para Igreja"""
+    id: UUID4
+    nome: str
+    
+    class Config:
+        from_attributes = True
+
+
 class PregadorResponse(BaseModel):
     """Schema de resposta para Pregador"""
     usuario_id: UUID4
+    nome_completo: str
+    email: str
+    telefone: Optional[str] = None
+    igreja: Optional[IgrejaSimples] = None
     tipo_ordenacao: Optional[str] = None
     data_ordenacao: Optional[date] = None
     anos_experiencia: Optional[int] = None
@@ -35,6 +48,10 @@ class PregadorResponse(BaseModel):
     taxa_frequencia: Decimal
     taxa_pontualidade: Decimal
     max_pregacoes_mes: int
+    media_avaliacoes: float = 0.0
+    total_avaliacoes: int = 0
+    taxa_confirmacao: float = 0.0
+    posicao_ranking: int = 0
     ativo: bool
 
     class Config:

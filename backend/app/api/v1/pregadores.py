@@ -15,7 +15,39 @@ def listar_pregadores(distrito_id: str = None, skip: int = 0, limit: int = 100, 
     if distrito_id:
         query = query.filter(Usuario.distrito_id == distrito_id)
     pregadores = query.order_by(PerfilPregador.score_medio.desc()).offset(skip).limit(limit).all()
-    return pregadores
+    
+    # Montar resposta com dados do usuário
+    resultado = []
+    for idx, pregador in enumerate(pregadores, 1):
+        pregador_dict = {
+            'usuario_id': pregador.usuario_id,
+            'nome_completo': pregador.usuario.nome_completo,
+            'email': pregador.usuario.email,
+            'telefone': pregador.usuario.telefone,
+            'igreja': pregador.usuario.igreja if pregador.usuario.igreja else None,
+            'tipo_ordenacao': pregador.tipo_ordenacao,
+            'data_ordenacao': pregador.data_ordenacao,
+            'anos_experiencia': pregador.anos_experiencia,
+            'score_medio': pregador.score_medio,
+            'score_avaliacoes': pregador.score_avaliacoes,
+            'score_frequencia': pregador.score_frequencia,
+            'score_pontualidade': pregador.score_pontualidade,
+            'total_pregacoes': pregador.total_pregacoes,
+            'pregacoes_realizadas': pregador.pregacoes_realizadas,
+            'pregacoes_faltou': pregador.pregacoes_faltou,
+            'pregacoes_recusadas': pregador.pregacoes_recusadas,
+            'taxa_frequencia': pregador.taxa_frequencia,
+            'taxa_pontualidade': pregador.taxa_pontualidade,
+            'max_pregacoes_mes': pregador.max_pregacoes_mes,
+            'media_avaliacoes': float(pregador.score_avaliacoes),
+            'total_avaliacoes': pregador.total_pregacoes,  # Pode ser ajustado se houver tabela de avaliações
+            'taxa_confirmacao': float(pregador.taxa_frequencia),
+            'posicao_ranking': idx,
+            'ativo': pregador.ativo
+        }
+        resultado.append(PregadorResponse(**pregador_dict))
+    
+    return resultado
 
 @router.get("/{usuario_id}", response_model=PregadorResponse)
 def obter_pregador(usuario_id: str, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):

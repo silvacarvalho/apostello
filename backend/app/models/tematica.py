@@ -2,14 +2,14 @@
 Model: Tematica
 """
 
-from sqlalchemy import Column, String, Integer, Text, Date, Boolean, ForeignKey, Enum as SQLEnum, CheckConstraint, Sequence
+from sqlalchemy import Column, String, Integer, Text, Date, Boolean, ForeignKey, Enum as SQLEnum, CheckConstraint, Sequence, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 import uuid
 import enum
 
 from app.core.database import Base
-from .mixins import TimestampMixin
 from .horario_culto import DiaSemana
 
 
@@ -20,7 +20,7 @@ class TipoRecorrencia(str, enum.Enum):
     MENSAL = "mensal"
 
 
-class Tematica(Base, TimestampMixin):
+class Tematica(Base):
     """Temáticas sugestivas de pregação cadastradas pela Associação"""
 
     __tablename__ = "tematicas"
@@ -37,17 +37,18 @@ class Tematica(Base, TimestampMixin):
     referencia_biblica = Column(String(200))
 
     # Recorrência
-    tipo_recorrencia = Column(SQLEnum(TipoRecorrencia, name="tipo_recorrencia", create_type=False), nullable=False)
+    tipo_recorrencia = Column(String(50), nullable=False)
 
     # Para recorrência específica
     data_especifica = Column(Date)
 
     # Para recorrência semanal
-    dia_semana_semanal = Column(SQLEnum(DiaSemana, name="dia_semana", create_type=False))
+    semana_toda = Column(Boolean, default=False)
+    dia_semana_semanal = Column(String(20))
 
     # Para recorrência mensal
     numero_semana_mes = Column(Integer)  # 1º, 2º, 3º, 4º, 5º
-    dia_semana_mensal = Column(SQLEnum(DiaSemana, name="dia_semana", create_type=False))
+    dia_semana_mensal = Column(String(20))
 
     # Período de validade
     valido_de = Column(Date)
@@ -55,6 +56,10 @@ class Tematica(Base, TimestampMixin):
 
     # Controle
     ativo = Column(Boolean, default=True)
+    
+    # Timestamps
+    criado_em = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    atualizado_em = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Constraints de validação
     __table_args__ = (
@@ -63,7 +68,7 @@ class Tematica(Base, TimestampMixin):
             name="chk_tematica_data_especifica"
         ),
         CheckConstraint(
-            "tipo_recorrencia != 'semanal' OR dia_semana_semanal IS NOT NULL",
+            "tipo_recorrencia != 'semanal' OR (semana_toda = TRUE OR dia_semana_semanal IS NOT NULL)",
             name="chk_tematica_semanal"
         ),
         CheckConstraint(

@@ -13,14 +13,18 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('system')
+  const [theme, setTheme] = useState<Theme>('light')
   const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     // Carregar tema do localStorage
     const savedTheme = localStorage.getItem('theme') as Theme | null
     if (savedTheme) {
       setTheme(savedTheme)
+    } else {
+      setTheme('system')
     }
   }, [])
 
@@ -69,7 +73,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, actualTheme }}>
-      {children}
+      {mounted ? children : <div style={{ visibility: 'hidden' }}>{children}</div>}
     </ThemeContext.Provider>
   )
 }

@@ -209,7 +209,7 @@ export default function MembrosPage() {
           <div>
             <h1 className="text-3xl font-bold">Membros</h1>
             <p className="text-muted-foreground">
-              {canManage ? 'Gerencie os membros do sistema' : 'Visualize os membros do sistema'}
+              {canManage ? 'Gerencie os membros do distrito' : 'Visualize os membros do distrito'}
             </p>
           </div>
           {canManage && (
@@ -221,10 +221,12 @@ export default function MembrosPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Membros</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {user?.perfis?.includes('membro_associacao') ? 'Membros na Associação' : 'Membros do Distrito'}
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -232,43 +234,19 @@ export default function MembrosPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Membros Ativos</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {membros.filter(m => m.ativo).length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pregadores</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <Link href="/pregadores" className="hover:underline">
-                <div className="text-2xl font-bold text-primary cursor-pointer">
-                  {membros.filter(m => m.perfis.includes('PREGADOR')).length}
+          <Link href="/pregadores" className="block">
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pregadores</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {membros.filter(m => m.perfis.includes('pregador')).length}
                 </div>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avaliadores</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {membros.filter(m => m.perfis.includes('AVALIADOR')).length}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* List */}

@@ -1,19 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, Star, TrendingUp, Award, Search, Filter, Calendar, CheckCircle } from 'lucide-react'
+import { Users, Star, TrendingUp, Award, Search, Filter, Calendar, CheckCircle, X, BarChart3, MessageSquare, Clock } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { pregadoresApi } from '@/lib/api'
+import { formatDate } from '@/lib/utils'
+import api from '@/lib/api'
 
 export default function PregadoresPage() {
   const [pregadores, setPregadores] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPregador, setSelectedPregador] = useState<any>(null)
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
+  const [profileDetails, setProfileDetails] = useState<any>(null)
+  const [loadingProfile, setLoadingProfile] = useState(false)
 
   useEffect(() => {
     loadPregadores()
@@ -31,78 +38,72 @@ export default function PregadoresPage() {
     }
   }
 
-  // Mock data for demonstration
-  const mockPregadores = [
-    {
-      id: '1',
-      nome_completo: 'João Silva',
-      email: 'joao@example.com',
-      telefone: '(11) 98765-4321',
-      igreja: { nome: 'Igreja Central' },
-      total_pregacoes: 45,
-      media_avaliacoes: 4.8,
-      taxa_confirmacao: 98,
-      posicao_ranking: 1,
-      total_avaliacoes: 42,
-      ultima_pregacao: '2025-11-20'
-    },
-    {
-      id: '2',
-      nome_completo: 'Maria Santos',
-      email: 'maria@example.com',
-      telefone: '(11) 98765-4322',
-      igreja: { nome: 'Igreja Norte' },
-      total_pregacoes: 38,
-      media_avaliacoes: 4.7,
-      taxa_confirmacao: 95,
-      posicao_ranking: 2,
-      total_avaliacoes: 35,
-      ultima_pregacao: '2025-11-18'
-    },
-    {
-      id: '3',
-      nome_completo: 'Pedro Oliveira',
-      email: 'pedro@example.com',
-      telefone: '(11) 98765-4323',
-      igreja: { nome: 'Igreja Sul' },
-      total_pregacoes: 32,
-      media_avaliacoes: 4.6,
-      taxa_confirmacao: 93,
-      posicao_ranking: 3,
-      total_avaliacoes: 30,
-      ultima_pregacao: '2025-11-15'
-    },
-    {
-      id: '4',
-      nome_completo: 'Ana Costa',
-      email: 'ana@example.com',
-      telefone: '(11) 98765-4324',
-      igreja: { nome: 'Igreja Leste' },
-      total_pregacoes: 28,
-      media_avaliacoes: 4.5,
-      taxa_confirmacao: 90,
-      posicao_ranking: 4,
-      total_avaliacoes: 26,
-      ultima_pregacao: '2025-11-12'
-    },
-    {
-      id: '5',
-      nome_completo: 'Carlos Ferreira',
-      email: 'carlos@example.com',
-      telefone: '(11) 98765-4325',
-      igreja: { nome: 'Igreja Oeste' },
-      total_pregacoes: 25,
-      media_avaliacoes: 4.4,
-      taxa_confirmacao: 88,
-      posicao_ranking: 5,
-      total_avaliacoes: 23,
-      ultima_pregacao: '2025-11-10'
-    },
-  ]
+  async function loadPregadorDetails(pregadorId: string) {
+    try {
+      setLoadingProfile(true)
+      
+      // Buscar dados detalhados do pregador
+      const [pregador, pregacoes, avaliacoes] = await Promise.all([
+        api.get(`/usuarios/${pregadorId}`).then(r => r.data),
+        api.get(`/pregacoes/`).then(r => r.data).catch(() => []),
+        api.get(`/avaliacoes/`).then(r => r.data).catch(() => [])
+      ])
 
-  const displayPregadores = pregadores.length > 0 ? pregadores : mockPregadores
+      // Filtrar pregações do pregador específico
+      const pregacoesDoPregador = pregacoes.filter((p: any) => p.pregador_id === pregadorId)
+      const pregacoesIds = pregacoesDoPregador.map((p: any) => p.id)
+      
+      // Filtrar avaliações das pregações deste pregador
+      const avaliacoesDoPregador = avaliacoes.filter((a: any) => pregacoesIds.includes(a.pregacao_id))
 
-  const filteredPregadores = displayPregadores.filter(p =>
+      // Ordenar pregações (futuras primeiro, depois passadas)
+      const now = new Date()
+      const pregacoesFuturas = pregacoesDoPregador
+        .filter((p: any) => new Date(p.data_pregacao) >= now)
+        .sort((a: any, b: any) => new Date(a.data_pregacao).getTime() - new Date(b.data_pregacao).getTime())
+      
+      const pregacoesPassadas = pregacoesDoPregador
+        .filter((p: any) => new Date(p.data_pregacao) < now)
+        .sort((a: any, b: any) => new Date(b.data_pregacao).getTime() - new Date(a.data_pregacao).getTime())
+
+      // Calcular distribuição de notas
+      const distribuicaoNotas = {
+        5: avaliacoesDoPregador.filter((a: any) => a.nota === 5).length,
+        4: avaliacoesDoPregador.filter((a: any) => a.nota === 4).length,
+        3: avaliacoesDoPregador.filter((a: any) => a.nota === 3).length,
+        2: avaliacoesDoPregador.filter((a: any) => a.nota === 2).length,
+        1: avaliacoesDoPregador.filter((a: any) => a.nota === 1).length,
+      }
+
+      // Pegar avaliações recentes com comentários
+      const avaliacoesRecentes = avaliacoesDoPregador
+        .filter((a: any) => a.comentario)
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5)
+
+      setProfileDetails({
+        ...pregador,
+        pregacoesFuturas,
+        pregacoesPassadas: pregacoesPassadas.slice(0, 10),
+        totalPregacoes: pregacoesDoPregador.length,
+        distribuicaoNotas,
+        avaliacoesRecentes,
+        totalAvaliacoes: avaliacoesDoPregador.length
+      })
+    } catch (err) {
+      console.error('Erro ao carregar detalhes do pregador:', err)
+    } finally {
+      setLoadingProfile(false)
+    }
+  }
+
+  function openProfileDialog(pregador: any) {
+    setSelectedPregador(pregador)
+    setProfileDialogOpen(true)
+    loadPregadorDetails(pregador.usuario_id)
+  }
+
+  const filteredPregadores = pregadores.filter(p =>
     p.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.igreja?.nome.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -132,15 +133,11 @@ export default function PregadoresPage() {
               Ranking e desempenho dos pregadores do distrito
             </p>
           </div>
-          <Button>
-            <Users className="mr-2 h-4 w-4" />
-            Cadastrar Pregador
-          </Button>
         </div>
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card key="total-pregadores">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Total de Pregadores
@@ -148,14 +145,14 @@ export default function PregadoresPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{displayPregadores.length}</div>
+              <div className="text-2xl font-bold">{pregadores.length}</div>
               <p className="text-xs text-muted-foreground">
                 Ativos no distrito
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card key="media-geral">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Média Geral
@@ -163,14 +160,18 @@ export default function PregadoresPage() {
               <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">4.6</div>
+              <div className="text-2xl font-bold">
+                {pregadores.length > 0
+                  ? (pregadores.reduce((sum, p) => sum + (p.media_avaliacoes || 0), 0) / pregadores.length).toFixed(1)
+                  : '0.0'}
+              </div>
               <p className="text-xs text-muted-foreground">
                 De 5 estrelas
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card key="taxa-confirmacao">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Taxa de Confirmação
@@ -178,14 +179,18 @@ export default function PregadoresPage() {
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">93%</div>
+              <div className="text-2xl font-bold">
+                {pregadores.length > 0
+                  ? Math.round(pregadores.reduce((sum, p) => sum + (p.taxa_confirmacao || 0), 0) / pregadores.length)
+                  : 0}%
+              </div>
               <p className="text-xs text-muted-foreground">
                 Pregações confirmadas
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card key="total-pregacoes">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Total de Pregações
@@ -194,7 +199,7 @@ export default function PregadoresPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {displayPregadores.reduce((sum, p) => sum + (p.total_pregacoes || 0), 0)}
+                {pregadores.reduce((sum, p) => sum + (p.total_pregacoes || 0), 0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Este ano
@@ -237,7 +242,7 @@ export default function PregadoresPage() {
                 {filteredPregadores.map((pregador) => {
                   const rankingBadge = getRankingBadge(pregador.posicao_ranking)
                   const performanceBadge = getPerformanceBadge(pregador.media_avaliacoes)
-
+                  
                   return (
                     <div
                       key={pregador.id}
@@ -311,7 +316,7 @@ export default function PregadoresPage() {
 
         {/* Top Performers */}
         <div className="grid gap-6 md:grid-cols-3">
-          {displayPregadores.slice(0, 3).map((pregador, index) => {
+          {pregadores.slice(0, 3).map((pregador, index) => {
             const medals = ['🥇', '🥈', '🥉']
             const colors = [
               'border-yellow-300 bg-yellow-50',
@@ -351,7 +356,7 @@ export default function PregadoresPage() {
                     <span className="text-sm text-muted-foreground">Total de Avaliações</span>
                     <span className="font-bold">{pregador.total_avaliacoes}</span>
                   </div>
-                  <Button variant="outline" className="w-full mt-4">
+                  <Button variant="outline" className="w-full mt-4" onClick={() => openProfileDialog(pregador)}>
                     Ver Perfil Completo
                   </Button>
                 </CardContent>
@@ -360,6 +365,282 @@ export default function PregadoresPage() {
           })}
         </div>
       </div>
+
+      {/* Dialog de Perfil Completo */}
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">{selectedPregador?.nome_completo}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{selectedPregador?.igreja?.nome}</p>
+              </div>
+              <Badge variant={selectedPregador?.posicao_ranking <= 3 ? 'default' : 'outline'}>
+                {selectedPregador?.posicao_ranking}º no Ranking
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
+
+          {loadingProfile ? (
+            <div className="flex items-center justify-center p-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : profileDetails ? (
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+                <TabsTrigger value="historico">Histórico</TabsTrigger>
+                <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
+                <TabsTrigger value="escalas">Próximas Escalas</TabsTrigger>
+              </TabsList>
+
+              {/* Tab: Visão Geral */}
+              <TabsContent value="overview" className="space-y-4 mt-4">
+                {/* Estatísticas Principais */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Média Geral
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                        <span className="text-2xl font-bold">{selectedPregador?.media_avaliacoes.toFixed(1)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Total de Pregações
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-2xl font-bold">{profileDetails.totalPregacoes}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Taxa Confirmação
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="text-2xl font-bold text-green-600">{selectedPregador?.taxa_confirmacao}%</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Total Avaliações
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-2xl font-bold">{profileDetails.totalAvaliacoes}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Distribuição de Notas */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Distribuição de Notas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[5, 4, 3, 2, 1].map((nota) => {
+                        const count = profileDetails.distribuicaoNotas[nota]
+                        const percentage = profileDetails.totalAvaliacoes > 0 
+                          ? (count / profileDetails.totalAvaliacoes) * 100 
+                          : 0
+
+                        return (
+                          <div key={nota} className="flex items-center gap-3">
+                            <div className="flex items-center gap-1 w-20">
+                              <span className="text-sm font-medium">{nota}</span>
+                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            </div>
+                            <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
+                              <div 
+                                className="bg-yellow-400 h-full transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-muted-foreground w-16 text-right">
+                              {count} ({percentage.toFixed(0)}%)
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Tab: Histórico */}
+              <TabsContent value="historico" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pregações Realizadas</CardTitle>
+                    <CardDescription>Últimas 10 pregações</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {profileDetails.pregacoesPassadas.length > 0 ? (
+                      <div className="space-y-3">
+                        {profileDetails.pregacoesPassadas.map((pregacao: any) => (
+                          <div
+                            key={pregacao.id}
+                            className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+                          >
+                            <div className="space-y-1">
+                              <p className="font-medium">{pregacao.culto_tipo?.replace('_', ' ')}</p>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatDate(pregacao.data_pregacao)}</span>
+                                <span>•</span>
+                                <span>{pregacao.igreja?.nome}</span>
+                              </div>
+                              {pregacao.tematica && (
+                                <p className="text-xs text-muted-foreground">
+                                  Temática: {pregacao.tematica.titulo}
+                                </p>
+                              )}
+                            </div>
+                            <Badge variant={pregacao.confirmada ? 'default' : 'outline'}>
+                              {pregacao.confirmada ? 'Confirmado' : 'Não confirmado'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-8 text-muted-foreground">
+                        <Calendar className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                        <p>Nenhuma pregação realizada ainda</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Tab: Avaliações */}
+              <TabsContent value="avaliacoes" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Avaliações Recentes</CardTitle>
+                    <CardDescription>Comentários das últimas avaliações</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {profileDetails.avaliacoesRecentes.length > 0 ? (
+                      <div className="space-y-4">
+                        {profileDetails.avaliacoesRecentes.map((avaliacao: any) => (
+                          <div
+                            key={avaliacao.id}
+                            className="border-b pb-4 last:border-0 last:pb-0"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-4 w-4 ${
+                                      i < avaliacao.nota
+                                        ? 'fill-yellow-400 text-yellow-400'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(avaliacao.created_at)}
+                              </span>
+                            </div>
+                            <p className="text-sm mb-2">{avaliacao.comentario}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Pregação em {avaliacao.pregacao?.igreja?.nome}
+                              {!avaliacao.anonima && avaliacao.avaliador && 
+                                ` • Avaliado por: ${avaliacao.avaliador.nome_completo}`
+                              }
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-8 text-muted-foreground">
+                        <MessageSquare className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                        <p>Nenhuma avaliação com comentário ainda</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Tab: Próximas Escalas */}
+              <TabsContent value="escalas" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pregações Agendadas</CardTitle>
+                    <CardDescription>Escalas futuras confirmadas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {profileDetails.pregacoesFuturas.length > 0 ? (
+                      <div className="space-y-3">
+                        {profileDetails.pregacoesFuturas.map((pregacao: any) => (
+                          <div
+                            key={pregacao.id}
+                            className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
+                          >
+                            <div className="space-y-1">
+                              <p className="font-medium">{pregacao.culto_tipo?.replace('_', ' ')}</p>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatDate(pregacao.data_pregacao)}</span>
+                                <span>•</span>
+                                <span>{pregacao.horario_pregacao}</span>
+                                <span>•</span>
+                                <span>{pregacao.igreja?.nome}</span>
+                              </div>
+                              {pregacao.tematica && (
+                                <p className="text-xs text-muted-foreground">
+                                  Temática: {pregacao.tematica.titulo}
+                                </p>
+                              )}
+                            </div>
+                            <Badge variant={pregacao.confirmada ? 'default' : 'outline'}>
+                              {pregacao.confirmada ? 'Confirmado' : 'Pendente'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-8 text-muted-foreground">
+                        <Clock className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                        <p>Nenhuma pregação agendada no momento</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   )
 }

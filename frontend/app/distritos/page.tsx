@@ -181,85 +181,29 @@ export default function DistritosPage() {
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-2">
-          {user?.perfis?.includes('membro_associacao') ? (
-            <>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total de Distritos</CardTitle>
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{distritos.length}</div>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Distritos</CardTitle>
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{distritos.length}</div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Distritos Ativos</CardTitle>
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {distritos.filter(d => d.ativo).length}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Link href="/igrejas" className="block">
-                <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total de Igrejas</CardTitle>
-                    <Church className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {distritos.reduce((sum, d) => sum + (d.total_igrejas || 0), 0)}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Média por Distrito</CardTitle>
-                  <Church className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {distritos.length > 0
-                      ? Math.round(distritos.reduce((sum, d) => sum + (d.total_igrejas || 0), 0) / distritos.length)
-                      : 0}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Distritos na Associação</CardTitle>
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{distritos.length}</div>
-                </CardContent>
-              </Card>
-
-              <Link href="/igrejas" className="block">
-                <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Igrejas no Seu Distrito</CardTitle>
-                    <Church className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {distritos.find(d => d.id === user?.distrito_id)?.total_igrejas || 0}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            </>
-          )}
+          <Link href="/igrejas" className="block">
+            <Card className="cursor-pointer hover:bg-accent/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total de Igrejas</CardTitle>
+                <Church className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {distritos.reduce((sum, d) => sum + (d.total_igrejas || 0), 0)}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* List */}

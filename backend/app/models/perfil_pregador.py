@@ -2,16 +2,16 @@
 Model: PerfilPregador
 """
 
-from sqlalchemy import Column, String, Integer, Date, Text, Boolean, ARRAY, ForeignKey, Numeric
+from sqlalchemy import Column, String, Integer, Date, Text, Boolean, ARRAY, ForeignKey, Numeric, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 import uuid
 
 from app.core.database import Base
-from .mixins import TimestampMixin
 
 
-class PerfilPregador(Base, TimestampMixin):
+class PerfilPregador(Base):
     """Perfil estendido para usuários pregadores"""
 
     __tablename__ = "perfis_pregadores"
@@ -50,6 +50,10 @@ class PerfilPregador(Base, TimestampMixin):
 
     # Controle
     ativo = Column(Boolean, default=True)
+    
+    # Timestamps
+    criado_em = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    atualizado_em = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relacionamentos
     usuario = relationship("Usuario", back_populates="perfil_pregador")

@@ -14,6 +14,7 @@ class TematicaBase(BaseModel):
     referencia_biblica: Optional[str] = Field(None, max_length=200)
     tipo_recorrencia: str  # data_especifica, semanal, mensal
     data_especifica: Optional[date] = None
+    semana_toda: Optional[bool] = False
     dia_semana_semanal: Optional[str] = None
     numero_semana_mes: Optional[int] = Field(None, ge=1, le=5)
     dia_semana_mensal: Optional[str] = None
@@ -23,7 +24,7 @@ class TematicaBase(BaseModel):
 
 class TematicaCreate(TematicaBase):
     """Schema para criar Temática"""
-    associacao_id: UUID4
+    ativo: Optional[bool] = True
 
 
 class TematicaUpdate(BaseModel):
