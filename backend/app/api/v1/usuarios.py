@@ -2,14 +2,20 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
+from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.deps import require_pastor_distrital, get_current_active_user
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 from app.models import Usuario, Igreja, PerfilPregador
 from app.models.usuario import PerfilUsuario, StatusAprovacao
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioResponse
 
 router = APIRouter()
+
+
+class AlterarSenhaRequest(BaseModel):
+    senha_atual: str
+    senha_nova: str
 
 @router.get("/", response_model=List[UsuarioResponse])
 def listar_usuarios(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):
@@ -129,12 +135,55 @@ def criar_usuario(data: UsuarioCreate, db: Session = Depends(get_db), current_us
     
     return usuario
 
+
+@router.put("/{usuario_id}/senha")
+def alterar_senha(usuario_id: str, data: AlterarSenhaRequest, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):
+    """Alterar a senha do usuário"""
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # Verificar se é o próprio usuário
+    if str(usuario.id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Você só pode alterar sua própria senha")
+    
+    # Verificar senha atual
+    if not verify_password(data.senha_atual, usuario.senha_hash):
+        raise HTTPException(status_code=400, detail="Senha atual incorreta")
+    
+    # Validar nova senha
+    if len(data.senha_nova) < 8:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter pelo menos 8 caracteres")
+    
+    # Atualizar senha
+    usuario.senha_hash = get_password_hash(data.senha_nova)
+    db.commit()
+    
+    return {"message": "Senha alterada com sucesso"}
+
+
+@router.post("/{usuario_id}/aprovar", response_model=UsuarioResponse)
+def aprovar_usuario(usuario_id: str, db: Session = Depends(get_db), current_user: Usuario = Depends(require_pastor_distrital)):
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    usuario.status_aprovacao = StatusAprovacao.APROVADO
+    usuario.aprovado_por = current_user.id
+    from datetime import datetime
+    usuario.aprovado_em = datetime.utcnow()
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
 @router.get("/{usuario_id}", response_model=UsuarioResponse)
 def obter_usuario(usuario_id: str, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return usuario
+
 
 @router.put("/{usuario_id}", response_model=UsuarioResponse)
 def atualizar_usuario(usuario_id: str, data: UsuarioUpdate, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_active_user)):

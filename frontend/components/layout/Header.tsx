@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Menu, Bell, User, LogOut, Settings, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,24 @@ export function Header() {
   const { toggleSidebar } = useStore()
   const { user, logout } = useAuth()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [userMenuOpen])
 
   function getPerfilLabel(perfil: string) {
     const perfis: Record<string, string> = {
@@ -51,16 +69,24 @@ export function Header() {
           <ThemeToggle />
 
           {user && (
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <Button
                 variant="ghost"
                 className="gap-2"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary" />
-                  </div>
+                  {user.url_foto ? (
+                    <img
+                      src={user.url_foto}
+                      alt={user.nome_completo}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
                   <div className="hidden md:block text-left">
                     <p className="text-sm font-medium">{user.nome_completo}</p>
                     <p className="text-xs text-muted-foreground">{user.igreja?.nome}</p>
@@ -70,17 +96,27 @@ export function Header() {
               </Button>
 
               {userMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setUserMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border bg-background shadow-lg z-50">
+                <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border bg-background shadow-lg z-50">
                     <div className="p-4 border-b">
-                      <p className="font-medium">{user.nome_completo}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{user.igreja?.nome}</p>
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <div className="flex items-start gap-3">
+                        {user.url_foto ? (
+                          <img
+                            src={user.url_foto}
+                            alt={user.nome_completo}
+                            className="h-12 w-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-6 w-6 text-primary" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{user.nome_completo}</p>
+                          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                          <p className="text-sm text-muted-foreground truncate">{user.igreja?.nome}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-3">
                         {user.perfis.map(perfil => (
                           <Badge key={perfil} variant="outline" className="text-xs">
                             {getPerfilLabel(perfil)}
@@ -111,7 +147,6 @@ export function Header() {
                       </button>
                     </div>
                   </div>
-                </>
               )}
             </div>
           )}

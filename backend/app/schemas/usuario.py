@@ -16,7 +16,7 @@ class UsuarioBase(BaseModel):
     cpf: Optional[str] = Field(None, max_length=14)
     data_nascimento: Optional[date] = None
     genero: Optional[str] = Field(None, max_length=20)
-    url_foto: Optional[str] = Field(None, max_length=500)
+    url_foto: Optional[str] = None
 
 
 class UsuarioCreate(UsuarioBase):
@@ -36,7 +36,7 @@ class UsuarioUpdate(BaseModel):
     cpf: Optional[str] = Field(None, max_length=14)
     data_nascimento: Optional[date] = None
     genero: Optional[str] = Field(None, max_length=20)
-    url_foto: Optional[str] = Field(None, max_length=500)
+    url_foto: Optional[str] = None
     perfis: Optional[List[str]] = None
     notif_whatsapp: Optional[bool] = None
     notif_sms: Optional[bool] = None

@@ -2,7 +2,7 @@
 Model: Usuario
 """
 
-from sqlalchemy import Column, String, Boolean, Integer, Date, ForeignKey, ARRAY, Enum as SQLEnum, DateTime, Sequence
+from sqlalchemy import Column, String, Boolean, Integer, Date, ForeignKey, ARRAY, Enum as SQLEnum, DateTime, Sequence, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -53,7 +53,7 @@ class Usuario(Base, TimestampMixin):
     cpf = Column(String(14), unique=True, index=True)
     data_nascimento = Column(Date)
     genero = Column(String(20))
-    url_foto = Column(String(500))
+    url_foto = Column(Text)
 
     # Perfis de acesso (array de ENUMs)
     perfis = Column(

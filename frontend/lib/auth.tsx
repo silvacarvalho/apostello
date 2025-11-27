@@ -16,6 +16,7 @@ interface User {
   }
   perfis: string[]
   ativo: boolean
+  url_foto?: string
 }
 
 interface AuthContextType {
@@ -47,18 +48,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Carregar token e usuário do localStorage ao iniciar
   useEffect(() => {
-    const storedToken = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
+    async function loadUser() {
+      const storedToken = localStorage.getItem('token')
 
-    if (storedToken && storedUser) {
-      setToken(storedToken)
-      setUser(JSON.parse(storedUser))
+      if (storedToken) {
+        setToken(storedToken)
+        api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`
 
-      // Configurar token no axios
-      api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`
+        try {
+          // Sempre buscar dados atualizados do usuário do backend
+          const userResponse = await api.get('/auth/me')
+          const userData = userResponse.data
+          setUser(userData)
+          localStorage.setItem('user', JSON.stringify(userData))
+        } catch (error) {
+          // Token inválido ou expirado
+          console.error('Erro ao carregar usuário:', error)
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setToken(null)
+          setUser(null)
+        }
+      }
+
+      setLoading(false)
     }
 
-    setLoading(false)
+    loadUser()
   }, [])
 
   async function login(email: string, password: string) {

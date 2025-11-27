@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Camera } from 'lucide-react'
 import { Button } from './button'
 
 interface ImageUploadProps {
   value?: string
-  onChange: (file: File | null, preview: string | null) => void
+  onChange: (url: string) => void
   maxSizeMB?: number
   aspectRatio?: 'square' | 'portrait' | 'landscape'
   label?: string
@@ -22,6 +22,11 @@ export function ImageUpload({
   const [preview, setPreview] = useState<string | null>(value || null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Sincronizar preview com value externo
+  useEffect(() => {
+    setPreview(value || null)
+  }, [value])
 
   const aspectRatioClasses = {
     square: 'aspect-square',
@@ -46,13 +51,14 @@ export function ImageUpload({
       return
     }
 
-    // Criar preview
+    // Criar preview (base64 data URL)
     const reader = new FileReader()
     reader.onloadend = () => {
       const previewUrl = reader.result as string
       setPreview(previewUrl)
       setError(null)
-      onChange(file, previewUrl)
+      // Passa a URL do preview (base64) para o componente pai
+      onChange(previewUrl)
     }
     reader.readAsDataURL(file)
   }
@@ -60,7 +66,7 @@ export function ImageUpload({
   function handleRemove() {
     setPreview(null)
     setError(null)
-    onChange(null, null)
+    onChange('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }

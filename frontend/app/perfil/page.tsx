@@ -123,7 +123,17 @@ export default function PerfilPage() {
       // Recarregar dados do usuário
       window.location.reload()
     } catch (err: any) {
-      showToast('error', err.response?.data?.detail || 'Erro ao atualizar perfil')
+      // Tratar erro de validação do Pydantic
+      let errorMessage = 'Erro ao atualizar perfil'
+      if (err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string') {
+          errorMessage = err.response.data.detail
+        } else if (Array.isArray(err.response.data.detail)) {
+          // Erro de validação Pydantic retorna array de objetos
+          errorMessage = err.response.data.detail.map((e: any) => e.msg).join(', ')
+        }
+      }
+      showToast('error', errorMessage)
     } finally {
       setSubmitting(false)
     }
