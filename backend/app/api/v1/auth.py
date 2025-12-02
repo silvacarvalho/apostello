@@ -72,6 +72,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # Buscar usuário
     usuario = db.query(Usuario).filter(Usuario.email == form_data.username).first()
     
+    # Debug
+    print(f"DEBUG - Login attempt for: {form_data.username}")
+    print(f"DEBUG - User found: {usuario is not None}")
+    if usuario:
+        print(f"DEBUG - User hash: {usuario.senha_hash[:20]}...")
+        print(f"DEBUG - Password to verify: {form_data.password}")
+        senha_valida = verify_password(form_data.password, usuario.senha_hash)
+        print(f"DEBUG - Password valid: {senha_valida}")
+    
     if not usuario or not verify_password(form_data.password, usuario.senha_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

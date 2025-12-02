@@ -15,7 +15,8 @@ import {
   MapPin,
   BookOpen,
   UserCheck,
-  Building2
+  Building2,
+  Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
@@ -34,6 +35,7 @@ const navigation = [
 
   // Pregações
   { name: 'Escalas', href: '/escalas', icon: Calendar, section: 'Pregações' },
+  { name: 'Horários de Cultos', href: '/horarios-cultos', icon: Clock, requiredPerfis: ['membro_associacao', 'pastor_distrital', 'lider_distrital'] },
   { name: 'Pregações', href: '/pregacoes', icon: Calendar },
   { name: 'Avaliações', href: '/avaliacoes', icon: Star },
 

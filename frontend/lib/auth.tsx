@@ -9,7 +9,9 @@ interface User {
   nome_completo: string
   email: string
   telefone?: string
-  igreja_id: string
+  associacao_id?: string
+  distrito_id?: string
+  igreja_id?: string
   igreja?: {
     id: string
     nome: string

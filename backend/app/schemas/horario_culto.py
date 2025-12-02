@@ -27,6 +27,7 @@ class HorarioCultoBase(BaseModel):
     nome_culto: Optional[str] = Field(None, max_length=100, description="Nome do culto (ex: Culto Divino)")
     duracao_minutos: int = Field(default=120, ge=30, le=480, description="Duração em minutos")
     requer_pregador: bool = Field(default=True, description="Se requer pregador escalado")
+    prioridade: int = Field(default=1, ge=1, le=10, description="Prioridade para geração de escala (1=maior)")
     ativo: bool = Field(default=True, description="Se está ativo")
 
     class Config:
@@ -59,6 +60,7 @@ class HorarioCultoUpdate(BaseModel):
     nome_culto: Optional[str] = Field(None, max_length=100)
     duracao_minutos: Optional[int] = Field(None, ge=30, le=480)
     requer_pregador: Optional[bool] = None
+    prioridade: Optional[int] = Field(None, ge=1, le=10)
     ativo: Optional[bool] = None
 
     class Config:

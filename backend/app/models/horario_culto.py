@@ -9,7 +9,7 @@ import uuid
 import enum
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
 class DiaSemana(str, enum.Enum):
@@ -23,7 +23,7 @@ class DiaSemana(str, enum.Enum):
     SABADO = "sabado"
 
 
-class HorarioCulto(Base, TimestampMixin):
+class HorarioCulto(Base, TimestampMixinSimples):
     """Horários de cultos por distrito ou igreja específica"""
 
     __tablename__ = "horarios_cultos"
@@ -39,6 +39,7 @@ class HorarioCulto(Base, TimestampMixin):
     nome_culto = Column(String(100))  # Ex: Escola Sabatina, Culto Divino
     duracao_minutos = Column(Integer, default=120)
     requer_pregador = Column(Boolean, default=True)
+    prioridade = Column(Integer, default=1)  # 1 = maior prioridade (Sábado), 2 = Domingo, 3 = Quarta, etc.
 
     # Controle
     ativo = Column(Boolean, default=True)

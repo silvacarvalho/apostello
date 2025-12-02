@@ -35,6 +35,34 @@ class PregacaoUpdate(BaseModel):
     instrucoes_especiais: Optional[str] = None
 
 
+# Schemas de relacionamento embutidos
+class IgrejaSimplesResponse(BaseModel):
+    """Schema simplificado para Igreja em relacionamentos"""
+    id: UUID4
+    nome: str
+
+    class Config:
+        from_attributes = True
+
+
+class PregadorSimplesResponse(BaseModel):
+    """Schema simplificado para Pregador em relacionamentos"""
+    id: UUID4
+    nome_completo: str
+
+    class Config:
+        from_attributes = True
+
+
+class TematicaSimplesResponse(BaseModel):
+    """Schema simplificado para Temática em relacionamentos"""
+    id: UUID4
+    titulo: str
+
+    class Config:
+        from_attributes = True
+
+
 class PregacaoResponse(PregacaoBase):
     """Schema de resposta para Pregação"""
     id: UUID4
@@ -51,6 +79,16 @@ class PregacaoResponse(PregacaoBase):
     foi_trocado: bool
     criado_em: datetime
     atualizado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PregacaoComRelacionamentosResponse(PregacaoResponse):
+    """Schema de resposta para Pregação com relacionamentos incluídos"""
+    igreja: Optional[IgrejaSimplesResponse] = None
+    pregador: Optional[PregadorSimplesResponse] = None
+    tematica: Optional[TematicaSimplesResponse] = None
 
     class Config:
         from_attributes = True

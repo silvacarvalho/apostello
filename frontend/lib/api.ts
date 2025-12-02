@@ -143,8 +143,9 @@ export const configuracoesApi = {
 // ============================================================
 
 export const escalasApi = {
-  listar: async () => {
-    const { data } = await api.get('/escalas/')
+  listar: async (distritoId?: string) => {
+    const params = distritoId ? `?distrito_id=${distritoId}` : ''
+    const { data } = await api.get(`/escalas/${params}`)
     return data
   },
 
@@ -153,8 +154,133 @@ export const escalasApi = {
     return data
   },
 
-  gerar: async (params: any) => {
+  gerar: async (params: { distrito_id: string; mes_referencia: number; ano_referencia: number }) => {
     const { data } = await api.post('/escalas/gerar', params)
+    return data
+  },
+
+  aprovar: async (id: string) => {
+    const { data } = await api.post(`/escalas/${id}/aprovar`)
+    return data
+  },
+
+  finalizar: async (id: string) => {
+    const { data } = await api.post(`/escalas/${id}/finalizar`)
+    return data
+  },
+}
+
+// ============================================================
+// PREGAÇÕES
+// ============================================================
+
+export const pregacoesApi = {
+  listar: async (escalaId?: string, pregadorId?: string) => {
+    const params = new URLSearchParams()
+    if (escalaId) params.append('escala_id', escalaId)
+    if (pregadorId) params.append('pregador_id', pregadorId)
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    const { data } = await api.get(`/pregacoes/${queryString}`)
+    return data
+  },
+
+  obter: async (id: string) => {
+    const { data } = await api.get(`/pregacoes/${id}`)
+    return data
+  },
+
+  responder: async (id: string, aceitar: boolean, motivoRecusa?: string) => {
+    const { data } = await api.post(`/pregacoes/${id}/responder`, {
+      aceitar,
+      motivo_recusa: motivoRecusa
+    })
+    return data
+  },
+
+  atualizar: async (id: string, dados: any) => {
+    const { data } = await api.put(`/pregacoes/${id}`, dados)
+    return data
+  },
+
+  aceitarSugestao: async (id: string) => {
+    const { data } = await api.post(`/pregacoes/${id}/aceitar-sugestao`)
+    return data
+  },
+
+  atribuirPregador: async (id: string, pregadorId: string) => {
+    const { data } = await api.post(`/pregacoes/${id}/atribuir-pregador`, {
+      pregador_id: pregadorId
+    })
+    return data
+  },
+}
+
+// ============================================================
+// HORÁRIOS DE CULTOS
+// ============================================================
+
+export const horariosCultosApi = {
+  listar: async (distritoId?: string, igrejaId?: string) => {
+    const params = new URLSearchParams()
+    if (distritoId) params.append('distrito_id', distritoId)
+    if (igrejaId) params.append('igreja_id', igrejaId)
+    const queryString = params.toString() ? `?${params.toString()}` : ''
+    const { data } = await api.get(`/horarios-cultos${queryString}`)
+    return data
+  },
+
+  criar: async (dados: any) => {
+    const { data } = await api.post('/horarios-cultos', dados)
+    return data
+  },
+
+  atualizar: async (id: string, dados: any) => {
+    const { data } = await api.put(`/horarios-cultos/${id}`, dados)
+    return data
+  },
+
+  deletar: async (id: string) => {
+    await api.delete(`/horarios-cultos/${id}`)
+  },
+
+  criarPadraoIASD: async (distritoId: string, aplicarTodasIgrejas: boolean = false) => {
+    const { data } = await api.post('/horarios-cultos/padrao-iasd', {
+      distrito_id: distritoId,
+      aplicar_todas_igrejas: aplicarTodasIgrejas
+    })
+    return data
+  },
+}
+
+// ============================================================
+// DISTRITOS
+// ============================================================
+
+export const distritosApi = {
+  listar: async () => {
+    const { data } = await api.get('/distritos/')
+    return data
+  },
+
+  obter: async (id: string) => {
+    const { data } = await api.get(`/distritos/${id}`)
+    return data
+  },
+}
+
+// ============================================================
+// IGREJAS
+// ============================================================
+
+export const igrejasApi = {
+  listar: async (distritoId?: string) => {
+    const params = distritoId ? `?distrito_id=${distritoId}` : ''
+    const { data } = await api.get(`/igrejas/${params}`)
+    return data
+  },
+
+  obter: async (id: string) => {
+    const { data } = await api.get(`/igrejas/${id}`)
     return data
   },
 }

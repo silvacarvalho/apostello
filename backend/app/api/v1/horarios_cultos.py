@@ -206,9 +206,8 @@ def criar_horarios_padrao_iasd(
     Se aplicar_todas_igrejas=True, cria para todas as igrejas do distrito.
     Caso contrário, cria apenas em nível de distrito (aplicável a todas).
     """
-
     # Verificar se distrito existe
-    distrito = db.query(Distrito).filter(Distrito.id == request.distrito_id).first()
+    distrito = db.query(Distrito).filter(Distrito.id == str(request.distrito_id)).first()
     if not distrito:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -217,35 +216,35 @@ def criar_horarios_padrao_iasd(
 
     horarios_criados = []
 
-    # Definir horários padrão IASD com prioridades
+    # Definir horários padrão IASD com prioridades (usar valores em minúsculas do enum)
     horarios_padrao = [
         {
             "dia_semana": "sabado",
             "horario": time(8, 30),
             "nome_culto": "Culto Divino",
             "duracao_minutos": 120,
-            "prioridade": 1  # Maior prioridade
+            "prioridade": 1,  # Maior prioridade
         },
         {
             "dia_semana": "domingo",
             "horario": time(19, 30),
             "nome_culto": "Culto Jovem",
             "duracao_minutos": 90,
-            "prioridade": 2  # Segunda prioridade
+            "prioridade": 2,  # Segunda prioridade
         },
         {
             "dia_semana": "quarta",
             "horario": time(19, 30),
             "nome_culto": "Culto de Oração",
             "duracao_minutos": 90,
-            "prioridade": 3  # Terceira prioridade
+            "prioridade": 3,  # Terceira prioridade
         }
     ]
 
     if request.aplicar_todas_igrejas:
         # Buscar todas as igrejas ativas do distrito
         igrejas = db.query(Igreja).filter(
-            Igreja.distrito_id == request.distrito_id,
+            Igreja.distrito_id == str(request.distrito_id),
             Igreja.ativo == True
         ).all()
 
@@ -273,6 +272,7 @@ def criar_horarios_padrao_iasd(
                         horario=horario_padrao["horario"],
                         nome_culto=horario_padrao["nome_culto"],
                         duracao_minutos=horario_padrao["duracao_minutos"],
+                        prioridade=horario_padrao["prioridade"],
                         requer_pregador=True,
                         ativo=True
                     )
@@ -282,7 +282,7 @@ def criar_horarios_padrao_iasd(
         # Criar em nível de distrito (aplicável a todas igrejas que não tenham horário específico)
         for horario_padrao in horarios_padrao:
             horario_existente = db.query(HorarioCulto).filter(
-                HorarioCulto.distrito_id == request.distrito_id,
+                HorarioCulto.distrito_id == str(request.distrito_id),
                 HorarioCulto.dia_semana == horario_padrao["dia_semana"],
                 HorarioCulto.horario == horario_padrao["horario"],
                 HorarioCulto.ativo == True
@@ -290,11 +290,12 @@ def criar_horarios_padrao_iasd(
 
             if not horario_existente:
                 novo_horario = HorarioCulto(
-                    distrito_id=request.distrito_id,
+                    distrito_id=str(request.distrito_id),
                     dia_semana=horario_padrao["dia_semana"],
                     horario=horario_padrao["horario"],
                     nome_culto=horario_padrao["nome_culto"],
                     duracao_minutos=horario_padrao["duracao_minutos"],
+                    prioridade=horario_padrao["prioridade"],
                     requer_pregador=True,
                     ativo=True
                 )

@@ -303,3 +303,126 @@ def executar_troca_automatica(db: Session, troca_id: str) -> None:
     pregacao_dest.pregador_original_id = pregador_original_dest
     
     db.commit()
+
+
+def sugerir_pregador_substituto(db: Session, pregacao_id: str) -> Optional[Usuario]:
+    """
+    Sugere um pregador substituto quando uma pregação é recusada.
+    Notifica o pastor distrital com a sugestão.
+    """
+    from app.models import Distrito, Notificacao
+    
+    pregacao = db.query(Pregacao).filter(Pregacao.id == pregacao_id).first()
+    if not pregacao:
+        return None
+    
+    # Buscar escala para obter distrito
+    escala = db.query(Escala).filter(Escala.id == pregacao.escala_id).first()
+    if not escala:
+        return None
+    
+    # Buscar pregadores do distrito ordenados por score
+    pregadores = db.query(Usuario, PerfilPregador).join(
+        PerfilPregador, Usuario.id == PerfilPregador.usuario_id
+    ).filter(
+        Usuario.distrito_id == escala.distrito_id,
+        Usuario.ativo == True,
+        Usuario.status_aprovacao == "aprovado",
+        PerfilPregador.ativo == True,
+        Usuario.perfis.contains(["pregador"]),
+        Usuario.id != pregacao.pregador_id  # Excluir o pregador que recusou
+    ).order_by(PerfilPregador.score_medio.desc()).all()
+    
+    # Encontrar pregador disponível
+    for usuario, perfil in pregadores:
+        # Verificar indisponibilidade
+        indisponivel = db.query(PeriodoIndisponibilidade).filter(
+            PeriodoIndisponibilidade.pregador_id == usuario.id,
+            PeriodoIndisponibilidade.ativo == True,
+            PeriodoIndisponibilidade.data_inicio <= pregacao.data_pregacao,
+            PeriodoIndisponibilidade.data_fim >= pregacao.data_pregacao
+        ).first()
+        
+        if indisponivel:
+            continue
+        
+        # Verificar conflito no mesmo dia
+        conflito = db.query(Pregacao).filter(
+            Pregacao.pregador_id == usuario.id,
+            Pregacao.data_pregacao == pregacao.data_pregacao,
+            Pregacao.status.in_(["agendado", "aceito"])
+        ).first()
+        
+        if conflito:
+            continue
+        
+        # Verificar limite mensal
+        pregacoes_mes = db.query(Pregacao).filter(
+            Pregacao.pregador_id == usuario.id,
+            Pregacao.data_pregacao >= pregacao.data_pregacao.replace(day=1),
+            Pregacao.status.in_(["agendado", "aceito", "realizado"])
+        ).count()
+        
+        if pregacoes_mes >= perfil.max_pregacoes_mes:
+            continue
+        
+        # Encontrou pregador disponível! Criar notificação para o pastor
+        # Buscar pastor distrital do distrito
+        pastor = db.query(Usuario).filter(
+            Usuario.distrito_id == escala.distrito_id,
+            Usuario.perfis.contains(["pastor_distrital"]),
+            Usuario.ativo == True
+        ).first()
+        
+        if pastor:
+            from app.models import Igreja
+            igreja = db.query(Igreja).filter(Igreja.id == pregacao.igreja_id).first()
+            pregador_recusou = db.query(Usuario).filter(Usuario.id == pregacao.pregador_id).first()
+            
+            notificacao = Notificacao(
+                usuario_id=pastor.id,
+                pregacao_id=pregacao.id,
+                tipo="push",  # Usando push como notificação interna do sistema
+                titulo="Pregação Recusada - Sugestão de Substituto",
+                mensagem=f"O pregador {pregador_recusou.nome_completo if pregador_recusou else 'Desconhecido'} recusou a pregação do dia {pregacao.data_pregacao.strftime('%d/%m/%Y')} na {igreja.nome if igreja else 'igreja'}. "
+                        f"Sugestão: {usuario.nome_completo} (Score: {perfil.score_medio:.1f})",
+                dados_extra={
+                    "pregacao_id": str(pregacao.id),
+                    "pregador_sugerido_id": str(usuario.id),
+                    "pregador_sugerido_nome": usuario.nome_completo,
+                    "pregador_sugerido_score": float(perfil.score_medio) if perfil.score_medio else 0
+                }
+            )
+            db.add(notificacao)
+            db.commit()
+        
+        return usuario
+    
+    # Não encontrou substituto, notificar pastor mesmo assim
+    pastor = db.query(Usuario).filter(
+        Usuario.distrito_id == escala.distrito_id,
+        Usuario.perfis.contains(["pastor_distrital"]),
+        Usuario.ativo == True
+    ).first()
+    
+    if pastor:
+        from app.models import Igreja
+        igreja = db.query(Igreja).filter(Igreja.id == pregacao.igreja_id).first()
+        pregador_recusou = db.query(Usuario).filter(Usuario.id == pregacao.pregador_id).first()
+        
+        notificacao = Notificacao(
+            usuario_id=pastor.id,
+            pregacao_id=pregacao.id,
+            tipo="push",  # Usando push como notificação interna do sistema
+            titulo="Pregação Recusada - SEM Substituto Disponível",
+            mensagem=f"O pregador {pregador_recusou.nome_completo if pregador_recusou else 'Desconhecido'} recusou a pregação do dia {pregacao.data_pregacao.strftime('%d/%m/%Y')} na {igreja.nome if igreja else 'igreja'}. "
+                    f"Nenhum pregador disponível foi encontrado. Ação manual necessária.",
+            dados_extra={
+                "pregacao_id": str(pregacao.id),
+                "sem_substituto": True
+            }
+        )
+        db.add(notificacao)
+        db.commit()
+    
+    return None

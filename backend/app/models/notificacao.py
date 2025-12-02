@@ -3,7 +3,7 @@ Model: Notificacao
 """
 
 from sqlalchemy import Column, String, Text, Integer, ForeignKey, Enum as SQLEnum, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 import uuid
 import enum
@@ -45,6 +45,9 @@ class Notificacao(Base, TimestampMixin):
     # Conteúdo
     titulo = Column(String(200), nullable=False)
     mensagem = Column(Text, nullable=False)
+    
+    # Dados extras em formato JSON para informações adicionais
+    dados_extra = Column(JSONB, default=dict)
 
     # IDs de mensagens por tipo
     id_mensagem_whatsapp = Column(String(100))
