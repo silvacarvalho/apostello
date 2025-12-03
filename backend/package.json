@@ -1,0 +1,18 @@
+{
+  "name": "apostello-backend",
+  "version": "1.0.0",
+  "description": "Sistema de Gestão de Escalas de Pregação - Backend",
+  "scripts": {
+    "migration:new": "alembic revision -m",
+    "migration:auto": "alembic revision --autogenerate -m",
+    "migration:upgrade": "alembic upgrade head",
+    "migration:downgrade": "alembic downgrade -1",
+    "migration:current": "alembic current",
+    "migration:history": "alembic history",
+    "dev": "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:watch": "concurrently \"npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

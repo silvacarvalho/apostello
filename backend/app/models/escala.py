@@ -9,7 +9,7 @@ import uuid
 import enum
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
 class StatusEscala(str, enum.Enum):
@@ -19,7 +19,7 @@ class StatusEscala(str, enum.Enum):
     FINALIZADO = "finalizado"
 
 
-class Escala(Base, TimestampMixin):
+class Escala(Base, TimestampMixinSimples):
     """Escalas mensais de pregação por distrito"""
 
     __tablename__ = "escalas"
@@ -34,7 +34,7 @@ class Escala(Base, TimestampMixin):
     ano_referencia = Column(Integer, nullable=False)
 
     # Status
-    status = Column(SQLEnum(StatusEscala, name="status_escala", create_type=False), default=StatusEscala.RASCUNHO)
+    status = Column(String, nullable=False, default="rascunho")
 
     # Responsáveis
     criado_por = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"))

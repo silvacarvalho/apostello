@@ -40,7 +40,16 @@ def listar_horarios_cultos(
     query = db.query(HorarioCulto)
 
     if distrito_id:
-        query = query.filter(HorarioCulto.distrito_id == distrito_id)
+        # Buscar horários do distrito E das igrejas desse distrito
+        igrejas_distrito = db.query(Igreja.id).filter(Igreja.distrito_id == distrito_id).all()
+        igrejas_ids = [str(i[0]) for i in igrejas_distrito]
+        
+        query = query.filter(
+            or_(
+                HorarioCulto.distrito_id == distrito_id,
+                HorarioCulto.igreja_id.in_(igrejas_ids) if igrejas_ids else False
+            )
+        )
 
     if igreja_id:
         query = query.filter(HorarioCulto.igreja_id == igreja_id)

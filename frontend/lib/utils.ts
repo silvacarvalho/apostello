@@ -5,9 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+function parseDateOnly(date: string): Date {
+  // Espera 'YYYY-MM-DD' e cria Date no horário local sem shift de timezone
+  const [y, m, d] = date.split('-').map(Number)
+  return new Date(y, (m || 1) - 1, d || 1)
+}
+
 export function formatDate(date: Date | string | undefined | null): string {
   if (!date) return '-'
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === 'string'
+    ? (/^\d{4}-\d{2}-\d{2}$/.test(date) ? parseDateOnly(date) : new Date(date))
+    : date
   if (isNaN(d.getTime())) return '-'
   return d.toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -32,7 +40,9 @@ export function formatDateTime(date: Date | string): string {
 }
 
 export function getDayOfWeek(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === 'string'
+    ? (/^\d{4}-\d{2}-\d{2}$/.test(date) ? parseDateOnly(date) : new Date(date))
+    : date
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
   return days[d.getDay()]
 }

@@ -8,10 +8,10 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
-class LogAuditoria(Base, TimestampMixin):
+class LogAuditoria(Base, TimestampMixinSimples):
     """Logs de auditoria de todas as ações importantes"""
 
     __tablename__ = "logs_auditoria"

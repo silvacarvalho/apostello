@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Users, Plus, Edit, Trash2, Search, Mail, Phone } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -56,13 +56,16 @@ export default function MembrosPage() {
   const [deletingMembro, setDeletingMembro] = useState<Membro | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Ref para focar no primeiro campo quando o modal abrir
+  const nomeCompletoRef = useRef<HTMLInputElement>(null)
+
   const [formData, setFormData] = useState<MembroFormData>({
     nome_completo: '',
     email: '',
     telefone: '',
     senha: '',
     igreja_id: '',
-    perfis: ['membro_associacao'],
+    perfis: [],  // Será definido dinamicamente quando abrir o modal
     ativo: true
   })
 
@@ -115,17 +118,27 @@ export default function MembrosPage() {
       })
     } else {
       setEditingMembro(null)
+      // Definir perfil padrão baseado no usuário logado
+      const perfilPadrao = user?.perfis?.includes('membro_associacao') 
+        ? ['membro_associacao']  // Membro da Associação pode criar outros membros da associação
+        : ['pregador']           // Pastor/Líder Distrital por padrão cria pregadores
+      
       setFormData({
         nome_completo: '',
         email: '',
         telefone: '',
-        senha: '',
+        senha: '123123',
         igreja_id: igrejas[0]?.id || '',
-        perfis: ['membro_associacao'],
+        perfis: perfilPadrao,
         ativo: true
       })
     }
     setDialogOpen(true)
+    
+    // Focar no campo nome completo após o modal abrir
+    setTimeout(() => {
+      nomeCompletoRef.current?.focus()
+    }, 100)
   }
 
   function handleCloseDialog() {
@@ -385,6 +398,7 @@ export default function MembrosPage() {
               <Label htmlFor="nome_completo">Nome Completo *</Label>
               <Input
                 id="nome_completo"
+                ref={nomeCompletoRef}
                 value={formData.nome_completo}
                 onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
                 required

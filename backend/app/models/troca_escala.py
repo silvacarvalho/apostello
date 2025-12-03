@@ -9,7 +9,7 @@ import uuid
 import enum
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
 class StatusTroca(str, enum.Enum):
@@ -21,7 +21,7 @@ class StatusTroca(str, enum.Enum):
     CANCELADA = "cancelada"
 
 
-class TrocaEscala(Base, TimestampMixin):
+class TrocaEscala(Base, TimestampMixinSimples):
     """Solicitações de troca automática entre pregadores"""
 
     __tablename__ = "trocas_escalas"

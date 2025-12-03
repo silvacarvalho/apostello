@@ -8,10 +8,10 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
-class Configuracao(Base, TimestampMixin):
+class Configuracao(Base, TimestampMixinSimples):
     """Configurações flexíveis por associação/distrito/igreja/usuário"""
 
     __tablename__ = "configuracoes"

@@ -70,9 +70,10 @@ def criar_usuario(data: UsuarioCreate, db: Session = Depends(get_db), current_us
         
         # Verificar se já existe pastor no distrito
         if data.distrito_id:
+            from sqlalchemy import text
             pastor_existente = db.query(Usuario).filter(
                 Usuario.distrito_id == data.distrito_id,
-                Usuario.perfis.contains([PerfilUsuario.PASTOR_DISTRITAL]),
+                text("'pastor_distrital' = ANY(perfis)"),
                 Usuario.ativo == True
             ).first()
             

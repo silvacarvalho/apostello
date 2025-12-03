@@ -1,7 +1,7 @@
 """add prioridade to horario_culto
 
 Revision ID: add_prioridade_horario
-Revises: 
+Revises: add_dados_extra_notif
 Create Date: 2025-11-27
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'add_prioridade_horario'
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = 'add_dados_extra_notif'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

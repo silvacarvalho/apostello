@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
-import { escalasApi, pregacoesApi, distritosApi, pregadoresApi } from '@/lib/api'
+import { escalasApi, pregacoesApi, distritosApi, pregadoresApi, igrejasApi } from '@/lib/api'
 import { formatDate, getDayOfWeek } from '@/lib/utils'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -55,7 +55,7 @@ interface Distrito {
 interface Pregador {
   id: string
   nome_completo: string
-  score_medio?: number
+  score_medio?: number | null
 }
 
 const MESES = [
@@ -78,6 +78,7 @@ function getPregacaoStatusBadgeVariant(status: string) {
     case 'aceito': return 'default'
     case 'recusado': return 'destructive'
     case 'realizado': return 'secondary'
+    case 'cancelado': return 'destructive'
     default: return 'outline'
   }
 }
@@ -94,10 +95,27 @@ export default function EscalasPage() {
   const [loading, setLoading] = useState(true)
   
   const [gerarDialogOpen, setGerarDialogOpen] = useState(false)
+  
+  // Calcular próximo mês corretamente (considerando virada de ano)
+  const calcularProximoMes = () => {
+    const hoje = new Date()
+    const mesAtual = hoje.getMonth() + 1 // getMonth() retorna 0-11, converter para 1-12
+    const anoAtual = hoje.getFullYear()
+    
+    // Próximo mês
+    if (mesAtual === 12) {
+      return { mes: 1, ano: anoAtual + 1 }
+    } else {
+      return { mes: mesAtual + 1, ano: anoAtual }
+    }
+  }
+  
+  const proximoMes = calcularProximoMes()
+  
   const [gerarForm, setGerarForm] = useState({
-    distrito_id: '',
-    mes_referencia: new Date().getMonth() + 2,
-    ano_referencia: new Date().getFullYear()
+    distrito_id: user?.distrito_id || '',
+    mes_referencia: proximoMes.mes,
+    ano_referencia: proximoMes.ano
   })
   const [gerarLoading, setGerarLoading] = useState(false)
   const [gerarError, setGerarError] = useState('')
@@ -106,6 +124,9 @@ export default function EscalasPage() {
   const [selectedEscala, setSelectedEscala] = useState<Escala | null>(null)
   const [escalaPregacoes, setEscalaPregacoes] = useState<Pregacao[]>([])
   const [viewLoading, setViewLoading] = useState(false)
+  const [viewIgrejas, setViewIgrejas] = useState<Igreja[]>([])
+  const [viewIgrejaFilter, setViewIgrejaFilter] = useState<string>('')
+  const [viewBulkLoading, setViewBulkLoading] = useState(false)
 
   const [responderDialogOpen, setResponderDialogOpen] = useState(false)
   const [pregacaoParaResponder, setPregacaoParaResponder] = useState<Pregacao | null>(null)
@@ -117,6 +138,8 @@ export default function EscalasPage() {
   const [pregacaoParaAtribuir, setPregacaoParaAtribuir] = useState<Pregacao | null>(null)
   const [pregadores, setPregadores] = useState<Pregador[]>([])
   const [pregadorSelecionado, setPregadorSelecionado] = useState('')
+  const [searchPregador, setSearchPregador] = useState('')
+  const [showPregadorDropdown, setShowPregadorDropdown] = useState(false)
   const [atribuirLoading, setAtribuirLoading] = useState(false)
 
   useEffect(() => {
@@ -152,7 +175,10 @@ export default function EscalasPage() {
   }
 
   async function handleGerarEscala() {
-    if (!gerarForm.distrito_id) {
+    // Usar distrito do usuário se não houver distrito selecionado
+    const distritoId = gerarForm.distrito_id || user?.distrito_id
+    
+    if (!distritoId) {
       setGerarError('Selecione um distrito')
       return
     }
@@ -161,23 +187,82 @@ export default function EscalasPage() {
       setGerarLoading(true)
       setGerarError('')
       
-      await escalasApi.gerar({
-        distrito_id: gerarForm.distrito_id,
+      const response = await escalasApi.gerar({
+        distrito_id: distritoId,
         mes_referencia: gerarForm.mes_referencia,
         ano_referencia: gerarForm.ano_referencia
       })
       
+      // Mostrar relatório de geração
+      if (response.relatorio) {
+        const { relatorio } = response
+        let mensagem = `✅ Escala gerada com sucesso!\n\n`
+        mensagem += `📊 RESUMO:\n`
+        mensagem += `• Total de igrejas: ${relatorio.total_igrejas}\n`
+        mensagem += `• Pregações criadas: ${relatorio.total_pregacoes}\n`
+        
+        if (relatorio.total_horarios_sem_pregador > 0) {
+          mensagem += `• ⚠️ Horários sem pregador: ${relatorio.total_horarios_sem_pregador}\n`
+        }
+        
+        if (relatorio.igrejas_sem_pregacao?.length > 0) {
+          mensagem += `\n⚠️ IGREJAS SEM PREGAÇÃO:\n`
+          relatorio.igrejas_sem_pregacao.forEach((igreja: string) => {
+            mensagem += `  • ${igreja}\n`
+          })
+        }
+        
+        mensagem += `\n📋 DETALHES POR IGREJA:\n`
+        relatorio.estatisticas_por_igreja?.forEach((stat: any) => {
+          mensagem += `  • ${stat.igreja_nome}: ${stat.pregacoes_criadas} pregação(ões)`
+          if (stat.horarios_sem_pregador > 0) {
+            mensagem += ` (${stat.horarios_sem_pregador} horários não preenchidos)`
+          }
+          mensagem += `\n`
+        })
+        
+        alert(mensagem)
+      }
+      
       await loadData()
       setGerarDialogOpen(false)
       
+      // Recalcular próximo mês após gerar
+      const novoProximoMes = calcularProximoMes()
       setGerarForm({
         distrito_id: user?.distrito_id || '',
-        mes_referencia: new Date().getMonth() + 2,
-        ano_referencia: new Date().getFullYear()
+        mes_referencia: novoProximoMes.mes,
+        ano_referencia: novoProximoMes.ano
       })
       
     } catch (err: any) {
-      setGerarError(err.response?.data?.detail || 'Erro ao gerar escala')
+      console.error('Erro ao gerar escala:', err)
+      
+      // Extrair mensagem de erro detalhada
+      let errorMessage = 'Erro ao gerar escala'
+      
+      if (err.response?.data) {
+        // Se o backend retornou um objeto de erro estruturado
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data
+        } else if (err.response.data.detail) {
+          // FastAPI retorna erros em detail
+          if (typeof err.response.data.detail === 'string') {
+            errorMessage = err.response.data.detail
+          } else if (Array.isArray(err.response.data.detail)) {
+            // Erros de validação do Pydantic
+            errorMessage = err.response.data.detail.map((e: any) => 
+              `${e.loc?.join(' > ') || 'Erro'}: ${e.msg}`
+            ).join('\n')
+          }
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message
+        }
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
+      setGerarError(errorMessage)
     } finally {
       setGerarLoading(false)
     }
@@ -191,10 +276,52 @@ export default function EscalasPage() {
     try {
       const pregacoesData = await pregacoesApi.listar(escala.id)
       setEscalaPregacoes(pregacoesData)
+
+      // Carregar igrejas do distrito para filtro
+      const igrejasData = await igrejasApi.listar(escala.distrito_id)
+      setViewIgrejas(igrejasData)
+      setViewIgrejaFilter('')
     } catch (err) {
       console.error('Erro ao carregar pregações:', err)
     } finally {
       setViewLoading(false)
+    }
+  }
+
+  async function handleAprovarPorIgreja() {
+    if (!selectedEscala || !viewIgrejaFilter) return
+    try {
+      setViewBulkLoading(true)
+      const alvo = escalaPregacoes.filter(p => p.igreja_id === viewIgrejaFilter)
+      for (const p of alvo) {
+        await pregacoesApi.atualizar(p.id, { status: 'agendado' })
+      }
+      // Recarregar lista
+      const pregacoesData = await pregacoesApi.listar(selectedEscala.id)
+      setEscalaPregacoes(pregacoesData)
+    } catch (err) {
+      console.error('Erro ao aprovar por igreja:', err)
+      alert('Erro ao aprovar pregações da igreja')
+    } finally {
+      setViewBulkLoading(false)
+    }
+  }
+
+  async function handleCancelarPorIgreja() {
+    if (!selectedEscala || !viewIgrejaFilter) return
+    try {
+      setViewBulkLoading(true)
+      const alvo = escalaPregacoes.filter(p => p.igreja_id === viewIgrejaFilter)
+      for (const p of alvo) {
+        await pregacoesApi.atualizar(p.id, { status: 'cancelado' })
+      }
+      const pregacoesData = await pregacoesApi.listar(selectedEscala.id)
+      setEscalaPregacoes(pregacoesData)
+    } catch (err) {
+      console.error('Erro ao cancelar por igreja:', err)
+      alert('Erro ao cancelar pregações da igreja')
+    } finally {
+      setViewBulkLoading(false)
     }
   }
 
@@ -244,25 +371,100 @@ export default function EscalasPage() {
     }
   }
 
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement
+      if (!target.closest('.relative')) {
+        setShowPregadorDropdown(false)
+      }
+    }
+    
+    if (showPregadorDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showPregadorDropdown])
+
   async function handleOpenAtribuirDialog(pregacao: Pregacao) {
     setPregacaoParaAtribuir(pregacao)
     setPregadorSelecionado(pregacao.pregador_id || '')
+    setSearchPregador('')
+    setShowPregadorDropdown(false)
     setAtribuirDialogOpen(true)
     
     try {
       const pregadoresData = await pregadoresApi.listar()
-      setPregadores(pregadoresData)
-    } catch (err) {
+      
+      if (Array.isArray(pregadoresData)) {
+        // Usar usuario_id que é o campo correto retornado pela API
+        const pregadoresProcessados = pregadoresData
+          .filter(pregador => pregador.usuario_id)
+          .map(pregador => ({
+            id: String(pregador.usuario_id),
+            nome_completo: pregador.nome_completo || '',
+            score_medio: pregador.score_medio ? Number(pregador.score_medio) : null
+          }))
+        setPregadores(pregadoresProcessados)
+      } else {
+        setPregadores([])
+      }
+    } catch (err: any) {
       console.error('Erro ao carregar pregadores:', err)
+      setPregadores([])
+      
+      if (!err.response) {
+        alert('Erro de conexão: Verifique se o backend está rodando na porta 8000')
+      } else {
+        const status = err.response.status
+        switch (status) {
+          case 404:
+            alert('Funcionalidade não encontrada no servidor')
+            break
+          case 403:
+            alert('Sem permissão para carregar pregadores')
+            break
+          case 401:
+            alert('Sessão expirada. Faça login novamente.')
+            break
+          case 500:
+            alert('Erro interno do servidor')
+            break
+          default:
+            alert(`Erro ${status}: ${err.response?.data?.detail || err.message}`)
+        }
+      }
     }
   }
 
   async function handleAtribuirPregador() {
-    if (!pregacaoParaAtribuir || !pregadorSelecionado) return
+    if (!pregacaoParaAtribuir || !pregadorSelecionado) {
+      alert('Selecione um pregador antes de confirmar')
+      return
+    }
+    
+    console.log('Tentando atribuir pregador:', {
+      pregacao_id: pregacaoParaAtribuir.id,
+      pregador_id: pregadorSelecionado
+    })
     
     try {
       setAtribuirLoading(true)
+      
+      // Teste de conectividade primeiro
+      console.log('Testando conectividade...')
+      const healthCheck = await fetch('http://localhost:8000/health')
+      console.log('Health check:', healthCheck.ok)
+      
+      if (!healthCheck.ok) {
+        throw new Error('Backend não está acessível')
+      }
+      
+      console.log('Fazendo requisição para atribuir pregador...')
+      console.log('URL será:', `http://localhost:8000/api/v1/pregacoes/${pregacaoParaAtribuir.id}/atribuir-pregador`)
+      
       await pregacoesApi.atribuirPregador(pregacaoParaAtribuir.id, pregadorSelecionado)
+      console.log('Pregador atribuído com sucesso!')
       
       // Atualizar lista de pregações da escala se estiver visualizando
       if (selectedEscala) {
@@ -273,8 +475,24 @@ export default function EscalasPage() {
       setAtribuirDialogOpen(false)
       setPregacaoParaAtribuir(null)
       setPregadorSelecionado('')
+      setSearchPregador('')
+      setShowPregadorDropdown(false)
+      alert('Pregador atribuído com sucesso!')
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Erro ao atribuir pregador')
+      console.error('Erro ao atribuir pregador:', err)
+      console.error('Detalhes do erro:', {
+        message: err.message,
+        code: err.code,
+        name: err.name,
+        config: err.config?.url,
+        status: err.response?.status
+      })
+      
+      if (err.code === 'ERR_NETWORK') {
+        alert('Erro de conexão com o servidor. Verifique se o backend está rodando.')
+      } else {
+        alert(err.response?.data?.detail || err.message || 'Erro ao atribuir pregador')
+      }
     } finally {
       setAtribuirLoading(false)
     }
@@ -299,20 +517,25 @@ export default function EscalasPage() {
         format: 'a4'
       })
 
-      // Título
-      doc.setFontSize(18)
+      
+      // CABEÇALHO RESUMO GERAL
+      doc.setFontSize(16)
       doc.setFont('helvetica', 'bold')
-      doc.text(`Escala de Pregação - ${MESES[escala.mes_referencia - 1]} ${escala.ano_referencia}`, 14, 15)
+      const pageWidth = doc.internal.pageSize.getWidth()
+      doc.text(`Escala de Pregação - ${MESES[escala.mes_referencia - 1]} ${escala.ano_referencia}`, pageWidth / 2, 15, { align: 'center' })
       
       doc.setFontSize(12)
       doc.setFont('helvetica', 'normal')
-      doc.text(`Distrito: ${distrito?.nome || 'Não identificado'}`, 14, 22)
-      doc.text(`Status: ${escala.status.charAt(0).toUpperCase() + escala.status.slice(1)}`, 14, 28)
+      doc.text(`Distrito: ${distrito?.nome || 'Distrito não identificado'} | Status: ${escala.status.charAt(0).toUpperCase() + escala.status.slice(1)}`, pageWidth / 2, 20, { align: 'center' })
+      
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Resumo Geral do Distrito', pageWidth / 2, 27, { align: 'center' })
+      // FIM CABEÇALHO RESUMO GERAL
 
       // Agrupar pregações por igreja
       const pregacoesPorIgreja: Record<string, typeof pregacoesData> = {}
       pregacoesData.forEach((p: Pregacao) => {
-        const igrejaId = p.igreja_id
         const igrejaNome = p.igreja?.nome || 'Igreja não identificada'
         if (!pregacoesPorIgreja[igrejaNome]) {
           pregacoesPorIgreja[igrejaNome] = []
@@ -320,26 +543,358 @@ export default function EscalasPage() {
         pregacoesPorIgreja[igrejaNome].push(p)
       })
 
-      let startY = 35
+      // PRIMEIRA PÁGINA: Visão geral consolidada de todas as igrejas
 
-      // Para cada igreja, criar uma tabela
-      Object.entries(pregacoesPorIgreja).forEach(([igrejaNome, pregacoesIgreja]) => {
-        // Ordenar por data
-        pregacoesIgreja.sort((a, b) => new Date(a.data_pregacao).getTime() - new Date(b.data_pregacao).getTime())
+      // Ordenar todas as pregações por data
+      const todasPregacoes = pregacoesData
+        .slice()
+        .sort((a, b) => new Date(a.data_pregacao).getTime() - new Date(b.data_pregacao).getTime())
 
-        // Verificar se precisa de nova página
-        if (startY > 170) {
-          doc.addPage()
-          startY = 15
+      // Obter lista única de datas e igrejas
+      const datasUnicas = [...new Set(todasPregacoes.map(p => p.data_pregacao))]
+        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+      
+      const igrejasUnicas = Object.keys(pregacoesPorIgreja).sort()
+      const numIgrejas = igrejasUnicas.length
+
+      // Detectar se há muitas igrejas para o layout matriz
+      const larguraDisponivel = 277 - 38 // largura A4 landscape menos margens e colunas fixas
+      const larguraMinimaPorIgreja = 25
+      const maxIgrejasMatriz = Math.floor(larguraDisponivel / larguraMinimaPorIgreja)
+
+      if (numIgrejas <= maxIgrejasMatriz) {
+        // LAYOUT MATRIZ - Para distritos com até ~9 igrejas
+        const matrixData = datasUnicas.map(data => {
+          const dataObj = new Date(data)
+          const diaSemana = getDayOfWeek(data)
+          const linha = [
+            `${dataObj.getDate().toString().padStart(2, '0')}/${(dataObj.getMonth() + 1).toString().padStart(2, '0')}`,
+            diaSemana.substring(0, 3)
+          ]
+          
+          // Para cada igreja, encontrar o pregador dessa data
+          igrejasUnicas.forEach(igreja => {
+            const pregacaoNaData = todasPregacoes.find(p => 
+              p.data_pregacao === data && p.igreja?.nome === igreja
+            )
+            const pregador = pregacaoNaData?.pregador?.nome_completo || '-'
+            linha.push(pregador === 'Não atribuído' ? '-' : pregador)
+          })
+          
+          return linha
+        })
+
+        // Cabeçalho da tabela: Data, Dia + todas as igrejas
+        const headers = ['Data', 'Dia', ...igrejasUnicas]
+        const larguraIgreja = larguraDisponivel / numIgrejas
+
+        // Configurar estilos apenas para as colunas que existem
+        const columnStyles: any = {}
+        
+        // Configurar cada coluna individualmente
+        for (let i = 0; i < headers.length; i++) {
+          if (i === 0) {
+            columnStyles[i] = { cellWidth: 20, halign: 'center', fontSize: 7 } // Data
+          } else if (i === 1) {
+            columnStyles[i] = { cellWidth: 18, halign: 'center', fontSize: 7 } // Dia
+          } else {
+            columnStyles[i] = { 
+              cellWidth: larguraIgreja, 
+              halign: 'center',
+              fontSize: 7,
+              overflow: 'linebreak'
+            }
+          }
         }
 
-        // Nome da igreja
-        doc.setFontSize(12)
-        doc.setFont('helvetica', 'bold')
-        doc.text(igrejaNome, 14, startY)
-        startY += 2
+        autoTable(doc, {
+          head: [headers],
+          body: matrixData,
+          startY: 38,
+          theme: 'striped',
+          styles: {
+            fontSize: 7,
+            cellPadding: 1,
+            lineWidth: 0.1,
+            overflow: 'linebreak',
+            cellWidth: 'wrap'
+          },
+          headStyles: {
+            fillColor: [59, 130, 246],
+            textColor: 255,
+            fontStyle: 'bold',
+            fontSize: 7,
+            halign: 'center'
+          },
+          columnStyles: columnStyles,
+          margin: { left: 14, right: 14 },
+          alternateRowStyles: {
+            fillColor: [248, 249, 250]
+          },
+          tableLineWidth: 0.1,
+          tableLineColor: [200, 200, 200],
+          tableWidth: 'wrap',
+          showHead: 'everyPage',
+          pageBreak: 'auto'
+        })
 
-        // Tabela
+        // INFORMAÇÕES DO DISTRITO - MATRIZ SIMPLES
+        const finalYSimples = (doc as any).lastAutoTable.finalY + 5
+        
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Informações do Distrito:', 14, finalYSimples)
+        
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'normal')
+        
+        const totalPregacoes = todasPregacoes.length
+        const totalConfirmadas = todasPregacoes.filter(p => p.status === 'aceito').length
+        const totalPregadores = new Set(todasPregacoes.filter(p => p.pregador).map(p => p.pregador!.nome_completo)).size
+        
+        const infoTextos = [
+          `Total: ${numIgrejas} igrejas | ${totalPregacoes} pregações | ${totalConfirmadas} confirmadas | ${totalPregadores} pregadores`
+        ]
+        
+        infoTextos.forEach((texto, idx) => {
+          doc.text(texto, 14, finalYSimples + 4 + (idx * 4))
+        })
+
+      } else {
+        // LAYOUT MATRIZ PAGINADO - Para distritos com muitas igrejas
+        
+        // Dividir igrejas em grupos que cabem na página
+        const igrejasGrupos: string[][] = []
+        for (let i = 0; i < igrejasUnicas.length; i += maxIgrejasMatriz) {
+          igrejasGrupos.push(igrejasUnicas.slice(i, i + maxIgrejasMatriz))
+        }
+
+        // Processar grupos em pares (2 matrizes por página)
+        for (let pairIndex = 0; pairIndex < igrejasGrupos.length; pairIndex += 2) {
+          const isFirstPair = pairIndex === 0
+          
+          if (!isFirstPair) {
+            doc.addPage()
+            
+            // CABEÇALHO RESUMO GERAL PARA PÁGINAS DUPLAS
+            doc.setFontSize(16)
+            doc.setFont('helvetica', 'bold')
+            const pageWidth = doc.internal.pageSize.getWidth()
+            doc.text(`Escala de Pregação - ${MESES[escala.mes_referencia - 1]} ${escala.ano_referencia}`, pageWidth / 2, 15, { align: 'center' })
+            
+            doc.setFontSize(12)
+            doc.setFont('helvetica', 'normal')
+            doc.text(`Distrito: ${distrito?.nome || 'Distrito não identificado'} | Status: ${escala.status.charAt(0).toUpperCase() + escala.status.slice(1)}`, pageWidth / 2, 20, { align: 'center' })
+            
+            doc.setFontSize(14)
+            doc.setFont('helvetica', 'bold')
+            doc.text('Resumo Geral do Distrito', pageWidth / 2, 27, { align: 'center' })
+            // FIM CABEÇALHO RESUMO GERAL
+          }
+
+          // Primeira matriz do par
+          const primeiroGrupo = igrejasGrupos[pairIndex]
+          const segundoGrupo = igrejasGrupos[pairIndex + 1] || null
+
+          // PRIMEIRA MATRIZ (superior)
+          let startY = isFirstPair ? 30 : 32
+          
+          doc.setFontSize(10)
+          doc.setFont('helvetica', 'bold')
+          doc.text(`Grupo ${pairIndex + 1}:`, 14, startY)
+
+          const matrixData1 = datasUnicas.map(data => {
+            const dataObj = new Date(data)
+            const diaSemana = getDayOfWeek(data)
+            const linha = [
+              `${dataObj.getDate().toString().padStart(2, '0')}/${(dataObj.getMonth() + 1).toString().padStart(2, '0')}`,
+              diaSemana.substring(0, 3)
+            ]
+            
+            // Adicionar apenas as igrejas do grupo (sem coluna extra)
+            primeiroGrupo.forEach(igreja => {
+              const pregacaoNaData = todasPregacoes.find(p => 
+                p.data_pregacao === data && p.igreja?.nome === igreja
+              )
+              const pregador = pregacaoNaData?.pregador?.nome_completo || '-'
+              linha.push(pregador === 'Não atribuído' ? '-' : pregador)
+            })
+            
+            return linha
+          })
+
+          // Cabeçalho: Data, Dia + apenas as igrejas do grupo
+          const headers1 = ['Data', 'Dia', ...primeiroGrupo]
+          const larguraIgrejaGrupo1 = larguraDisponivel / primeiroGrupo.length
+
+          autoTable(doc, {
+            head: [headers1],
+            body: matrixData1,
+            startY: startY + 1,
+            theme: 'striped',
+            styles: {
+              fontSize: 6,
+              cellPadding: 1,
+              lineWidth: 0.05,
+              overflow: 'linebreak',
+              cellWidth: 'wrap'
+            },
+            headStyles: {
+              fillColor: [34, 197, 94],
+              textColor: 255,
+              fontStyle: 'bold',
+              fontSize: 6,
+              halign: 'center'
+            },
+            columnStyles: {
+              0: { cellWidth: 20, halign: 'center', fontSize: 6 },
+              1: { cellWidth: 18, halign: 'center', fontSize: 6 },
+              ...Object.fromEntries(primeiroGrupo.map((_, index) => [
+                index + 2,
+                { 
+                  cellWidth: larguraIgrejaGrupo1, 
+                  halign: 'center',
+                  fontSize: 6,
+                  overflow: 'linebreak'
+                }
+              ]))
+            },
+            margin: { left: 14, right: 14 },
+            alternateRowStyles: {
+              fillColor: [248, 249, 250]
+            },
+            tableLineWidth: 0.05,
+            tableLineColor: [200, 200, 200],
+            tableWidth: 'wrap'
+          })
+
+          // SEGUNDA MATRIZ (inferior) - se existir
+          if (segundoGrupo) {
+            const midY = (doc as any).lastAutoTable.finalY + 10
+            
+            doc.setFontSize(10)
+            doc.setFont('helvetica', 'bold')
+            doc.text(`Grupo ${pairIndex + 2}:`, 14, midY)
+
+            const matrixData2 = datasUnicas.map(data => {
+              const dataObj = new Date(data)
+              const diaSemana = getDayOfWeek(data)
+              const linha = [
+                `${dataObj.getDate().toString().padStart(2, '0')}/${(dataObj.getMonth() + 1).toString().padStart(2, '0')}`,
+                diaSemana.substring(0, 3)
+              ]
+              
+              // Adicionar apenas as igrejas do grupo (sem coluna extra)
+              segundoGrupo.forEach(igreja => {
+                const pregacaoNaData = todasPregacoes.find(p => 
+                  p.data_pregacao === data && p.igreja?.nome === igreja
+                )
+                const pregador = pregacaoNaData?.pregador?.nome_completo || '-'
+                linha.push(pregador === 'Não atribuído' ? '-' : pregador)
+              })
+              
+              return linha
+            })
+
+            // Cabeçalho: Data, Dia + apenas as igrejas do grupo
+            const headers2 = ['Data', 'Dia', ...segundoGrupo]
+            const larguraIgrejaGrupo2 = larguraDisponivel / segundoGrupo.length
+
+            autoTable(doc, {
+              head: [headers2],
+              body: matrixData2,
+              startY: midY + 1,
+              theme: 'striped',
+              styles: {
+                fontSize: 6,
+                cellPadding: 1,
+                lineWidth: 0.05,
+                overflow: 'linebreak',
+                cellWidth: 'wrap'
+              },
+              headStyles: {
+                fillColor: [147, 51, 234],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 6,
+                halign: 'center'
+              },
+              columnStyles: {
+                0: { cellWidth: 20, halign: 'center', fontSize: 6 },
+                1: { cellWidth: 18, halign: 'center', fontSize: 6 },
+                ...Object.fromEntries(segundoGrupo.map((_, index) => [
+                  index + 2,
+                  { 
+                    cellWidth: larguraIgrejaGrupo2, 
+                    halign: 'center',
+                    fontSize: 6,
+                    overflow: 'linebreak'
+                  }
+                ]))
+              },
+              margin: { left: 14, right: 14 },
+              alternateRowStyles: {
+                fillColor: [248, 249, 250]
+              },
+              tableLineWidth: 0.05,
+              tableLineColor: [200, 200, 200],
+              tableWidth: 'wrap'
+            })
+          }
+
+          // INFORMAÇÕES DOS GRUPOS DA PÁGINA
+          const finalYPair = (doc as any).lastAutoTable.finalY + 5
+          
+          doc.setFontSize(8)
+          doc.setFont('helvetica', 'normal')
+          
+          // Calcular estatísticas dos grupos da página
+          const gruposNaPagina = segundoGrupo ? [primeiroGrupo, segundoGrupo] : [primeiroGrupo]
+          
+          gruposNaPagina.forEach((grupo, idx) => {
+            const pregacoesGrupo = todasPregacoes.filter(p => grupo.includes(p.igreja?.nome || ''))
+            const confirmadas = pregacoesGrupo.filter(p => p.status === 'aceito').length
+            const pregadores = new Set(pregacoesGrupo.filter(p => p.pregador).map(p => p.pregador!.nome_completo)).size
+            
+            const infoTexto = `Grupo ${pairIndex + idx + 1}: ${grupo.length} igrejas | ${pregacoesGrupo.length} pregações | ${confirmadas} confirmadas | ${pregadores} pregadores`
+            doc.text(infoTexto, 14, finalYPair + 4 + (idx * 4))
+          })
+          
+          // Se for a última página de resumo, adicionar totais
+          const isUltimaPagina = pairIndex + 2 >= igrejasGrupos.length
+          if (isUltimaPagina) {
+            const totalPregacoes = todasPregacoes.length
+            const totalConfirmadas = todasPregacoes.filter(p => p.status === 'aceito').length
+            const totalPregadores = new Set(todasPregacoes.filter(p => p.pregador).map(p => p.pregador!.nome_completo)).size
+            
+            const yPosTotal = finalYPair + 4 + (gruposNaPagina.length * 4) + 6
+            doc.setFont('helvetica', 'bold')
+            doc.text('TOTAL DO DISTRITO:', 14, yPosTotal)
+            doc.setFont('helvetica', 'normal')
+            const totalTexto = `${numIgrejas} igrejas | ${totalPregacoes} pregações | ${totalConfirmadas} confirmadas | ${totalPregadores} pregadores`
+            doc.text(totalTexto, 14, yPosTotal + 4)
+          }
+        }
+      }
+
+      // PÁGINAS SEGUINTES: Detalhes por igreja (uma igreja por página)
+      Object.entries(pregacoesPorIgreja).forEach(([igrejaNome, pregacoesIgreja], index) => {
+        // Nova página para cada igreja
+        doc.addPage()
+
+        // Ordenar pregações da igreja por data
+        pregacoesIgreja.sort((a, b) => new Date(a.data_pregacao).getTime() - new Date(b.data_pregacao).getTime())
+
+        // Cabeçalho da igreja
+        doc.setFontSize(16)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`${igrejaNome}`, 14, 20)
+        
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`${pregacoesIgreja.length} pregação(ões) programadas`, 14, 27)
+
+        // Tabela detalhada da igreja
         const tableData = pregacoesIgreja.map((p: Pregacao) => {
           const data = new Date(p.data_pregacao)
           const diaSemana = getDayOfWeek(p.data_pregacao)
@@ -348,7 +903,7 @@ export default function EscalasPage() {
             diaSemana.substring(0, 3),
             p.horario_pregacao?.substring(0, 5) || '-',
             p.nome_culto || '-',
-            p.pregador?.nome_completo || '-',
+            p.pregador?.nome_completo || 'Não atribuído',
             p.tematica?.titulo || '-',
             p.status.charAt(0).toUpperCase() + p.status.slice(1)
           ]
@@ -357,41 +912,70 @@ export default function EscalasPage() {
         autoTable(doc, {
           head: [['Data', 'Dia', 'Hora', 'Culto', 'Pregador', 'Temática', 'Status']],
           body: tableData,
-          startY: startY,
+          startY: 35,
           theme: 'grid',
           styles: {
-            fontSize: 8,
-            cellPadding: 2
+            fontSize: 9,
+            cellPadding: 3
           },
           headStyles: {
-            fillColor: [59, 130, 246],
+            fillColor: [34, 197, 94],
             textColor: 255,
             fontStyle: 'bold'
           },
           columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 15 },
-            2: { cellWidth: 15 },
-            3: { cellWidth: 35 },
-            4: { cellWidth: 50 },
-            5: { cellWidth: 60 },
-            6: { cellWidth: 20 }
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 'auto' },
+            3: { cellWidth: 'auto' },
+            4: { cellWidth: 'auto' },
+            5: { cellWidth: 'auto' },
+            6: { cellWidth: 'auto' }
           },
-          margin: { left: 14, right: 14 }
+          margin: { left: 14, right: 14 },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252]
+          },
+          tableWidth: 'auto'
         })
 
-        // @ts-ignore - autoTable adiciona lastAutoTable ao doc
-        startY = doc.lastAutoTable.finalY + 10
+        // Adicionar informações estatísticas da igreja
+        const finalY = (doc as any).lastAutoTable.finalY + 15
+        if (finalY < 180) {
+          doc.setFontSize(10)
+          doc.setFont('helvetica', 'bold')
+          doc.text('Estatísticas:', 14, finalY)
+          
+          doc.setFont('helvetica', 'normal')
+          const stats = [
+            `• Total de pregações: ${pregacoesIgreja.length}`,
+            `• Pregações confirmadas: ${pregacoesIgreja.filter(p => p.status === 'aceito').length}`,
+            `• Pregações pendentes: ${pregacoesIgreja.filter(p => p.status === 'agendado').length}`,
+            `• Pregadores únicos: ${new Set(pregacoesIgreja.filter(p => p.pregador).map(p => p.pregador!.nome_completo)).size}`
+          ]
+          
+          stats.forEach((stat, i) => {
+            doc.text(stat, 14, finalY + 5 + (i * 5))
+          })
+        }
       })
 
-      // Rodapé
+      // Rodapé em todas as páginas
       const pageCount = doc.getNumberOfPages()
+      const numPaginasResumo = numIgrejas <= maxIgrejasMatriz ? 1 : Math.ceil(igrejasUnicas.length / (maxIgrejasMatriz * 2))
+      
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i)
         doc.setFontSize(8)
         doc.setFont('helvetica', 'normal')
+        doc.setTextColor(120, 120, 120)
+        
+        const footerText = i <= numPaginasResumo
+          ? `Resumo Geral - Gerado em ${formatDate(new Date().toISOString())} - Página ${i} de ${pageCount}`
+          : `Detalhes por Igreja - Gerado em ${formatDate(new Date().toISOString())} - Página ${i} de ${pageCount}`
+        
         doc.text(
-          `Gerado em ${formatDate(new Date().toISOString())} - Página ${i} de ${pageCount}`,
+          footerText,
           doc.internal.pageSize.getWidth() / 2,
           doc.internal.pageSize.getHeight() - 10,
           { align: 'center' }
@@ -436,7 +1020,13 @@ export default function EscalasPage() {
                 <Download className="mr-2 h-4 w-4" />
                 Exportar PDF
               </Button>
-              <Button onClick={() => setGerarDialogOpen(true)}>
+              <Button onClick={() => {
+                // Garantir que o distrito está setado ao abrir o diálogo
+                if (user?.distrito_id && !gerarForm.distrito_id) {
+                  setGerarForm(prev => ({ ...prev, distrito_id: user.distrito_id! }))
+                }
+                setGerarDialogOpen(true)
+              }}>
                 <Plus className="mr-2 h-4 w-4" />
                 Gerar Escala
               </Button>
@@ -594,7 +1184,13 @@ export default function EscalasPage() {
                   <p className="text-muted-foreground mb-4">
                     Nenhuma escala encontrada
                   </p>
-                  <Button onClick={() => setGerarDialogOpen(true)}>
+                  <Button onClick={() => {
+                    // Garantir que o distrito está setado ao abrir o diálogo
+                    if (user?.distrito_id && !gerarForm.distrito_id) {
+                      setGerarForm(prev => ({ ...prev, distrito_id: user.distrito_id! }))
+                    }
+                    setGerarDialogOpen(true)
+                  }}>
                     <Plus className="mr-2 h-4 w-4" />
                     Gerar Primeira Escala
                   </Button>
@@ -707,9 +1303,9 @@ export default function EscalasPage() {
 
           <div className="space-y-4 py-4">
             {gerarError && (
-              <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
-                <AlertCircle className="h-4 w-4" />
-                {gerarError}
+              <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="whitespace-pre-wrap">{gerarError}</div>
               </div>
             )}
 
@@ -753,11 +1349,14 @@ export default function EscalasPage() {
                   value={gerarForm.ano_referencia.toString()}
                   onChange={(e) => setGerarForm({ ...gerarForm, ano_referencia: parseInt(e.target.value) })}
                 >
-                  {[2024, 2025, 2026, 2027, 2028].map((ano) => (
-                    <option key={ano} value={ano}>
-                      {ano}
-                    </option>
-                  ))}
+                  {(() => {
+                    const anoAtual = new Date().getFullYear()
+                    return [anoAtual, anoAtual + 1].map((ano) => (
+                      <option key={ano} value={ano}>
+                        {ano}
+                      </option>
+                    ))
+                  })()}
                 </Select>
               </div>
             </div>
@@ -796,13 +1395,13 @@ export default function EscalasPage() {
 
       {/* Modal: Visualizar Escala */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogClose onClose={() => setViewDialogOpen(false)} />
           <DialogHeader>
             <DialogTitle>
               Escala: {selectedEscala && `${MESES[selectedEscala.mes_referencia - 1]} ${selectedEscala.ano_referencia}`}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription asChild>
               {selectedEscala && (
                 <div className="flex items-center gap-2 mt-2">
                   <Badge variant={getStatusBadgeVariant(selectedEscala.status)}>
@@ -822,8 +1421,44 @@ export default function EscalasPage() {
               </div>
             ) : escalaPregacoes.length > 0 ? (
               <div className="space-y-6">
+                {/* Filtro por Igreja */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-muted-foreground">Filtrar por igreja:</label>
+                  <select
+                    className="border rounded px-2 py-1 text-sm"
+                    value={viewIgrejaFilter}
+                    onChange={(e) => setViewIgrejaFilter(e.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {viewIgrejas.map((ig) => (
+                      <option key={ig.id} value={ig.id}>{ig.nome}</option>
+                    ))}
+                  </select>
+                  {canManage && viewIgrejaFilter && (
+                    <div className="ml-auto flex items-center gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        disabled={viewBulkLoading}
+                        onClick={handleAprovarPorIgreja}
+                        title="Aprovar escala de pregações da igreja filtrada"
+                      >
+                        <Check className="mr-2 h-4 w-4" /> {viewBulkLoading ? 'Processando...' : 'Aprovar Escala da Igreja'}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={viewBulkLoading}
+                        onClick={handleCancelarPorIgreja}
+                        title="Cancelar escala de pregações da igreja filtrada"
+                      >
+                        <X className="mr-2 h-4 w-4" /> {viewBulkLoading ? 'Processando...' : 'Cancelar Escala da Igreja'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 {Object.entries(
-                  escalaPregacoes.reduce((acc, pregacao) => {
+                  (viewIgrejaFilter ? escalaPregacoes.filter(p => p.igreja_id === viewIgrejaFilter) : escalaPregacoes).reduce((acc, pregacao) => {
                     const data = pregacao.data_pregacao
                     if (!acc[data]) acc[data] = []
                     acc[data].push(pregacao)
@@ -1010,18 +1645,69 @@ export default function EscalasPage() {
 
             <div className="space-y-2">
               <Label htmlFor="pregador">Selecione o Pregador *</Label>
-              <Select
-                id="pregador"
-                value={pregadorSelecionado}
-                onChange={(e) => setPregadorSelecionado(e.target.value)}
-              >
-                <option value="">Selecione um pregador</option>
-                {pregadores.map((pregador) => (
-                  <option key={pregador.id} value={pregador.id}>
-                    {pregador.nome_completo} {pregador.score_medio ? `(Score: ${pregador.score_medio.toFixed(1)})` : ''}
-                  </option>
-                ))}
-              </Select>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Digite para pesquisar pregador..."
+                  value={searchPregador}
+                  onChange={(e) => {
+                    setSearchPregador(e.target.value)
+                    setShowPregadorDropdown(true)
+                  }}
+                  onFocus={() => setShowPregadorDropdown(true)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                
+                {showPregadorDropdown && (
+                  <div className="absolute z-50 w-full mt-1 bg-background border border-input rounded-md shadow-lg max-h-60 overflow-auto">
+                    {pregadores.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        Carregando pregadores...
+                      </div>
+                    ) : (
+                      <>
+                        {pregadores
+                          .filter(pregador => 
+                            searchPregador === '' || 
+                            pregador.nome_completo.toLowerCase().includes(searchPregador.toLowerCase())
+                          )
+                          .map((pregador) => {
+                            const score = typeof pregador.score_medio === 'number' && !isNaN(pregador.score_medio) 
+                              ? pregador.score_medio.toFixed(1) 
+                              : null
+                            
+                            return (
+                              <div
+                                key={pregador.id}
+                                onClick={() => {
+                                  console.log('Pregador selecionado:', { id: pregador.id, nome: pregador.nome_completo })
+                                  setPregadorSelecionado(pregador.id)
+                                  setSearchPregador(`${pregador.nome_completo} ${score ? `(Score: ${score})` : ''}`)
+                                  setShowPregadorDropdown(false)
+                                }}
+                                className="px-3 py-2 hover:bg-muted cursor-pointer text-sm"
+                              >
+                                {pregador.nome_completo} {score ? `(Score: ${score})` : ''}
+                              </div>
+                            )
+                          })
+                        }
+                        {pregadores.filter(pregador => 
+                          searchPregador === '' || 
+                          pregador.nome_completo.toLowerCase().includes(searchPregador.toLowerCase())
+                        ).length === 0 && searchPregador !== '' && (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">
+                            Nenhum pregador encontrado
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Campo hidden para enviar o ID */}
+              <input type="hidden" value={pregadorSelecionado} />
             </div>
 
             {pregacaoParaAtribuir?.pregador && (

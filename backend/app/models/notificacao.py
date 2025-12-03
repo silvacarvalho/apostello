@@ -9,7 +9,7 @@ import uuid
 import enum
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
 class TipoNotificacao(str, enum.Enum):
@@ -29,7 +29,7 @@ class StatusNotificacao(str, enum.Enum):
     LIDO = "lido"
 
 
-class Notificacao(Base, TimestampMixin):
+class Notificacao(Base, TimestampMixinSimples):
     """Sistema de notificações WhatsApp/SMS/Push/Email"""
 
     __tablename__ = "notificacoes"
@@ -39,8 +39,8 @@ class Notificacao(Base, TimestampMixin):
     usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
 
     # Tipo e status
-    tipo = Column(SQLEnum(TipoNotificacao, name="tipo_notificacao", create_type=False), nullable=False)
-    status = Column(SQLEnum(StatusNotificacao, name="status_notificacao", create_type=False), default=StatusNotificacao.PENDENTE)
+    tipo = Column(String(50), nullable=False)  # Mantendo como string por compatibilidade
+    status = Column(String(50), default="pendente")  # Mantendo como string por compatibilidade
 
     # Conteúdo
     titulo = Column(String(200), nullable=False)

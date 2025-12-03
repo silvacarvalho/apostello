@@ -8,10 +8,10 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
-class PeriodoIndisponibilidade(Base, TimestampMixin):
+class PeriodoIndisponibilidade(Base, TimestampMixinSimples):
     """Períodos de indisponibilidade dos pregadores"""
 
     __tablename__ = "periodos_indisponibilidade"

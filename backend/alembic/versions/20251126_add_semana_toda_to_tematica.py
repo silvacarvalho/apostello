@@ -1,6 +1,6 @@
 """add semana_toda to tematica
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 20251126_add_semana_toda_to_tematica
 Revises: 7f6e19ce3c51
 Create Date: 2025-11-26 00:00:00.000000-03:00
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a1b2c3d4e5f6'
+revision = '20251126_add_semana_toda_to_tematica'
 down_revision = '7f6e19ce3c51'
 branch_labels = None
 depends_on = None

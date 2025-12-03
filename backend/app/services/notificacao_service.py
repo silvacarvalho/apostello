@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List
 from app.models import Notificacao, Escala, Pregacao, Usuario, TrocaEscala
+from app.models.notificacao import TipoNotificacao
 
 
 def enviar_notificacoes_escala(db: Session, escala_id: str) -> None:

@@ -6,6 +6,7 @@ from pydantic import BaseModel, UUID4
 from app.core.database import get_db
 from app.core.deps import require_pastor_distrital, require_pregador, get_current_active_user
 from app.models import Pregacao, Usuario, Notificacao
+from app.models.notificacao import TipoNotificacao
 from app.schemas.pregacao import PregacaoCreate, PregacaoUpdate, PregacaoResponse, PregacaoAceitarRecusar, PregacaoComRelacionamentosResponse
 
 router = APIRouter()
@@ -106,10 +107,11 @@ def atribuir_pregador(
         raise HTTPException(status_code=404, detail="Pregação não encontrada")
     
     # Verificar se o pregador existe e está ativo
+    from sqlalchemy import text
     novo_pregador = db.query(Usuario).filter(
         Usuario.id == data.pregador_id,
         Usuario.ativo == True,
-        Usuario.perfis.contains(["pregador"])
+        text("'pregador' = ANY(perfis)")
     ).first()
     
     if not novo_pregador:
@@ -138,7 +140,8 @@ def atribuir_pregador(
     notificacao = Notificacao(
         usuario_id=data.pregador_id,
         pregacao_id=pregacao.id,
-        tipo="push",
+        tipo="push",  # String direta por compatibilidade
+        status="pendente",  # String direta por compatibilidade
         titulo="Nova Pregação Atribuída",
         mensagem=f"Você foi escalado para pregar no dia {pregacao.data_pregacao.strftime('%d/%m/%Y')} às {pregacao.horario_pregacao.strftime('%H:%M') if pregacao.horario_pregacao else '-'} na {igreja.nome if igreja else 'igreja'}. Por favor, confirme sua disponibilidade.",
         dados_extra={

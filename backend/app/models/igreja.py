@@ -8,10 +8,10 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
-class Igreja(Base, TimestampMixin):
+class Igreja(Base, TimestampMixinSimples):
     """Igrejas locais pertencentes a um distrito"""
 
     __tablename__ = "igrejas"

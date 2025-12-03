@@ -18,7 +18,7 @@ engine = create_engine(
     pool_pre_ping=True,  # Testa conexões antes de usar
     pool_size=settings.DATABASE_POOL_SIZE,
     max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    echo=settings.DEBUG,  # Log de SQL queries em modo debug
+    echo=False,  # Desabilitado para evitar poluir logs
 )
 
 # ============================================================

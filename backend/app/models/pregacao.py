@@ -2,14 +2,14 @@
 Model: Pregacao
 """
 
-from sqlalchemy import Column, String, Integer, Text, Date, Time, Boolean, ForeignKey, Enum as SQLEnum, DateTime, Sequence
+from sqlalchemy import Column, String, Integer, Text, Date, Time, Boolean, ForeignKey, Enum as SQLEnum, DateTime, Sequence, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
 import enum
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
 class StatusPregacao(str, enum.Enum):
@@ -21,10 +21,15 @@ class StatusPregacao(str, enum.Enum):
     FALTOU = "faltou"
 
 
-class Pregacao(Base, TimestampMixin):
+class Pregacao(Base, TimestampMixinSimples):
     """Pregações individuais dentro de uma escala mensal"""
 
     __tablename__ = "pregacoes"
+    
+    # Constraint única para evitar duplicatas por igreja+data+horário
+    __table_args__ = (
+        UniqueConstraint('igreja_id', 'data_pregacao', 'horario_pregacao', name='unique_pregacao_igreja_data_horario'),
+    )
 
     # Chaves
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -40,7 +45,7 @@ class Pregacao(Base, TimestampMixin):
     nome_culto = Column(String(100))
 
     # Status
-    status = Column(SQLEnum(StatusPregacao, name="status_pregacao", create_type=False), default=StatusPregacao.AGENDADO)
+    status = Column(String, nullable=False, default="agendado")
 
     # Resposta do pregador
     aceito_em = Column(DateTime(timezone=True))

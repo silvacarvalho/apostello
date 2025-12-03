@@ -8,10 +8,10 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
-class LogImportacao(Base, TimestampMixin):
+class LogImportacao(Base, TimestampMixinSimples):
     """Logs de importações via Excel/CSV"""
 
     __tablename__ = "logs_importacao"

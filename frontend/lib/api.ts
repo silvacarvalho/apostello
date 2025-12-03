@@ -55,6 +55,17 @@ api.interceptors.response.use(
         }
       }
     }
+    
+    // Melhorar mensagens de erro de rede
+    if (!error.response) {
+      // Erro de rede (Network Error, timeout, etc)
+      if (error.request) {
+        error.message = 'Erro de conexão com o servidor. Verifique sua internet ou se o backend está rodando.'
+      } else {
+        error.message = 'Erro ao fazer a requisição: ' + error.message
+      }
+    }
+    
     return Promise.reject(error)
   }
 )
@@ -166,6 +177,43 @@ export const escalasApi = {
 
   finalizar: async (id: string) => {
     const { data } = await api.post(`/escalas/${id}/finalizar`)
+    return data
+  },
+
+  // Edição manual (rascunho)
+  adicionarPregacao: async (escalaId: string, pregacao: any) => {
+    const { data } = await api.post(`/escalas/${escalaId}/pregacoes`, pregacao)
+    return data
+  },
+
+  atualizarPregacao: async (escalaId: string, pregacaoId: string, dados: any) => {
+    const { data } = await api.put(`/escalas/${escalaId}/pregacoes/${pregacaoId}`, dados)
+    return data
+  },
+
+  removerPregacao: async (escalaId: string, pregacaoId: string) => {
+    await api.delete(`/escalas/${escalaId}/pregacoes/${pregacaoId}`)
+  },
+
+  autoatribuir: async (escalaId: string, pregacao: any) => {
+    const { data } = await api.post(`/escalas/${escalaId}/autoatribuir`, pregacao)
+    return data
+  },
+
+  // Calendários
+  calendarioIgreja: async (igrejaId: string, mes: number, ano: number) => {
+    const { data } = await api.get(`/escalas/calendario/igreja?igreja_id=${igrejaId}&mes=${mes}&ano=${ano}`)
+    return data
+  },
+
+  calendarioDistrito: async (distritoId: string, mes: number, ano: number) => {
+    const { data } = await api.get(`/escalas/calendario/distrito?distrito_id=${distritoId}&mes=${mes}&ano=${ano}`)
+    return data
+  },
+
+  minhasPregacoes: async (mes?: number, ano?: number) => {
+    const params = mes && ano ? `?mes=${mes}&ano=${ano}` : ''
+    const { data } = await api.get(`/escalas/minhas${params}`)
     return data
   },
 }

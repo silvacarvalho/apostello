@@ -8,10 +8,10 @@ from sqlalchemy.orm import relationship
 import uuid
 
 from app.core.database import Base
-from .mixins import TimestampMixin
+from .mixins import TimestampMixinSimples
 
 
-class Avaliacao(Base, TimestampMixin):
+class Avaliacao(Base, TimestampMixinSimples):
     """Avaliações de pregadores pelos membros"""
 
     __tablename__ = "avaliacoes"

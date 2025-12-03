@@ -34,7 +34,7 @@ class HorarioCulto(Base, TimestampMixinSimples):
     igreja_id = Column(UUID(as_uuid=True), ForeignKey("igrejas.id", ondelete="CASCADE"), nullable=True)
 
     # Dados do horário
-    dia_semana = Column(SQLEnum(DiaSemana, name="dia_semana", create_type=False), nullable=False)
+    dia_semana = Column(String, nullable=False)  # Usar String para evitar problemas com enum
     horario = Column(Time, nullable=False)
     nome_culto = Column(String(100))  # Ex: Escola Sabatina, Culto Divino
     duracao_minutos = Column(Integer, default=120)
