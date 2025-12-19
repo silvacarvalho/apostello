@@ -24,7 +24,7 @@ class Escala(Base):
     distrito_id = Column(Integer, ForeignKey("distrito.id", ondelete="CASCADE"), nullable=False)
     mes = Column(Integer, nullable=False)
     ano = Column(Integer, nullable=False)
-    status = Column(SQLEnum(StatusEscala), default=StatusEscala.RASCUNHO)
+    status = Column(SQLEnum(StatusEscala, name='status_escala', create_type=False), default=StatusEscala.RASCUNHO)
     data_publicacao = Column(DateTime(timezone=True))
     pastor_id = Column(Integer, ForeignKey("usuario.id", ondelete="RESTRICT"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -62,3 +62,30 @@ class DistritoRepository(BaseRepository[Distrito]):
         return self.db.query(Distrito).filter(
             Distrito.status == StatusGeral.ATIVO
         ).count()
+
+    def search_by_nome(
+        self, 
+        search: str,
+        skip: int = 0, 
+        limit: int = 50
+    ) -> List[Distrito]:
+        """Pesquisa distritos por nome"""
+        query = self.db.query(Distrito).filter(
+            Distrito.status == StatusGeral.ATIVO
+        )
+        
+        if search:
+            query = query.filter(Distrito.nome.ilike(f"%{search}%"))
+        
+        return query.order_by(Distrito.nome).offset(skip).limit(limit).all()
+
+    def count_search(self, search: str) -> int:
+        """Conta distritos que correspondem à pesquisa"""
+        query = self.db.query(Distrito).filter(
+            Distrito.status == StatusGeral.ATIVO
+        )
+        
+        if search:
+            query = query.filter(Distrito.nome.ilike(f"%{search}%"))
+        
+        return query.count()

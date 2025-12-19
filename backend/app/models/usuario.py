@@ -24,7 +24,7 @@ class Usuario(Base):
     whatsapp = Column(String(20))
     data_nascimento = Column(Date)
     foto_url = Column(Text)
-    tipo = Column(SQLEnum(TipoUsuario), nullable=False)
+    tipo = Column(SQLEnum(TipoUsuario, name='tipo_usuario', create_type=False), nullable=False)
     
     # Relacionamentos
     distrito_id = Column(Integer, ForeignKey("distrito.id", ondelete="SET NULL"))
@@ -38,8 +38,8 @@ class Usuario(Base):
     contador_desmarcacoes = Column(Integer, default=0)
     
     # Status
-    status = Column(SQLEnum(StatusGeral), default=StatusGeral.ATIVO)
-    status_aprovacao = Column(SQLEnum(StatusAprovacao), default=StatusAprovacao.APROVADO)
+    status = Column(SQLEnum(StatusGeral, name='status_geral', create_type=False), default=StatusGeral.ATIVO)
+    status_aprovacao = Column(SQLEnum(StatusAprovacao, name='status_aprovacao', create_type=False), default=StatusAprovacao.APROVADO)
     data_solicitacao_cadastro = Column(DateTime(timezone=True))
     data_aprovacao = Column(DateTime(timezone=True))
     aprovado_por_id = Column(Integer, ForeignKey("usuario.id", ondelete="SET NULL"))

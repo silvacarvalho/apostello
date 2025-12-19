@@ -30,7 +30,7 @@ class Distrito(Base):
     config_exige_aprovacao_troca = Column(Boolean, default=True)
     config_prazo_avaliacao_dias = Column(Integer, default=7)
     
-    status = Column(SQLEnum(StatusGeral), default=StatusGeral.ATIVO)
+    status = Column(SQLEnum(StatusGeral, name='status_geral', create_type=False), default=StatusGeral.ATIVO)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -20,13 +20,19 @@ class Igreja(Base):
     endereco_completo = Column(Text)
     telefone = Column(String(20))
     email = Column(String(255))
-    status = Column(SQLEnum(StatusGeral), default=StatusGeral.ATIVO)
+    status = Column(SQLEnum(StatusGeral, name='status_geral', create_type=False), default=StatusGeral.ATIVO)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     distrito = relationship("Distrito", back_populates="igrejas")
     horarios_culto = relationship("HorarioCulto", back_populates="igreja", cascade="all, delete-orphan")
+    horarios_culto_ativos = relationship(
+        "HorarioCulto", 
+        primaryjoin="and_(Igreja.id==HorarioCulto.igreja_id, HorarioCulto.ativo==True)",
+        viewonly=True,
+        lazy="joined"
+    )
     membros = relationship("Usuario", foreign_keys="Usuario.igreja_id", back_populates="igreja")
     preferencias = relationship("PreferenciaIgreja", back_populates="igreja", cascade="all, delete-orphan")
     itens_escala = relationship("ItemEscala", back_populates="igreja")

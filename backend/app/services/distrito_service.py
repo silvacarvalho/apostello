@@ -75,6 +75,17 @@ class DistritoService:
         total = self.repository.count_ativos()
         return distritos, total
 
+    def search(
+        self, 
+        search: str = "",
+        skip: int = 0, 
+        limit: int = 50
+    ) -> tuple[List[Distrito], int]:
+        """Pesquisa distritos por nome"""
+        distritos = self.repository.search_by_nome(search, skip, limit)
+        total = self.repository.count_search(search)
+        return distritos, total
+
     def _can_manage(self, user: Usuario, distrito: Distrito) -> bool:
         """Verifica se usuário pode gerenciar distrito"""
         if user.is_admin:

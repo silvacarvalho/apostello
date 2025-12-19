@@ -47,6 +47,17 @@ class IgrejaService:
         total = self.repository.count_by_distrito(distrito_id)
         return igrejas, total
 
+    def list_all(
+        self,
+        distrito_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> tuple[List[Igreja], int]:
+        """Lista todas as igrejas, opcionalmente filtradas por distrito"""
+        igrejas = self.repository.get_all(distrito_id, skip, limit)
+        total = self.repository.count_all(distrito_id)
+        return igrejas, total
+
     def update(
         self, 
         igreja_id: int, 

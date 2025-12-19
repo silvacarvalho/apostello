@@ -30,10 +30,10 @@ class Tema(Base):
     organizacao_id = Column(Integer, ForeignKey("organizacao.id", ondelete="CASCADE"), nullable=False)
     titulo = Column(String(255), nullable=False)
     descricao = Column(Text)
-    tipo_recorrencia = Column(SQLEnum(TipoRecorrenciaTema), nullable=False)
+    tipo_recorrencia = Column(SQLEnum(TipoRecorrenciaTema, name='tipo_recorrencia_tema', create_type=False), nullable=False)
     config_recorrencia = Column(JSONB, nullable=False)
     ano_aplicacao = Column(Integer)
-    status = Column(SQLEnum(StatusGeral), default=StatusGeral.ATIVO)
+    status = Column(SQLEnum(StatusGeral, name='status_geral', create_type=False), default=StatusGeral.ATIVO)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

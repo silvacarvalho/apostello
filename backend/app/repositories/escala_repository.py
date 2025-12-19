@@ -41,6 +41,12 @@ class EscalaRepository(BaseRepository[Escala]):
             Escala.distrito_id == distrito_id
         ).order_by(Escala.ano.desc(), Escala.mes.desc()).offset(skip).limit(limit).all()
 
+    def count_by_distrito(self, distrito_id: int) -> int:
+        """Conta escalas de um distrito"""
+        return self.db.query(Escala).filter(
+            Escala.distrito_id == distrito_id
+        ).count()
+
     def get_publicadas(self, distrito_id: int) -> List[Escala]:
         """Lista escalas publicadas de um distrito"""
         return self.db.query(Escala).filter(

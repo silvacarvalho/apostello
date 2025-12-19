@@ -5,8 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Converte uma string de data (YYYY-MM-DD) para Date sem problemas de timezone.
+ * Quando não há timezone, o JavaScript interpreta como UTC, causando diferença de 1 dia.
+ */
+export function parseDate(dateStr: string): Date {
+  // Se a string contém apenas data (YYYY-MM-DD), adiciona T12:00:00 para evitar problemas de timezone
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return new Date(dateStr + "T12:00:00");
+  }
+  return new Date(dateStr);
+}
+
 export function formatDate(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
+  const d = typeof date === "string" ? parseDate(date) : date;
   return d.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -29,7 +41,22 @@ export function formatTime(time: string): string {
   return time.substring(0, 5);
 }
 
-export function getDayOfWeek(day: number): string {
+export function getDayOfWeek(day: number | string): string {
+  // Handle ENUM values from backend
+  if (typeof day === "string") {
+    const enumDays: Record<string, string> = {
+      "DOMINGO": "Domingo",
+      "SEGUNDA": "Segunda-feira",
+      "TERCA": "Terça-feira",
+      "QUARTA": "Quarta-feira",
+      "QUINTA": "Quinta-feira",
+      "SEXTA": "Sexta-feira",
+      "SABADO": "Sábado",
+    };
+    return enumDays[day] || day;
+  }
+  
+  // Handle numeric values
   const days = [
     "Domingo",
     "Segunda-feira",

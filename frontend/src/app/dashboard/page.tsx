@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Calendar,
   Users,
@@ -9,6 +11,9 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Loader2,
+  MapPin,
+  Sparkles,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,36 +22,88 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore, getUserRole, isAdmin, isPastor, isPregador, isCantor, isMembro } from "@/stores/auth-store";
 import { getScoreColor } from "@/lib/utils";
+import { api } from "@/lib/api";
+
+// Tipos para os dados do dashboard
+interface DashboardStats {
+  total_pregadores: number;
+  total_cantores: number;
+  total_membros: number;
+  total_igrejas: number;
+  total_distritos: number;
+  total_escalas_publicadas: number;
+  total_usuarios: number;
+  media_score_pregadores: number | null;
+  media_score_cantores: number | null;
+}
+
+interface DistritoStats {
+  distrito_id: number;
+  distrito_nome: string;
+  total_pregadores: number;
+  total_cantores: number;
+  total_membros: number;
+  total_igrejas: number;
+  total_escalas_publicadas: number;
+}
+
+interface DashboardResponse {
+  stats: DashboardStats;
+  distritos: DistritoStats[];
+}
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        setLoading(true);
+        const data = await api.get<DashboardResponse>("/api/v1/dashboard/stats");
+        setDashboardData(data);
+        setError(null);
+      } catch (err) {
+        console.error("Erro ao carregar dashboard:", err);
+        setError("Erro ao carregar dados do dashboard");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
 
   // Stats cards baseados no tipo de usuário
   const getStatsCards = () => {
+    const stats = dashboardData?.stats;
+    
     if (isAdmin(user) || isPastor(user)) {
       return [
         {
           title: "Total de Pregadores",
-          value: "45",
-          change: "+5 este mês",
+          value: stats?.total_pregadores?.toString() || "0",
+          change: `Score médio: ${stats?.media_score_pregadores?.toFixed(1) || "N/A"}`,
           icon: <Users className="h-5 w-5 text-blue-500" />,
         },
         {
           title: "Igrejas Ativas",
-          value: "12",
-          change: "2 distritos",
+          value: stats?.total_igrejas?.toString() || "0",
+          change: `${stats?.total_distritos || 0} distritos`,
           icon: <Church className="h-5 w-5 text-green-500" />,
         },
         {
           title: "Escalas Publicadas",
-          value: "24",
-          change: "Janeiro 2024",
+          value: stats?.total_escalas_publicadas?.toString() || "0",
+          change: "Total de escalas",
           icon: <Calendar className="h-5 w-5 text-purple-500" />,
         },
         {
-          title: "Avaliação Média",
-          value: "4.8",
-          change: "+0.2 vs mês anterior",
+          title: "Total de Cantores",
+          value: stats?.total_cantores?.toString() || "0",
+          change: `Score médio: ${stats?.media_score_cantores?.toFixed(1) || "N/A"}`,
           icon: <Star className="h-5 w-5 text-yellow-500" />,
         },
       ];
@@ -62,21 +119,21 @@ export default function DashboardPage() {
         },
         {
           title: "Score Atual",
-          value: user?.score_atual?.toFixed(1) || "5.0",
+          value: user?.score_atual?.toFixed(1) || "70.0",
           change: "Baseado em avaliações",
           icon: <TrendingUp className="h-5 w-5 text-green-500" />,
         },
         {
           title: "Pregações Realizadas",
-          value: "28",
-          change: "Últimos 12 meses",
+          value: user?.contador_total_participacoes?.toString() || "0",
+          change: "Total de participações",
           icon: <CheckCircle className="h-5 w-5 text-purple-500" />,
         },
         {
-          title: "Avaliação Média",
-          value: "4.6",
-          change: "★★★★★",
-          icon: <Star className="h-5 w-5 text-yellow-500" />,
+          title: "Membros no Sistema",
+          value: stats?.total_membros?.toString() || "0",
+          change: "Ativos no sistema",
+          icon: <Users className="h-5 w-5 text-yellow-500" />,
         },
       ];
     }
@@ -84,40 +141,63 @@ export default function DashboardPage() {
     // Membro
     return [
       {
-        title: "Cultos Avaliados",
-        value: "12",
-        change: "Este mês",
+        title: "Pregadores Ativos",
+        value: stats?.total_pregadores?.toString() || "0",
+        change: "No sistema",
+        icon: <Users className="h-5 w-5 text-blue-500" />,
+      },
+      {
+        title: "Igrejas",
+        value: stats?.total_igrejas?.toString() || "0",
+        change: `${stats?.total_distritos || 0} distritos`,
+        icon: <Church className="h-5 w-5 text-green-500" />,
+      },
+      {
+        title: "Cantores Ativos",
+        value: stats?.total_cantores?.toString() || "0",
+        change: "No sistema",
         icon: <Star className="h-5 w-5 text-yellow-500" />,
       },
       {
-        title: "Próximos Cultos",
-        value: "4",
-        change: "Esta semana",
-        icon: <Calendar className="h-5 w-5 text-blue-500" />,
-      },
-      {
-        title: "Avaliações Pendentes",
-        value: "2",
-        change: "Aguardando feedback",
-        icon: <Clock className="h-5 w-5 text-orange-500" />,
-      },
-      {
-        title: "Igreja",
-        value: "Central",
-        change: "Distrito Sul",
-        icon: <Church className="h-5 w-5 text-green-500" />,
+        title: "Total de Usuários",
+        value: stats?.total_usuarios?.toString() || "0",
+        change: "Cadastrados",
+        icon: <Users className="h-5 w-5 text-purple-500" />,
       },
     ];
   };
 
   const statsCards = getStatsCards();
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="flex flex-col items-center gap-4">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+          <p className="text-destructive">{error}</p>
+          <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          Olá, {user?.nome_completo.split(" ")[0]}! 👋
+          Olá, {user?.nome_completo?.split(" ")[0] || "Usuário"}! 👋
         </h1>
         <p className="text-muted-foreground mt-1">
           Bem-vindo ao painel de gerenciamento de escalas.{" "}
@@ -142,6 +222,55 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Estatísticas por Distrito */}
+      {(isAdmin(user) || isPastor(user)) && dashboardData?.distritos && dashboardData.distritos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Estatísticas por Distrito
+            </CardTitle>
+            <CardDescription>
+              Visão geral de cada distrito cadastrado no sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {dashboardData.distritos.map((distrito) => (
+                <Card key={distrito.distrito_id} className="bg-muted/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">{distrito.distrito_nome}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Pregadores:</span>
+                      <span className="font-medium">{distrito.total_pregadores}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Cantores:</span>
+                      <span className="font-medium">{distrito.total_cantores}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Membros:</span>
+                      <span className="font-medium">{distrito.total_membros}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Igrejas:</span>
+                      <span className="font-medium">{distrito.total_igrejas}</span>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Escalas Publicadas:</span>
+                      <Badge variant="secondary">{distrito.total_escalas_publicadas}</Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -222,8 +351,10 @@ export default function DashboardPage() {
 
             <Separator className="my-4" />
 
-            <Button variant="outline" className="w-full">
-              Ver todas as escalas
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/dashboard/escalas">
+                Ver todas as escalas
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -266,21 +397,27 @@ export default function DashboardPage() {
             <CardContent className="space-y-2">
               {(isAdmin(user) || isPastor(user)) && (
                 <>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Gerar Nova Escala
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <Link href="/dashboard/escalas">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Gerar Nova Escala
+                    </Link>
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Users className="h-4 w-4 mr-2" />
-                    Aprovar Cadastros
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <Link href="/dashboard/usuarios">
+                      <Users className="h-4 w-4 mr-2" />
+                      Gerenciar Usuários
+                    </Link>
                   </Button>
                 </>
               )}
               {(isPregador(user) || isCantor(user)) && (
                 <>
-                  <Button variant="outline" className="w-full justify-start">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Informar Indisponibilidade
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <Link href="/dashboard/escalas">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Ver Minhas Escalas
+                    </Link>
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
                     <CheckCircle className="h-4 w-4 mr-2" />

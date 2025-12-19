@@ -70,6 +70,8 @@ class ItemEscalaDetailResponse(ItemEscalaResponse):
     pregador_nome: Optional[str] = None
     cantor_nome: Optional[str] = None
     tema_titulo: Optional[str] = None
+    pregador_score: Optional[float] = None
+    cantor_score: Optional[float] = None
 
 
 class ItemEscalaListResponse(BaseModel):

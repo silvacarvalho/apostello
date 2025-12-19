@@ -2,10 +2,34 @@
 Schemas de Igreja
 """
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional
-from datetime import datetime
+from typing import Optional, List
+from datetime import datetime, time
 
 from app.models.igreja import StatusGeral
+from app.models.horario_culto import DiaSemana
+
+
+class HorarioCultoBase(BaseModel):
+    """Schema base de horário de culto"""
+    dia_semana: DiaSemana
+    horario: time
+
+
+class HorarioCultoInIgreja(HorarioCultoBase):
+    """Schema de horário de culto dentro de igreja"""
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class DistritoSimples(BaseModel):
+    """Schema simplificado de distrito"""
+    id: int
+    nome: str
+
+    class Config:
+        from_attributes = True
 
 
 class IgrejaBase(BaseModel):
@@ -42,9 +66,12 @@ class IgrejaResponse(BaseModel):
     status: StatusGeral
     created_at: datetime
     updated_at: datetime
+    distrito: Optional[DistritoSimples] = None
+    horarios_culto: List[HorarioCultoInIgreja] = Field(default=[], validation_alias="horarios_culto_ativos")
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class IgrejaListResponse(BaseModel):

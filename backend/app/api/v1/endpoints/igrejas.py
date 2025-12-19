@@ -34,17 +34,17 @@ def criar_igreja(
 
 @router.get("/", response_model=IgrejaListResponse)
 def listar_igrejas(
-    distrito_id: int = Query(...),
+    distrito_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    Lista igrejas de um distrito.
+    Lista igrejas. Se distrito_id for informado, filtra por distrito.
     """
     service = IgrejaService(db)
-    igrejas, total = service.list_by_distrito(distrito_id, skip, limit)
+    igrejas, total = service.list_all(distrito_id, skip, limit)
     
     return {
         "items": igrejas,

@@ -35,6 +35,26 @@ def listar_distritos_publico(
     }
 
 
+@router.get("/pesquisar", response_model=DistritoListResponse)
+def pesquisar_distritos(
+    search: str = Query("", description="Termo de pesquisa"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Pesquisa distritos por nome.
+    """
+    service = DistritoService(db)
+    distritos, total = service.search(search, skip, limit)
+    
+    return {
+        "items": distritos,
+        "total": total
+    }
+
+
 @router.post("/", response_model=DistritoResponse, status_code=status.HTTP_201_CREATED)
 def criar_distrito(
     data: DistritoCreate,
