@@ -135,10 +135,68 @@ O sistema gera escalas automaticamente considerando:
 
 ## 📊 Sistema de Score
 
-Cada pregador/cantor possui um score (0-10) calculado com base em:
+Cada pregador/cantor possui um score (0-100) calculado com base em:
 - Média ponderada das avaliações
 - Apenas avaliações dos últimos 12 meses
 - Peso maior para avaliações recentes
+
+## 📈 Dashboard Integrado
+
+O dashboard foi integrado com a API do backend e apresenta dados dinâmicos baseados no tipo de usuário:
+
+### Dashboard do Administrador
+- Total de distritos, igrejas, pregadores e cantores
+- Status das escalas do mês atual por distrito
+- Ranking dos top pregadores e cantores por score
+- Taxa de avaliação e comparecimento
+
+### Dashboard do Pastor Distrital
+- Estatísticas do distrito (igrejas, pregadores, cantores)
+- Status da escala atual
+- Próximos cultos agendados (próximos 7 dias)
+- Pendências (confirmações e trocas)
+- Pregadores com score em queda
+
+### Dashboard do Pregador/Cantor
+- Score atual e evolução
+- Próximas pregações/apresentações agendadas
+- Média de avaliações por critério
+- Estatísticas de participação (mês, ano, total)
+- Confirmação de presenças
+- Informar indisponibilidades
+
+### Dashboard do Membro
+- Próximos cultos da igreja
+- Avaliações pendentes
+- Histórico de avaliações realizadas
+- Informações da igreja e distrito
+
+### Endpoints da API
+
+```
+GET /api/v1/dashboard/
+```
+
+Retorna o dashboard personalizado baseado no usuário autenticado. Requer autenticação JWT.
+
+**Response:**
+```json
+{
+  "tipo_usuario": "PREGADOR",
+  "pregador_cantor": {
+    "stats_cards": [...],
+    "proximos_eventos": [...],
+    "score_atual": 85.5,
+    "media_avaliacoes": {
+      "geral": 4.3,
+      "total_avaliacoes": 42
+    },
+    "participacoes_mes": 2,
+    "participacoes_ano": 18,
+    "participacoes_total": 145
+  }
+}
+```
 
 ## 🔔 Notificações
 
