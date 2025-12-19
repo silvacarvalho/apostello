@@ -142,6 +142,87 @@ export interface Notificacao {
   criado_em: string;
 }
 
+// Dashboard Types
+export interface StatCard {
+  title: string;
+  value: string;
+  change: string;
+  icon: string;
+}
+
+export interface ProximoEvento {
+  id: number;
+  date: string;
+  time: string;
+  church: string;
+  type: string;
+  status: string;
+  confirmado: boolean;
+}
+
+export interface TopPregador {
+  id: number;
+  nome: string;
+  score: number;
+  participacoes: number;
+}
+
+export interface EscalaDistritoSummary {
+  distrito_id: number;
+  distrito_nome: string;
+  status: string;
+  total_cultos: number;
+  total_pregadores: number;
+}
+
+export interface DashboardAdmin {
+  stats_cards: StatCard[];
+  escalas_mes_atual: EscalaDistritoSummary[];
+  top_pregadores: TopPregador[];
+  top_cantores: TopPregador[];
+  taxa_avaliacao: number;
+  taxa_comparecimento: number;
+}
+
+export interface DashboardPastor {
+  stats_cards: StatCard[];
+  proximos_cultos: ProximoEvento[];
+  pendencias: {
+    confirmacoes_pendentes: number;
+    trocas_pendentes: number;
+  };
+  pregadores_score_queda: any[];
+}
+
+export interface DashboardPregadorCantor {
+  stats_cards: StatCard[];
+  proximos_eventos: ProximoEvento[];
+  score_atual: number;
+  media_avaliacoes?: {
+    geral: number;
+    total_avaliacoes: number;
+  };
+  participacoes_mes: number;
+  participacoes_ano: number;
+  participacoes_total: number;
+}
+
+export interface DashboardMembro {
+  stats_cards: StatCard[];
+  proximos_cultos: ProximoEvento[];
+  avaliacoes_pendentes: number;
+  igreja_nome?: string;
+  distrito_nome?: string;
+}
+
+export interface DashboardResponse {
+  tipo_usuario: string;
+  admin?: DashboardAdmin;
+  pastor?: DashboardPastor;
+  pregador_cantor?: DashboardPregadorCantor;
+  membro?: DashboardMembro;
+}
+
 // API Responses
 export interface PaginatedResponse<T> {
   items: T[];
