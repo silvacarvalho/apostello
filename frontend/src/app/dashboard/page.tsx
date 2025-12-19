@@ -10,6 +10,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,13 +27,24 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (showToast = false) => {
     try {
       setLoading(true);
       const data = await api.get<DashboardResponse>("/api/v1/dashboard/");
+      console.log("Dashboard data received:", data);
       setDashboardData(data);
+      setLastUpdate(new Date());
+      if (showToast) {
+        toast({
+          title: "Dashboard atualizado",
+          description: "Dados carregados da base de dados com sucesso",
+          variant: "default",
+        });
+      }
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
       toast({
@@ -45,8 +57,14 @@ export default function DashboardPage() {
     }
   }, [toast]);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData(true);
+    setRefreshing(false);
+  };
+
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(false);
   }, [fetchDashboardData]);
 
   if (loading) {
@@ -162,14 +180,30 @@ export default function DashboardPage() {
     
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Olá, {user?.nome_completo.split(" ")[0]}! 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Bem-vindo ao painel administrativo.{" "}
-            <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Olá, {user?.nome_completo.split(" ")[0]}! 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Bem-vindo ao painel administrativo.{" "}
+              <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
+              {lastUpdate && (
+                <span className="ml-2 text-xs">
+                  • Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+                </span>
+              )}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
         </div>
 
         {renderStatsCards(stats_cards)}
@@ -254,14 +288,30 @@ export default function DashboardPage() {
     
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Olá, {user?.nome_completo.split(" ")[0]}! 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Bem-vindo ao painel de gerenciamento.{" "}
-            <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Olá, {user?.nome_completo.split(" ")[0]}! 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Bem-vindo ao painel de gerenciamento.{" "}
+              <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
+              {lastUpdate && (
+                <span className="ml-2 text-xs">
+                  • Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+                </span>
+              )}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
         </div>
 
         {renderStatsCards(stats_cards)}
@@ -326,14 +376,30 @@ export default function DashboardPage() {
     
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Olá, {user?.nome_completo.split(" ")[0]}! 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Bem-vindo ao seu painel.{" "}
-            <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Olá, {user?.nome_completo.split(" ")[0]}! 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Bem-vindo ao seu painel.{" "}
+              <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
+              {lastUpdate && (
+                <span className="ml-2 text-xs">
+                  • Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+                </span>
+              )}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
         </div>
 
         {renderStatsCards(stats_cards)}
@@ -407,14 +473,30 @@ export default function DashboardPage() {
     
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Olá, {user?.nome_completo.split(" ")[0]}! 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Bem-vindo ao seu painel.{" "}
-            <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Olá, {user?.nome_completo.split(" ")[0]}! 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Bem-vindo ao seu painel.{" "}
+              <Badge variant="secondary">{getUserRole(user.tipo)}</Badge>
+              {lastUpdate && (
+                <span className="ml-2 text-xs">
+                  • Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+                </span>
+              )}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
         </div>
 
         {renderStatsCards(stats_cards)}
