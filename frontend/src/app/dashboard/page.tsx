@@ -104,7 +104,7 @@ export default function DashboardPage() {
       {stats.map((stat, index) => {
         const IconComponent = getIconComponent(stat.icon);
         return (
-          <Card key={index} className="hover:shadow-md transition-shadow">
+          <Card key={index} className="hover:shadow-md transition-shadow relative">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
@@ -115,6 +115,12 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold">{stat.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
             </CardContent>
+            {/* Badge para indicar dados da API */}
+            <div className="absolute top-2 right-2">
+              <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 text-green-700 border-green-200">
+                API
+              </Badge>
+            </div>
           </Card>
         );
       })}
