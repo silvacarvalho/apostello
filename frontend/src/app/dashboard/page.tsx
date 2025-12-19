@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Calendar,
   Users,
@@ -15,9 +15,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Loading } from "@/components/ui/loading";
-import { useAuthStore, getUserRole, isAdmin, isPastor, isPregador, isCantor, isMembro } from "@/stores/auth-store";
+import { useAuthStore, getUserRole } from "@/stores/auth-store";
 import { getScoreColor } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { DashboardResponse, StatCard, ProximoEvento } from "@/types";
@@ -29,26 +28,26 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.get<DashboardResponse>("/api/v1/dashboard/");
       setDashboardData(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível carregar os dados do dashboard",
+        description: error instanceof Error ? error.message : "Não foi possível carregar os dados do dashboard",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   if (loading) {
     return (
@@ -67,7 +66,7 @@ export default function DashboardPage() {
   }
 
   const getIconComponent = (iconName: string) => {
-    const icons: Record<string, any> = {
+    const icons: Record<string, React.ComponentType<{ className?: string }>> = {
       calendar: Calendar,
       users: Users,
       church: Church,
@@ -159,7 +158,7 @@ export default function DashboardPage() {
 
   // Admin Dashboard
   if (dashboardData.admin) {
-    const { stats_cards, escalas_mes_atual, top_pregadores, top_cantores } = dashboardData.admin;
+    const { stats_cards, escalas_mes_atual, top_pregadores } = dashboardData.admin;
     
     return (
       <div className="space-y-8">
