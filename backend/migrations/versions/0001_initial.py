@@ -15,7 +15,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PostgresEnum
 from sqlalchemy import inspect, text
 
 
@@ -37,6 +37,11 @@ def create_enum_if_not_exists(name: str, values: list) -> str:
         END IF;
     END$$;
     """
+
+
+def use_existing_enum(name: str) -> sa.types.TypeEngine:
+    """Retorna um tipo ENUM PostgreSQL que referencia um tipo já existente sem tentar criá-lo."""
+    return PostgresEnum(name=name, create_type=False)
 
 
 def table_exists(table_name: str) -> bool:
@@ -121,7 +126,7 @@ def upgrade() -> None:
             sa.Column('whatsapp', sa.String(20)),
             sa.Column('data_nascimento', sa.Date()),
             sa.Column('foto_url', sa.Text()),
-            sa.Column('tipo', sa.Enum('ADMIN', 'PASTOR_DISTRITAL', 'LIDER_DISTRITAL', 'PREGADOR', 'CANTOR', 'MEMBRO', name='tipo_usuario', create_type=False), nullable=False),
+            sa.Column('tipo', use_existing_enum('tipo_usuario'), nullable=False),
             sa.Column('distrito_id', sa.Integer()),
             sa.Column('igreja_id', sa.Integer()),
             sa.Column('score_atual', sa.Numeric(5, 2), server_default='70.00'),
@@ -129,8 +134,8 @@ def upgrade() -> None:
             sa.Column('contador_total_participacoes', sa.Integer(), server_default='0'),
             sa.Column('contador_faltas', sa.Integer(), server_default='0'),
             sa.Column('contador_desmarcacoes', sa.Integer(), server_default='0'),
-            sa.Column('status', sa.Enum('ATIVO', 'INATIVO', name='status_geral', create_type=False), server_default='ATIVO'),
-            sa.Column('status_aprovacao', sa.Enum('PENDENTE_APROVACAO', 'APROVADO', 'RECUSADO', name='status_aprovacao', create_type=False), server_default='APROVADO'),
+            sa.Column('status', use_existing_enum('status_geral'), server_default='ATIVO'),
+            sa.Column('status_aprovacao', use_existing_enum('status_aprovacao'), server_default='APROVADO'),
             sa.Column('data_solicitacao_cadastro', sa.DateTime(timezone=True)),
             sa.Column('data_aprovacao', sa.DateTime(timezone=True)),
             sa.Column('aprovado_por_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='SET NULL')),
@@ -160,7 +165,7 @@ def upgrade() -> None:
             sa.Column('config_prazo_confirmacao_horas', sa.Integer(), server_default='48'),
             sa.Column('config_exige_aprovacao_troca', sa.Boolean(), server_default='true'),
             sa.Column('config_prazo_avaliacao_dias', sa.Integer(), server_default='7'),
-            sa.Column('status', sa.Enum('ATIVO', 'INATIVO', name='status_geral', create_type=False), server_default='ATIVO'),
+            sa.Column('status', use_existing_enum('status_geral'), server_default='ATIVO'),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
             sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
         )
@@ -180,7 +185,7 @@ def upgrade() -> None:
             sa.Column('endereco_completo', sa.Text()),
             sa.Column('telefone', sa.String(20)),
             sa.Column('email', sa.String(255)),
-            sa.Column('status', sa.Enum('ATIVO', 'INATIVO', name='status_geral', create_type=False), server_default='ATIVO'),
+            sa.Column('status', use_existing_enum('status_geral'), server_default='ATIVO'),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
             sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
         )
@@ -196,7 +201,7 @@ def upgrade() -> None:
             'horario_culto',
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('igreja_id', sa.Integer(), sa.ForeignKey('igreja.id', ondelete='CASCADE'), nullable=False),
-            sa.Column('dia_semana', sa.Enum('SABADO', 'DOMINGO', 'QUARTA', name='diasemana', create_type=False), nullable=False),
+            sa.Column('dia_semana', use_existing_enum('diasemana'), nullable=False),
             sa.Column('horario', sa.Time(), nullable=False),
             sa.Column('ativo', sa.Boolean(), server_default='true'),
             sa.Column('aplicado_em_lote', sa.Boolean(), server_default='false'),
@@ -225,7 +230,7 @@ def upgrade() -> None:
             sa.Column('usuario_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
             sa.Column('data_inicio', sa.Date(), nullable=False),
             sa.Column('data_fim', sa.Date(), nullable=False),
-            sa.Column('motivo_tipo', sa.Enum('FERIAS', 'VIAGEM', 'COMPROMISSO', 'SAUDE', 'OUTRO', name='motivoindisponibilidade', create_type=False), nullable=False),
+            sa.Column('motivo_tipo', use_existing_enum('motivoindisponibilidade'), nullable=False),
             sa.Column('motivo_descricao', sa.Text()),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
         )
@@ -253,10 +258,10 @@ def upgrade() -> None:
             sa.Column('organizacao_id', sa.Integer(), sa.ForeignKey('organizacao.id', ondelete='CASCADE'), nullable=False),
             sa.Column('titulo', sa.String(255), nullable=False),
             sa.Column('descricao', sa.Text()),
-            sa.Column('tipo_recorrencia', sa.Enum('SEMANAL_MES', 'PERIODO_ESPECIFICO', 'ANUAL', name='tipo_recorrencia_tema', create_type=False), nullable=False),
+            sa.Column('tipo_recorrencia', use_existing_enum('tipo_recorrencia_tema'), nullable=False),
             sa.Column('config_recorrencia', JSONB(), nullable=False),
             sa.Column('ano_aplicacao', sa.Integer()),
-            sa.Column('status', sa.Enum('ATIVO', 'INATIVO', name='status_geral', create_type=False), server_default='ATIVO'),
+            sa.Column('status', use_existing_enum('status_geral'), server_default='ATIVO'),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
             sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
         )
@@ -270,7 +275,7 @@ def upgrade() -> None:
             sa.Column('distrito_id', sa.Integer(), sa.ForeignKey('distrito.id', ondelete='CASCADE'), nullable=False),
             sa.Column('mes', sa.Integer(), nullable=False),
             sa.Column('ano', sa.Integer(), nullable=False),
-            sa.Column('status', sa.Enum('RASCUNHO', 'PUBLICADA', 'ARQUIVADA', name='status_escala', create_type=False), server_default='RASCUNHO'),
+            sa.Column('status', use_existing_enum('status_escala'), server_default='RASCUNHO'),
             sa.Column('data_publicacao', sa.DateTime(timezone=True)),
             sa.Column('pastor_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='RESTRICT'), nullable=False),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
@@ -293,11 +298,11 @@ def upgrade() -> None:
             sa.Column('cantor_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='SET NULL')),
             sa.Column('tema_id', sa.Integer(), sa.ForeignKey('tema.id', ondelete='SET NULL')),
             sa.Column('tema_customizado', sa.Text()),
-            sa.Column('status_confirmacao_pregador', sa.Enum('PENDENTE', 'CONFIRMADO', 'NAO_CONFIRMADO', name='statusconfirmacao', create_type=False), server_default='PENDENTE'),
-            sa.Column('status_confirmacao_cantor', sa.Enum('PENDENTE', 'CONFIRMADO', 'NAO_CONFIRMADO', name='statusconfirmacao', create_type=False), server_default='PENDENTE'),
+            sa.Column('status_confirmacao_pregador', use_existing_enum('statusconfirmacao'), server_default='PENDENTE'),
+            sa.Column('status_confirmacao_cantor', use_existing_enum('statusconfirmacao'), server_default='PENDENTE'),
             sa.Column('data_confirmacao_pregador', sa.DateTime(timezone=True)),
             sa.Column('data_confirmacao_cantor', sa.DateTime(timezone=True)),
-            sa.Column('status_realizacao', sa.Enum('PENDENTE', 'REALIZADO', 'CANCELADO', 'FALTA_PREGADOR', 'FALTA_CANTOR', name='statusrealizacao', create_type=False), server_default='PENDENTE'),
+            sa.Column('status_realizacao', use_existing_enum('statusrealizacao'), server_default='PENDENTE'),
             sa.Column('observacoes', sa.Text()),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
             sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
@@ -311,7 +316,7 @@ def upgrade() -> None:
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('item_escala_id', sa.Integer(), sa.ForeignKey('item_escala.id', ondelete='CASCADE'), nullable=False),
             sa.Column('usuario_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
-            sa.Column('acao', sa.Enum('CRIACAO', 'EDICAO', 'TROCA', 'CANCELAMENTO', 'SUBSTITUICAO', name='acaoitemescala', create_type=False), nullable=False),
+            sa.Column('acao', use_existing_enum('acaoitemescala'), nullable=False),
             sa.Column('descricao', sa.Text(), nullable=False),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
         )
@@ -323,11 +328,11 @@ def upgrade() -> None:
             'solicitacao_troca',
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('item_escala_id', sa.Integer(), sa.ForeignKey('item_escala.id', ondelete='CASCADE'), nullable=False),
-            sa.Column('tipo', sa.Enum('PREGADOR', 'CANTOR', name='tipoavaliado', create_type=False), nullable=False),
+            sa.Column('tipo', use_existing_enum('tipoavaliado'), nullable=False),
             sa.Column('solicitante_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
             sa.Column('substituto_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
             sa.Column('motivo', sa.Text(), nullable=False),
-            sa.Column('status', sa.Enum('PENDENTE_SUBSTITUTO', 'PENDENTE_PASTOR', 'APROVADA', 'RECUSADA', name='statussolicitacaotroca', create_type=False), server_default='PENDENTE_SUBSTITUTO'),
+            sa.Column('status', use_existing_enum('statussolicitacaotroca'), server_default='PENDENTE_SUBSTITUTO'),
             sa.Column('data_resposta_substituto', sa.DateTime(timezone=True)),
             sa.Column('data_resposta_pastor', sa.DateTime(timezone=True)),
             sa.Column('pastor_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='SET NULL')),
@@ -345,7 +350,7 @@ def upgrade() -> None:
             sa.Column('item_escala_id', sa.Integer(), sa.ForeignKey('item_escala.id', ondelete='CASCADE'), nullable=False),
             sa.Column('avaliado_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
             sa.Column('avaliador_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
-            sa.Column('tipo', sa.Enum('PREGADOR', 'CANTOR', name='tipoavaliado', create_type=False), nullable=False),
+            sa.Column('tipo', use_existing_enum('tipoavaliado'), nullable=False),
             sa.Column('criterio_1', sa.Integer(), nullable=False),
             sa.Column('criterio_2', sa.Integer(), nullable=False),
             sa.Column('criterio_3', sa.Integer(), nullable=False),
@@ -366,7 +371,7 @@ def upgrade() -> None:
             sa.Column('score_anterior', sa.Numeric(5, 2), nullable=False),
             sa.Column('score_novo', sa.Numeric(5, 2), nullable=False),
             sa.Column('delta', sa.Numeric(5, 2), nullable=False),
-            sa.Column('motivo_tipo', sa.Enum('AVALIACAO', 'PENALIDADE', 'BONUS', 'AJUSTE_MANUAL', name='motivoscore', create_type=False), nullable=False),
+            sa.Column('motivo_tipo', use_existing_enum('motivoscore'), nullable=False),
             sa.Column('referencia_id', sa.Integer()),
             sa.Column('descricao', sa.Text(), nullable=False),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
@@ -380,7 +385,7 @@ def upgrade() -> None:
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('usuario_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
             sa.Column('pastor_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
-            sa.Column('tipo', sa.Enum('FALTA_SEM_AVISO', 'DESMARCACAO_SEM_TROCA', 'DESMARCACAO_48H', 'ATRASO', 'CUSTOM', name='tipopenalidade', create_type=False), nullable=False),
+            sa.Column('tipo', use_existing_enum('tipopenalidade'), nullable=False),
             sa.Column('valor_subtracao', sa.Numeric(5, 2), nullable=False),
             sa.Column('motivo', sa.Text(), nullable=False),
             sa.Column('data_aplicacao', sa.Date(), nullable=False, server_default=sa.text('CURRENT_DATE')),
@@ -399,7 +404,7 @@ def upgrade() -> None:
             sa.Column('usuario_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
             sa.Column('item_escala_original_id', sa.Integer(), sa.ForeignKey('item_escala.id', ondelete='SET NULL')),
             sa.Column('item_escala_novo_id', sa.Integer(), sa.ForeignKey('item_escala.id', ondelete='SET NULL')),
-            sa.Column('tipo_acao', sa.Enum('SOLICITOU_TROCA', 'ACEITOU_TROCA', 'RECUSOU_TROCA', 'SUBSTITUICAO_EMERGENCIAL', name='tipoacaotroca', create_type=False), nullable=False),
+            sa.Column('tipo_acao', use_existing_enum('tipoacaotroca'), nullable=False),
             sa.Column('outro_usuario_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE')),
             sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
             sa.Column('motivo', sa.Text()),
@@ -430,12 +435,7 @@ def upgrade() -> None:
             'notificacao',
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('usuario_id', sa.Integer(), sa.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False),
-            sa.Column('tipo', sa.Enum(
-                'ESCALA_PUBLICADA', 'LEMBRETE_7D', 'LEMBRETE_3D', 'LEMBRETE_24H',
-                'CONFIRMACAO', 'TROCA', 'AVALIACAO', 'PENALIDADE',
-                'AUTO_CADASTRO_APROVADO', 'AUTO_CADASTRO_RECUSADO',
-                name='tiponotificacao', create_type=False
-            ), nullable=False),
+            sa.Column('tipo', use_existing_enum('tiponotificacao'), nullable=False),
             sa.Column('titulo', sa.String(255), nullable=False),
             sa.Column('mensagem', sa.Text(), nullable=False),
             sa.Column('link', sa.Text()),
@@ -456,8 +456,8 @@ def upgrade() -> None:
             'log_notificacao',
             sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
             sa.Column('notificacao_id', sa.Integer(), sa.ForeignKey('notificacao.id', ondelete='CASCADE'), nullable=False),
-            sa.Column('canal', sa.Enum('EMAIL', 'SMS', 'WHATSAPP', name='canalnotificacao', create_type=False), nullable=False),
-            sa.Column('status', sa.Enum('ENVIADO', 'FALHA', 'PENDENTE', name='statusenvio', create_type=False), nullable=False),
+            sa.Column('canal', use_existing_enum('canalnotificacao'), nullable=False),
+            sa.Column('status', use_existing_enum('statusenvio'), nullable=False),
             sa.Column('erro_mensagem', sa.Text()),
             sa.Column('tentativas', sa.Integer(), server_default='1'),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),

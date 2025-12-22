@@ -56,6 +56,23 @@ apostello/
 - Node.js 18+
 - PostgreSQL 15+
 
+### ⚡ Início Rápido
+
+Após configurar backend e frontend pela primeira vez, use o script de inicialização:
+
+```bash
+# Windows (duplo clique ou via terminal)
+.\start.bat
+
+# Ou diretamente no PowerShell
+.\start.ps1
+```
+
+Isso irá:
+- ✅ Abrir o backend em http://localhost:8000
+- ✅ Abrir o frontend em http://localhost:3000
+- ✅ Abrir a documentação da API em http://localhost:8000/docs
+
 ### Backend
 
 ```bash
@@ -63,7 +80,7 @@ apostello/
 cd backend
 
 # Criar ambiente virtual
-python -m venv venv
+python -3.12 -m venv venv
 
 # Ativar ambiente (Windows)
 .\venv\Scripts\activate
@@ -82,6 +99,9 @@ cp .env.example .env
 
 # Executar migrações do banco de dados
 alembic upgrade head
+
+# Criar usuário admin inicial
+python -m app.scripts.create_master
 
 # Rodar servidor
 uvicorn app.main:app --reload

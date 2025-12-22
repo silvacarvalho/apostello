@@ -40,42 +40,42 @@ const navItems: NavItem[] = [
   },
   {
     title: "Escalas",
-    href: "/dashboard/escalas",
+    href: "/escalas",
     icon: <Calendar className="h-5 w-5" />,
   },
   {
     title: "Usuários",
-    href: "/dashboard/usuarios",
+    href: "/usuarios",
     icon: <Users className="h-5 w-5" />,
     roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL"],
   },
   {
     title: "Igrejas",
-    href: "/dashboard/igrejas",
+    href: "/igrejas",
     icon: <Church className="h-5 w-5" />,
     roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL"],
   },
   {
     title: "Distritos",
-    href: "/dashboard/distritos",
+    href: "/distritos",
     icon: <MapPin className="h-5 w-5" />,
     roles: ["ADMIN"],
   },
   {
     title: "Temas",
-    href: "/dashboard/temas",
+    href: "/temas",
     icon: <BookOpen className="h-5 w-5" />,
     roles: ["PREGADOR"],
   },
   {
     title: "Avaliações",
-    href: "/dashboard/avaliacoes",
+    href: "/avaliacoes",
     icon: <Star className="h-5 w-5" />,
     roles: ["MEMBRO"],
   },
   {
     title: "Notificações",
-    href: "/dashboard/notificacoes",
+    href: "/notificacoes",
     icon: <Bell className="h-5 w-5" />,
   },
 ];
@@ -166,7 +166,7 @@ export function Sidebar() {
 
         <div className="space-y-1">
           <Link
-            href="/dashboard/configuracoes"
+            href="/configuracoes"
             onClick={() => setIsMobileOpen(false)}
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >

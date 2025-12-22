@@ -62,7 +62,7 @@ def create_master_user():
             db.add(distrito)
             db.commit()
             db.refresh(distrito)
-            print(f"   ✅ Distrito criado: {distrito.nome} (ID: {distrito.id})")
+            print(f"✅ Distrito criado: {distrito.nome} (ID: {distrito.id})")
         
         # Dados do usuário master
         master_email = "master@iasd.com"

@@ -199,10 +199,10 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight">
           Olá, {user?.nome_completo?.split(" ")[0] || "Usuário"}! 👋
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Bem-vindo ao painel de gerenciamento de escalas.{" "}
+        <div className="text-muted-foreground mt-1 flex items-center gap-2">
+          <span>Bem-vindo ao painel de gerenciamento de escalas.</span>
           <Badge variant="secondary">{user ? getUserRole(user.tipo) : ""}</Badge>
-        </p>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -352,7 +352,7 @@ export default function DashboardPage() {
             <Separator className="my-4" />
 
             <Button variant="outline" className="w-full" asChild>
-              <Link href="/dashboard/escalas">
+              <Link href="/escalas">
                 Ver todas as escalas
               </Link>
             </Button>
@@ -398,13 +398,13 @@ export default function DashboardPage() {
               {(isAdmin(user) || isPastor(user)) && (
                 <>
                   <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/dashboard/escalas">
+                    <Link href="/escalas">
                       <Sparkles className="h-4 w-4 mr-2" />
                       Gerar Nova Escala
                     </Link>
                   </Button>
                   <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/dashboard/usuarios">
+                    <Link href="/usuarios">
                       <Users className="h-4 w-4 mr-2" />
                       Gerenciar Usuários
                     </Link>
@@ -414,7 +414,7 @@ export default function DashboardPage() {
               {(isPregador(user) || isCantor(user)) && (
                 <>
                   <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/dashboard/escalas">
+                    <Link href="/escalas">
                       <Calendar className="h-4 w-4 mr-2" />
                       Ver Minhas Escalas
                     </Link>
