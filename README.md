@@ -80,6 +80,9 @@ cp .env.example .env
 # Editar .env com suas configurações
 # DATABASE_URL, JWT_SECRET, etc.
 
+# Executar migrações do banco de dados
+alembic upgrade head
+
 # Rodar servidor
 uvicorn app.main:app --reload
 ```
@@ -106,7 +109,56 @@ Com o backend rodando, acesse:
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
-## 👥 Tipos de Usuário
+## �️ Migrações de Banco de Dados (Alembic)
+
+O sistema usa **Alembic** para gerenciamento de migrações de banco de dados, facilitando a implantação em novos ambientes.
+
+### Comandos Principais
+
+```bash
+cd backend
+
+# Verificar status das migrações
+alembic current          # Mostra revisão atual
+alembic history          # Mostra histórico de migrações
+
+# Aplicar todas as migrações pendentes (usar no deploy!)
+alembic upgrade head
+
+# Aplicar próxima migração apenas
+alembic upgrade +1
+
+# Reverter última migração
+alembic downgrade -1
+
+# Reverter todas as migrações (CUIDADO!)
+alembic downgrade base
+
+# Gerar SQL sem executar (útil para validar)
+alembic upgrade head --sql > migration.sql
+```
+
+### Criar Nova Migração
+
+Após modificar os models SQLAlchemy:
+
+```bash
+# Gerar migração automaticamente baseada nas mudanças
+alembic revision --autogenerate -m "descrição da mudança"
+
+# Criar migração vazia (para alterações manuais)
+alembic revision -m "descrição da mudança"
+```
+
+> ⚠️ **Importante**: Sempre revise as migrações auto-geradas antes de aplicar!
+
+### Deploy em Novo Ambiente
+
+1. Configure o `.env` com a `DATABASE_URL` correta
+2. Execute `alembic upgrade head` para criar todas as tabelas
+3. Execute `python -m app.scripts.create_master` para criar o usuário admin
+
+## �👥 Tipos de Usuário
 
 | Tipo | Descrição |
 |------|-----------|

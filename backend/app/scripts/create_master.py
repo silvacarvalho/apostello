@@ -65,8 +65,8 @@ def create_master_user():
             print(f"   ✅ Distrito criado: {distrito.nome} (ID: {distrito.id})")
         
         # Dados do usuário master
-        master_email = "master@apostello.com"
-        master_password = "Master@123"
+        master_email = "master@iasd.com"
+        master_password = "Master123"
         master_cpf = "00000000000"
         
         print("\n👤 Criando usuário master...")
