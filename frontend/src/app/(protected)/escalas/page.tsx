@@ -73,7 +73,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAuthStore, isAdmin, isPastor } from "@/stores/auth-store";
+import { useAuthStore, isAdmin, isPastor, getUserDistritoId } from "@/stores/auth-store";
 import { formatDate, getStatusColor, getDayOfWeek, parseDate } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -242,12 +242,21 @@ export default function EscalasPage() {
   const [escalaEstatisticas, setEscalaEstatisticas] = useState<EscalaEstatisticas | null>(null);
   const [loadingDetalhes, setLoadingDetalhes] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [filtroIgrejaId, setFiltroIgrejaId] = useState<number | null>(null);
 
   // Modal de exclusão
   const [escalaToDelete, setEscalaToDelete] = useState<Escala | null>(null);
 
   // Modal de publicação
   const [escalaToPublish, setEscalaToPublish] = useState<Escala | null>(null);
+
+  // Modal de validação de geração
+  const [showValidationAlert, setShowValidationAlert] = useState(false);
+  const [validationData, setValidationData] = useState<{
+    igrejas_sem_horario: { id: number; nome: string }[];
+    total_igrejas: number;
+    mensagem: string;
+  } | null>(null);
 
   // Modal de edição de item
   const [isEditItemDialogOpen, setIsEditItemDialogOpen] = useState(false);
@@ -266,6 +275,16 @@ export default function EscalasPage() {
   // Carregar primeiro distrito para seleção inicial
   useEffect(() => {
     async function fetchDistritoInicial() {
+      // Se não for admin, usar distrito do usuário
+      const userDistritoId = getUserDistritoId(user);
+      
+      if (userDistritoId && !isAdmin(user)) {
+        setSelectedDistritoId(userDistritoId);
+        setGenerateForm(prev => ({ ...prev, distrito_id: userDistritoId }));
+        return;
+      }
+      
+      // Admin: carregar lista de distritos
       try {
         const data = await api.get<{ items: Distrito[]; total: number }>("/api/v1/distritos/pesquisar?search=&limit=50");
         setDistritos(data.items);
@@ -277,8 +296,11 @@ export default function EscalasPage() {
         console.error("Erro ao carregar distritos:", err);
       }
     }
-    fetchDistritoInicial();
-  }, []);
+    
+    if (user) {
+      fetchDistritoInicial();
+    }
+  }, [user]);
 
   // Carregar escalas
   const fetchEscalas = useCallback(async () => {
@@ -287,9 +309,12 @@ export default function EscalasPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<EscalaListResponse>(
-        `/api/v1/escalas?distrito_id=${selectedDistritoId}&skip=${page * itemsPerPage}&limit=${itemsPerPage}`
-      );
+      // Backend agora usa distrito do usuário automaticamente se não for admin
+      const params = isAdmin(user) 
+        ? `distrito_id=${selectedDistritoId}&skip=${page * itemsPerPage}&limit=${itemsPerPage}`
+        : `skip=${page * itemsPerPage}&limit=${itemsPerPage}`;
+      
+      const data = await api.get<EscalaListResponse>(`/api/v1/escalas?${params}`);
       setEscalas(data.items);
       setTotalEscalas(data.total);
     } catch (err) {
@@ -298,7 +323,7 @@ export default function EscalasPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDistritoId, page]);
+  }, [selectedDistritoId, page, user]);
 
   useEffect(() => {
     if (selectedDistritoId) {
@@ -319,15 +344,61 @@ export default function EscalasPage() {
     }
   }, []);
 
-  // Gerar escala
-  const handleGenerate = async () => {
+  // Validar distrito antes de gerar
+  const validateDistrito = async () => {
     if (!generateForm.distrito_id) {
       toast({
         title: "Erro",
         description: "Selecione um distrito",
         variant: "destructive",
       });
-      return;
+      return false;
+    }
+
+    try {
+      const validation = await api.get<{
+        valido: boolean;
+        mensagem: string;
+        igrejas_sem_horario: { id: number; nome: string }[];
+        total_igrejas: number;
+      }>(`/api/v1/escalas/validar-distrito/${generateForm.distrito_id}`);
+
+      if (!validation.valido && validation.igrejas_sem_horario.length > 0) {
+        setValidationData({
+          igrejas_sem_horario: validation.igrejas_sem_horario,
+          total_igrejas: validation.total_igrejas,
+          mensagem: validation.mensagem,
+        });
+        setShowValidationAlert(true);
+        return false;
+      }
+
+      if (validation.total_igrejas === 0) {
+        toast({
+          title: "Erro",
+          description: "Nenhuma igreja ativa encontrada no distrito",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      return true;
+    } catch (err: any) {
+      toast({
+        title: "Erro na validação",
+        description: err.message || "Erro ao validar distrito",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  // Gerar escala
+  const handleGenerate = async (skipValidation = false) => {
+    // Se não está pulando validação, validar primeiro
+    if (!skipValidation) {
+      const isValid = await validateDistrito();
+      if (!isValid) return;
     }
 
     setGenerating(true);
@@ -338,6 +409,7 @@ export default function EscalasPage() {
         description: "Escala gerada com sucesso!",
       });
       setIsGenerateDialogOpen(false);
+      setShowValidationAlert(false);
       fetchEscalas();
     } catch (err: any) {
       toast({
@@ -350,11 +422,18 @@ export default function EscalasPage() {
     }
   };
 
+  // Confirmar geração mesmo com igrejas sem horários
+  const handleConfirmGenerate = () => {
+    setShowValidationAlert(false);
+    handleGenerate(true); // Pula validação
+  };
+
   // Ver detalhes da escala
   const handleViewDetails = async (escala: Escala) => {
     setSelectedEscala(escala);
     setIsDetailsDialogOpen(true);
     setLoadingDetalhes(true);
+    setFiltroIgrejaId(null); // Resetar filtro
     try {
       const [itens, stats] = await Promise.all([
         api.get<ItemEscala[]>(`/api/v1/escalas/${escala.id}/itens`),
@@ -649,15 +728,28 @@ export default function EscalasPage() {
           <TabsContent value="gerenciar" className="space-y-4">
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4">
-              <DistritoCombobox
-                value={selectedDistritoId}
-                onValueChange={(val) => {
-                  setSelectedDistritoId(val);
-                  setPage(0);
-                }}
-                placeholder="Selecione o distrito"
-                className="w-full md:w-[300px]"
-              />
+              {/* Mostrar seletor de distrito apenas para admins */}
+              {isAdmin(user) && (
+                <DistritoCombobox
+                  value={selectedDistritoId}
+                  onValueChange={(val) => {
+                    setSelectedDistritoId(val);
+                    setPage(0);
+                  }}
+                  placeholder="Selecione o distrito"
+                  className="w-full md:w-[300px]"
+                />
+              )}
+              
+              {/* Para não-admins, mostrar distrito atual */}
+              {!isAdmin(user) && selectedDistritoId && (
+                <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/50">
+                  <Church className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Distrito {distritos.find(d => d.id === selectedDistritoId)?.nome || selectedDistritoId}
+                  </span>
+                </div>
+              )}
 
               <Button variant="outline" onClick={fetchEscalas}>
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -812,11 +904,20 @@ export default function EscalasPage() {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="distrito">Distrito</Label>
-              <DistritoCombobox
-                value={generateForm.distrito_id || null}
-                onValueChange={(val) => setGenerateForm(prev => ({ ...prev, distrito_id: val || 0 }))}
-                placeholder="Selecione o distrito"
-              />
+              {isAdmin(user) ? (
+                <DistritoCombobox
+                  value={generateForm.distrito_id || null}
+                  onValueChange={(val) => setGenerateForm(prev => ({ ...prev, distrito_id: val || 0 }))}
+                  placeholder="Selecione o distrito"
+                />
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/50">
+                  <Church className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">
+                    {distritos.find(d => d.id === selectedDistritoId)?.nome || `Distrito ${selectedDistritoId}`}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1028,6 +1129,34 @@ export default function EscalasPage() {
                 </div>
               )}
 
+              {/* Filtro por Igreja */}
+              <div className="flex items-center gap-4">
+                <Label htmlFor="filtro-igreja" className="text-sm font-medium whitespace-nowrap">
+                  Filtrar por Igreja:
+                </Label>
+                <Select
+                  value={filtroIgrejaId?.toString() || "todos"}
+                  onValueChange={(value) => setFiltroIgrejaId(value === "todos" ? null : parseInt(value))}
+                >
+                  <SelectTrigger id="filtro-igreja" className="w-[300px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as Igrejas</SelectItem>
+                    {Array.from(new Set(escalaItens.map(item => ({ id: item.igreja_id, nome: item.igreja_nome }))))
+                      .filter((igreja, index, self) => 
+                        igreja.id && self.findIndex(i => i.id === igreja.id) === index
+                      )
+                      .sort((a, b) => (a.nome || "").localeCompare(b.nome || ""))
+                      .map((igreja) => (
+                        <SelectItem key={igreja.id} value={igreja.id!.toString()}>
+                          {igreja.nome}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Tabela de itens */}
               <Card>
                 <Table>
@@ -1044,14 +1173,14 @@ export default function EscalasPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {escalaItens.length === 0 ? (
+                    {escalaItens.filter(item => !filtroIgrejaId || item.igreja_id === filtroIgrejaId).length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={selectedEscala?.status === "RASCUNHO" ? 6 : 5} className="text-center py-8 text-muted-foreground">
                           Nenhum item na escala
                         </TableCell>
                       </TableRow>
                     ) : (
-                      escalaItens.map((item) => (
+                      escalaItens.filter(item => !filtroIgrejaId || item.igreja_id === filtroIgrejaId).map((item) => (
                         <TableRow key={item.id}>
                           <TableCell>
                             {formatDate(item.data_culto)}
@@ -1168,6 +1297,45 @@ export default function EscalasPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handlePublish}>
               Publicar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Alert: Validação de igrejas sem horários */}
+      <AlertDialog open={showValidationAlert} onOpenChange={setShowValidationAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+              Atenção: Igrejas sem horários de culto
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>{validationData?.mensagem}</p>
+                {validationData && validationData.igrejas_sem_horario.length > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950 p-3 rounded-md">
+                    <p className="font-semibold text-sm mb-2">Igrejas afetadas:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      {validationData.igrejas_sem_horario.map((igreja) => (
+                        <li key={igreja.id}>{igreja.nome}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-sm font-medium">
+                  Deseja continuar mesmo assim? O sistema usará horários padrão para essas igrejas (Sábado 09:00, Domingo 18:00, Quarta 19:30).
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmGenerate}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Sim, gerar mesmo assim
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

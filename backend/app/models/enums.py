@@ -13,6 +13,7 @@ class StatusGeral(str, enum.Enum):
 class TipoUsuario(str, enum.Enum):
     """Tipos de usuário do sistema"""
     ADMIN = "ADMIN"
+    ASSOCIACAO = "ASSOCIACAO"
     PASTOR_DISTRITAL = "PASTOR_DISTRITAL"
     LIDER_DISTRITAL = "LIDER_DISTRITAL"
     PREGADOR = "PREGADOR"

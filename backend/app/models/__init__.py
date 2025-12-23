@@ -18,6 +18,7 @@ from app.models.historico_score import HistoricoScore
 from app.models.penalidade import Penalidade
 from app.models.historico_troca_escala import HistoricoTrocaEscala
 from app.models.historico_substituicao_emergencial import HistoricoSubstituicaoEmergencial
+from app.models.solicitacao_substituicao_emergencial import SolicitacaoSubstituicaoEmergencial
 from app.models.notificacao import Notificacao
 from app.models.log_notificacao import LogNotificacao
 
@@ -41,6 +42,7 @@ __all__ = [
     "Penalidade",
     "HistoricoTrocaEscala",
     "HistoricoSubstituicaoEmergencial",
+    "SolicitacaoSubstituicaoEmergencial",
     "Notificacao",
     "LogNotificacao",
 ]

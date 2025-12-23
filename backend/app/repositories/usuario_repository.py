@@ -3,7 +3,7 @@ Repository de Usuário
 """
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 
 from app.repositories.base import BaseRepository
 from app.models.usuario import Usuario, TipoUsuario, StatusGeral, StatusAprovacao
@@ -14,6 +14,28 @@ class UsuarioRepository(BaseRepository[Usuario]):
 
     def __init__(self, db: Session):
         super().__init__(Usuario, db)
+
+    def get_all(
+        self, 
+        skip: int = 0, 
+        limit: int = 100,
+        order_by: str = "id"
+    ) -> List[Usuario]:
+        """Lista todos os usuários (exceto Master)"""
+        query = self.db.query(Usuario).filter(
+            Usuario.email != "master@iasd.com"
+        )
+        
+        if hasattr(Usuario, order_by):
+            query = query.order_by(getattr(Usuario, order_by))
+        
+        return query.offset(skip).limit(limit).all()
+
+    def count(self) -> int:
+        """Conta total de usuários (exceto Master)"""
+        return self.db.query(func.count(Usuario.id)).filter(
+            Usuario.email != "master@iasd.com"
+        ).scalar()
 
     def get_by_email(self, email: str) -> Optional[Usuario]:
         """Busca usuário por email"""
@@ -34,7 +56,8 @@ class UsuarioRepository(BaseRepository[Usuario]):
         query = self.db.query(Usuario).filter(
             Usuario.tipo == tipo,
             Usuario.status == StatusGeral.ATIVO,
-            Usuario.status_aprovacao == StatusAprovacao.APROVADO
+            Usuario.status_aprovacao == StatusAprovacao.APROVADO,
+            Usuario.email != "master@iasd.com"
         )
         
         if distrito_id:
@@ -43,25 +66,39 @@ class UsuarioRepository(BaseRepository[Usuario]):
         return query.order_by(Usuario.score_atual.desc()).offset(skip).limit(limit).all()
 
     def get_pregadores(self, distrito_id: int) -> List[Usuario]:
-        """Lista pregadores ativos de um distrito"""
-        return self.get_by_tipo(TipoUsuario.PREGADOR, distrito_id)
+        """Lista usuários que podem pregar em um distrito"""
+        return self.db.query(Usuario).filter(
+            Usuario.pode_pregar == True,
+            Usuario.distrito_id == distrito_id,
+            Usuario.status == StatusGeral.ATIVO,
+            Usuario.status_aprovacao == StatusAprovacao.APROVADO,
+            Usuario.email != "master@iasd.com"
+        ).order_by(Usuario.score_atual.desc()).all()
 
     def get_cantores(self, distrito_id: int) -> List[Usuario]:
-        """Lista cantores ativos de um distrito"""
-        return self.get_by_tipo(TipoUsuario.CANTOR, distrito_id)
+        """Lista usuários que podem cantar em um distrito"""
+        return self.db.query(Usuario).filter(
+            Usuario.pode_cantar == True,
+            Usuario.distrito_id == distrito_id,
+            Usuario.status == StatusGeral.ATIVO,
+            Usuario.status_aprovacao == StatusAprovacao.APROVADO,
+            Usuario.email != "master@iasd.com"
+        ).order_by(Usuario.score_atual.desc()).all()
 
     def get_by_distrito(self, distrito_id: int) -> List[Usuario]:
         """Lista todos os usuários de um distrito"""
         return self.db.query(Usuario).filter(
             Usuario.distrito_id == distrito_id,
-            Usuario.status == StatusGeral.ATIVO
+            Usuario.status == StatusGeral.ATIVO,
+            Usuario.email != "master@iasd.com"
         ).all()
 
     def get_by_igreja(self, igreja_id: int) -> List[Usuario]:
         """Lista membros de uma igreja"""
         return self.db.query(Usuario).filter(
             Usuario.igreja_id == igreja_id,
-            Usuario.status == StatusGeral.ATIVO
+            Usuario.status == StatusGeral.ATIVO,
+            Usuario.email != "master@iasd.com"
         ).all()
 
     def get_pendentes_aprovacao(self, distrito_id: Optional[int] = None) -> List[Usuario]:
@@ -88,7 +125,8 @@ class UsuarioRepository(BaseRepository[Usuario]):
             or_(
                 Usuario.nome_completo.ilike(f"%{search_term}%"),
                 Usuario.email.ilike(f"%{search_term}%")
-            )
+            ),
+            Usuario.email != "master@iasd.com"
         )
         
         if tipo:

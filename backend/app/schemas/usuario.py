@@ -22,6 +22,8 @@ class UsuarioBase(BaseModel):
     tipo: TipoUsuario
     distrito_id: Optional[int] = None
     igreja_id: Optional[int] = None
+    pode_pregar: bool = False
+    pode_cantar: bool = False
 
     @validator('cpf')
     def validate_cpf(cls, v):
@@ -82,6 +84,8 @@ class UsuarioUpdate(BaseModel):
     foto_url: Optional[str] = None
     distrito_id: Optional[int] = None
     igreja_id: Optional[int] = None
+    pode_pregar: Optional[bool] = None
+    pode_cantar: Optional[bool] = None
     status: Optional[StatusGeral] = None
 
 
@@ -103,6 +107,8 @@ class UsuarioResponse(BaseModel):
     contador_total_participacoes: Optional[int]
     contador_faltas: Optional[int]
     contador_desmarcacoes: Optional[int]
+    pode_pregar: bool
+    pode_cantar: bool
     status: StatusGeral
     status_aprovacao: StatusAprovacao
     created_at: datetime
@@ -154,6 +160,27 @@ class UsuarioChangePassword(BaseModel):
 class UsuarioListResponse(BaseModel):
     """Schema para listagem de usuários"""
     items: list[UsuarioResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+class UsuarioLimitedResponse(BaseModel):
+    """Schema com dados limitados (apenas nome e foto) para pregadores/cantores"""
+    id: int
+    nome_completo: str
+    foto_url: Optional[str]
+    tipo: TipoUsuario
+    score_atual: Optional[Decimal]  # Útil para ver disponibilidade
+
+    class Config:
+        from_attributes = True
+
+
+class UsuarioLimitedListResponse(BaseModel):
+    """Schema para listagem limitada de usuários"""
+    items: list[UsuarioLimitedResponse]
     total: int
     page: int
     size: int

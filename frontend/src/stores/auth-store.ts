@@ -93,15 +93,44 @@ export const useAuthStore = create<AuthState>()(
 
 // Helpers
 export const isAdmin = (user: User | null) => user?.tipo === "ADMIN";
+export const isAssociacao = (user: User | null) => user?.tipo === "ASSOCIACAO";
 export const isPastor = (user: User | null) =>
   user?.tipo === "PASTOR_DISTRITAL" || user?.tipo === "LIDER_DISTRITAL";
 export const isPregador = (user: User | null) => user?.tipo === "PREGADOR";
 export const isCantor = (user: User | null) => user?.tipo === "CANTOR";
 export const isMembro = (user: User | null) => user?.tipo === "MEMBRO";
+export const isPregadorCantor = (user: User | null) =>
+  isPregador(user) || isCantor(user);
+
+// Helper para obter distrito_id do usuário
+export const getUserDistritoId = (user: User | null): number | null => {
+  if (!user) return null;
+  
+  // Admin e Associacao não têm distrito específico
+  if (isAdmin(user) || isAssociacao(user)) return null;
+  
+  return user.distrito_id;
+};
+
+// Helper para verificar se usuário pode ver menu de Igrejas
+export const canAccessIgrejas = (user: User | null): boolean => {
+  return isAdmin(user) || isAssociacao(user) || isPastor(user);
+};
+
+// Helper para verificar se usuário pode ver Dashboard
+export const canAccessDashboard = (user: User | null): boolean => {
+  return !isMembro(user);
+};
+
+// Helper para verificar se deve mostrar dados limitados
+export const shouldShowLimitedData = (user: User | null): boolean => {
+  return isPregadorCantor(user) || isMembro(user);
+};
 
 export const getUserRole = (tipo: string): string => {
   const roles: Record<string, string> = {
     ADMIN: "Administrador",
+    ASSOCIACAO: "Associação",
     PASTOR_DISTRITAL: "Pastor Distrital",
     LIDER_DISTRITAL: "Líder Distrital",
     PREGADOR: "Pregador",

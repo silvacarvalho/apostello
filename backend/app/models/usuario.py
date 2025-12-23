@@ -37,6 +37,10 @@ class Usuario(Base):
     contador_faltas = Column(Integer, default=0)
     contador_desmarcacoes = Column(Integer, default=0)
     
+    # Habilidades de escalação (para todos os tipos de usuário)
+    pode_pregar = Column(Boolean, default=False, nullable=False)
+    pode_cantar = Column(Boolean, default=False, nullable=False)
+    
     # Status
     status = Column(SQLEnum(StatusGeral, name='status_geral', create_type=False), default=StatusGeral.ATIVO)
     status_aprovacao = Column(SQLEnum(StatusAprovacao, name='status_aprovacao', create_type=False), default=StatusAprovacao.APROVADO)

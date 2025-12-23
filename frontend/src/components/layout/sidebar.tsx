@@ -42,6 +42,7 @@ const navItems: NavItem[] = [
     title: "Escalas",
     href: "/escalas",
     icon: <Calendar className="h-5 w-5" />,
+    roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL", "MEMBRO"],
   },
   {
     title: "Usuários",
@@ -65,7 +66,7 @@ const navItems: NavItem[] = [
     title: "Temas",
     href: "/temas",
     icon: <BookOpen className="h-5 w-5" />,
-    roles: ["PREGADOR"],
+    roles: ["ADMIN", "PASTOR_DISTRITAL"],
   },
   {
     title: "Avaliações",

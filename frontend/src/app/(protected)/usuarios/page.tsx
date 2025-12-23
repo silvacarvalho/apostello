@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuthStore, getUserRole, isAdmin, isPastor } from "@/stores/auth-store";
+import { useAuthStore, getUserRole, isAdmin, isPastor, shouldShowLimitedData } from "@/stores/auth-store";
 import { getInitials, getStatusColor, getScoreColor, formatCPF, formatPhone } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -90,6 +90,8 @@ interface FormData {
   tipo: string;
   distrito_id: string;
   senha: string;
+  pode_pregar?: boolean;
+  pode_cantar?: boolean;
 }
 
 const initialFormData: FormData = {
@@ -100,6 +102,8 @@ const initialFormData: FormData = {
   tipo: "",
   distrito_id: "",
   senha: "",
+  pode_pregar: false,
+  pode_cantar: false,
 };
 
 export default function UsuariosPage() {
@@ -127,6 +131,7 @@ export default function UsuariosPage() {
   });
 
   const canManage = isAdmin(user) || isPastor(user);
+  const showLimitedData = shouldShowLimitedData(user);
 
   // Carregar dados
   const fetchData = useCallback(async () => {
@@ -436,7 +441,17 @@ export default function UsuariosPage() {
                   <Label htmlFor="tipo">Tipo de Usuário *</Label>
                   <Select
                     value={formData.tipo}
-                    onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                    onValueChange={(value) => {
+                      // Definir valores padrão para pode_pregar e pode_cantar baseado no tipo
+                      const podePregar = value === 'PREGADOR' || value === 'PASTOR_DISTRITAL';
+                      const podeCantar = value === 'CANTOR';
+                      setFormData({ 
+                        ...formData, 
+                        tipo: value,
+                        pode_pregar: podePregar,
+                        pode_cantar: podeCantar
+                      });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
@@ -445,6 +460,7 @@ export default function UsuariosPage() {
                       {isAdmin(user) && (
                         <>
                           <SelectItem value="ADMIN">Administrador</SelectItem>
+                          <SelectItem value="ASSOCIACAO">Associação</SelectItem>
                           <SelectItem value="PASTOR_DISTRITAL">Pastor Distrital</SelectItem>
                           <SelectItem value="LIDER_DISTRITAL">Líder Distrital</SelectItem>
                         </>
@@ -455,7 +471,7 @@ export default function UsuariosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {formData.tipo && formData.tipo !== "ADMIN" && (
+                {formData.tipo && formData.tipo !== "ADMIN" && formData.tipo !== "ASSOCIACAO" && (
                   <div className="grid gap-2">
                     <Label htmlFor="distrito">Distrito *</Label>
                     <Select
@@ -474,8 +490,38 @@ export default function UsuariosPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                )}                
+                {/* Habilidades de escalação */}
+                {formData.tipo && formData.tipo !== "ADMIN" && formData.tipo !== "ASSOCIACAO" && formData.tipo !== "MEMBRO" && (
+                  <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
+                    <Label className="text-sm font-semibold">Habilidades de Escalação</Label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="pode_pregar"
+                        checked={formData.pode_pregar || false}
+                        onChange={(e) => setFormData({ ...formData, pode_pregar: e.target.checked })}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor="pode_pregar" className="text-sm font-normal cursor-pointer">
+                        Pode pregar
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="pode_cantar"
+                        checked={formData.pode_cantar || false}
+                        onChange={(e) => setFormData({ ...formData, pode_cantar: e.target.checked })}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor="pode_cantar" className="text-sm font-normal cursor-pointer">
+                        Pode cantar
+                      </Label>
+                    </div>
+                  </div>
                 )}
-                <div className="grid gap-2">
+                                <div className="grid gap-2">
                   <Label htmlFor="senha">Senha *</Label>
                   <Input
                     id="senha"
@@ -584,11 +630,11 @@ export default function UsuariosPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Usuário</TableHead>
-                    <TableHead>Contato</TableHead>
+                    {!showLimitedData && <TableHead>Contato</TableHead>}
                     <TableHead>Tipo</TableHead>
                     <TableHead>Score</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    {!showLimitedData && <TableHead>Status</TableHead>}
+                    {!showLimitedData && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -610,26 +656,30 @@ export default function UsuariosPage() {
                             </Avatar>
                             <div>
                               <p className="font-medium">{usuario.nome_completo}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {distritos.find(d => d.id === usuario.distrito_id)?.nome || "Sem distrito"}
-                              </p>
+                              {!showLimitedData && (
+                                <p className="text-sm text-muted-foreground">
+                                  {distritos.find(d => d.id === usuario.distrito_id)?.nome || "Sem distrito"}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {usuario.email}
-                            </div>
-                            {usuario.telefone && (
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Phone className="h-3 w-3" />
-                                {formatPhone(usuario.telefone)}
+                        {!showLimitedData && (
+                          <TableCell>
+                            <div className="text-sm">
+                              <div className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {usuario.email}
                               </div>
-                            )}
-                          </div>
-                        </TableCell>
+                              {usuario.telefone && (
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  {formatPhone(usuario.telefone)}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Badge variant="outline">
                             {getUserRole(usuario.tipo)}
@@ -640,50 +690,54 @@ export default function UsuariosPage() {
                             {Number(usuario.score_atual || 0).toFixed(1)}
                           </span>
                         </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(usuario.status)}>
-                            {usuario.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" disabled={loadingAction}>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Ver Perfil
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {usuario.status === "ATIVO" ? (
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleToggleStatus(usuario.id, false)}
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Desativar
-                                </DropdownMenuItem>
-                              ) : (
-                                <DropdownMenuItem
-                                  className="text-green-600"
-                                  onClick={() => handleToggleStatus(usuario.id, true)}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Ativar
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                        {!showLimitedData && (
+                          <>
+                            <TableCell>
+                              <Badge className={getStatusColor(usuario.status)}>
+                                {usuario.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" disabled={loadingAction}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Ver Perfil
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {usuario.status === "ATIVO" ? (
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => handleToggleStatus(usuario.id, false)}
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Desativar
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      className="text-green-600"
+                                      onClick={() => handleToggleStatus(usuario.id, true)}
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Ativar
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </>
+                        )}
                       </TableRow>
                     ))}
                   {filteredUsers.filter((u) => {
@@ -692,7 +746,7 @@ export default function UsuariosPage() {
                     return true;
                   }).length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={showLimitedData ? 3 : 6} className="text-center py-8 text-muted-foreground">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>

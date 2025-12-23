@@ -91,3 +91,125 @@ def require_membro(
     if current_user.tipo != TipoUsuario.MEMBRO:
         raise ForbiddenException("Acesso restrito a membros")
     return current_user
+
+
+# ============================================================================
+# HELPERS DE AUTORIZAÇÃO BASEADA EM DISTRITO/IGREJA
+# ============================================================================
+
+def get_user_distrito_id(user: Usuario) -> Optional[int]:
+    """
+    Retorna o distrito_id do usuário baseado em seu tipo.
+    
+    - ADMIN: None (acesso a todos os distritos)
+    - PASTOR_DISTRITAL/LIDER_DISTRITAL: distrito_id direto
+    - PREGADOR/CANTOR: distrito_id direto
+    - MEMBRO: distrito_id através da igreja
+    """
+    if user.tipo == TipoUsuario.ADMIN:
+        return None
+    
+    if user.tipo in [
+        TipoUsuario.PASTOR_DISTRITAL, 
+        TipoUsuario.LIDER_DISTRITAL,
+        TipoUsuario.PREGADOR,
+        TipoUsuario.CANTOR
+    ]:
+        return user.distrito_id
+    
+    if user.tipo == TipoUsuario.MEMBRO:
+        if user.igreja and user.igreja.distrito_id:
+            return user.igreja.distrito_id
+        return None
+    
+    return None
+
+
+def verify_distrito_access(user: Usuario, distrito_id: int) -> None:
+    """
+    Verifica se o usuário tem acesso ao distrito especificado.
+    Lança ForbiddenException se não tiver acesso.
+    
+    - ADMIN: acesso a todos
+    - PASTOR/LIDER: apenas seu distrito
+    - PREGADOR/CANTOR: apenas seu distrito
+    - MEMBRO: apenas distrito da sua igreja
+    """
+    if user.tipo == TipoUsuario.ADMIN:
+        return
+    
+    user_distrito = get_user_distrito_id(user)
+    
+    if user_distrito is None:
+        raise ForbiddenException("Usuário sem distrito associado")
+    
+    if user_distrito != distrito_id:
+        raise ForbiddenException("Acesso negado a este distrito")
+
+
+def verify_igreja_access(user: Usuario, igreja_id: int, db: Session) -> None:
+    """
+    Verifica se o usuário tem acesso à igreja especificada.
+    Lança ForbiddenException se não tiver acesso.
+    
+    - ADMIN: acesso a todas
+    - PASTOR/LIDER: apenas igrejas do seu distrito
+    - PREGADOR/CANTOR/MEMBRO: validação específica se necessário
+    """
+    if user.tipo == TipoUsuario.ADMIN:
+        return
+    
+    from app.repositories.igreja_repository import IgrejaRepository
+    igreja_repo = IgrejaRepository(db)
+    igreja = igreja_repo.get_by_id(igreja_id)
+    
+    if not igreja:
+        raise ForbiddenException("Igreja não encontrada")
+    
+    verify_distrito_access(user, igreja.distrito_id)
+
+
+def can_edit_user(current_user: Usuario, target_user: Usuario) -> bool:
+    """
+    Verifica se current_user pode editar target_user.
+    
+    Regras:
+    - ADMIN: pode editar qualquer um
+    - PASTOR/LIDER: pode editar usuários do seu distrito
+    - PREGADOR/CANTOR/MEMBRO: pode editar apenas a si mesmo
+    """
+    # Admin pode editar qualquer um
+    if current_user.tipo == TipoUsuario.ADMIN:
+        return True
+    
+    # Pode editar a si mesmo
+    if current_user.id == target_user.id:
+        return True
+    
+    # Pastor/Líder pode editar usuários do seu distrito
+    if current_user.tipo in [TipoUsuario.PASTOR_DISTRITAL, TipoUsuario.LIDER_DISTRITAL]:
+        current_distrito = get_user_distrito_id(current_user)
+        target_distrito = get_user_distrito_id(target_user)
+        
+        if current_distrito and target_distrito and current_distrito == target_distrito:
+            return True
+    
+    return False
+
+
+def get_accessible_distrito_ids(user: Usuario, db: Session) -> Optional[list[int]]:
+    """
+    Retorna lista de IDs de distritos que o usuário pode acessar.
+    
+    - ADMIN: None (todos os distritos)
+    - Outros: lista com apenas seu distrito
+    """
+    if user.tipo == TipoUsuario.ADMIN:
+        return None
+    
+    distrito_id = get_user_distrito_id(user)
+    
+    if distrito_id:
+        return [distrito_id]
+    
+    return []

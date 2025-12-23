@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuthStore, isAdmin } from "@/stores/auth-store";
+import { useAuthStore, isAdmin, isAssociacao } from "@/stores/auth-store";
 import { getInitials } from "@/lib/utils";
 
 // Mock data
@@ -106,7 +106,7 @@ export default function DistritosPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedDistrito, setSelectedDistrito] = useState<any>(null);
 
-  const canManage = isAdmin(user);
+  const canManage = isAdmin(user) || isAssociacao(user);
 
   const filteredDistritos = mockDistritos.filter((distrito) =>
     distrito.nome.toLowerCase().includes(searchQuery.toLowerCase())

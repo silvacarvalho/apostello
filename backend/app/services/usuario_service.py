@@ -35,6 +35,16 @@ class UsuarioService:
         usuario_data = data.model_dump(exclude={"senha"})
         usuario_data["senha_hash"] = get_password_hash(data.senha)
         
+        # Definir valores padrão para pode_pregar e pode_cantar baseado no tipo
+        # se não foram explicitamente fornecidos
+        if "pode_pregar" not in usuario_data or usuario_data["pode_pregar"] is None:
+            # PREGADOR e PASTOR_DISTRITAL podem pregar por padrão
+            usuario_data["pode_pregar"] = data.tipo in [TipoUsuario.PREGADOR, TipoUsuario.PASTOR_DISTRITAL]
+        
+        if "pode_cantar" not in usuario_data or usuario_data["pode_cantar"] is None:
+            # Apenas CANTOR pode cantar por padrão
+            usuario_data["pode_cantar"] = data.tipo == TipoUsuario.CANTOR
+        
         # Se auto cadastro, definir status pendente
         if auto_cadastro:
             usuario_data["status_aprovacao"] = StatusAprovacao.PENDENTE_APROVACAO

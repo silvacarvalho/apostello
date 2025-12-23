@@ -22,6 +22,7 @@ from app.models.escala import Escala, StatusEscala
 from app.models.item_escala import ItemEscala, StatusConfirmacao
 from app.models.horario_culto import HorarioCulto, DiaSemana
 from app.models.usuario import Usuario, TipoUsuario
+from app.models.igreja import Igreja
 from app.models.indisponibilidade import Indisponibilidade
 from app.models.bloqueio_temporario import BloqueioTemporario
 from app.schemas.escala import EscalaCreate, EscalaGenerateRequest
@@ -173,6 +174,14 @@ class EscalaService:
                 [p.id for p in pregadores] + [c.id for c in cantores]
             )
         
+        # Horários padrão para igrejas sem horários cadastrados
+        from datetime import time
+        horarios_padrao = {
+            DiaSemana.SABADO: time(9, 0),    # Sábado 09:00
+            DiaSemana.DOMINGO: time(19, 30),  # Domingo 19:30
+            DiaSemana.QUARTA: time(19, 30)   # Quarta 19:30
+        }
+        
         # Coletar todos os cultos do mês
         cultos = []
         for igreja in igrejas:
@@ -181,8 +190,11 @@ class EscalaService:
                 HorarioCulto.ativo == True
             ).all()
             
-            if not horarios:
-                continue
+            # Se não houver horários, usa horários padrão
+            usar_horarios_padrao = len(horarios) == 0
+            
+            if usar_horarios_padrao:
+                logger.warning(f"Igreja {igreja.nome} (#{igreja.id}) sem horários cadastrados - usando horários padrão")
             
             for dia in range(1, ultimo_dia + 1):
                 data_culto = date(request.ano, request.mes, dia)
@@ -199,29 +211,53 @@ class EscalaService:
                 
                 dia_semana = dia_semana_map[dia_semana_num]
                 
-                horarios_dia = [h for h in horarios if h.dia_semana == dia_semana]
-                
-                for horario in horarios_dia:
-                    # Buscar tema aplicável (se houver) - ignora se não tiver temas
-                    tema = None
-                    try:
-                        tema = self.tema_repo.get_tema_para_data(data_culto)
-                    except Exception:
-                        pass  # Ignora erros ao buscar temas
+                # Se tem horários cadastrados, usa eles; senão usa padrão
+                if usar_horarios_padrao:
+                    # Criar um culto com horário padrão
+                    horario_culto = horarios_padrao.get(dia_semana)
+                    if horario_culto:
+                        # Buscar tema aplicável (se houver)
+                        tema = None
+                        try:
+                            tema = self.tema_repo.get_tema_para_data(data_culto)
+                        except Exception:
+                            pass
+                        
+                        cultos.append({
+                            "igreja": igreja,
+                            "data_culto": data_culto,
+                            "horario": horario_culto,
+                            "dia_semana": dia_semana,
+                            "tema_id": tema.id if tema else None
+                        })
+                else:
+                    # Usa horários cadastrados
+                    horarios_dia = [h for h in horarios if h.dia_semana == dia_semana]
                     
-                    cultos.append({
-                        "igreja": igreja,
-                        "data_culto": data_culto,
-                        "horario": horario.horario,
-                        "dia_semana": dia_semana,
-                        "tema_id": tema.id if tema else None
-                    })
+                    for horario in horarios_dia:
+                        # Buscar tema aplicável (se houver) - ignora se não tiver temas
+                        tema = None
+                        try:
+                            tema = self.tema_repo.get_tema_para_data(data_culto)
+                        except Exception:
+                            pass  # Ignora erros ao buscar temas
+                        
+                        cultos.append({
+                            "igreja": igreja,
+                            "data_culto": data_culto,
+                            "horario": horario.horario,
+                            "dia_semana": dia_semana,
+                            "tema_id": tema.id if tema else None
+                        })
         
         # Ordenar cultos por prioridade: Sábado (1), Domingo (2), Quarta (3)
         prioridade = {DiaSemana.SABADO: 1, DiaSemana.DOMINGO: 2, DiaSemana.QUARTA: 3}
         cultos.sort(key=lambda x: (prioridade.get(x["dia_semana"], 3), x["data_culto"], str(x["horario"])))
         
         logger.info(f"Total de {len(cultos)} cultos a serem escalados")
+        
+        # Lista para rastrear itens criados (para validação de conflitos)
+        itens_criados = []
         
         # Escalar cada culto
         for culto in cultos:
@@ -265,35 +301,50 @@ class EscalaService:
             # Selecionar cantor
             cantor = None
             if cantores:
-                if dia_semana == DiaSemana.SABADO and request.priorizar_sabado:
-                    cantor = self._selecionar_pessoa(
-                        cantores_alto or cantores_medio or cantores,
-                        participacoes_cantor,
-                        ultima_data_cantor,
-                        data_culto,
-                        distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
-                        distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
-                        request.usar_score,
-                        indisponibilidades,
-                        bloqueios,
-                        preferencias,
-                        igreja.id if distrito.config_usa_preferencia else None
+                # Filtrar cantores que já estão escalados como pregador em OUTRA igreja no mesmo dia
+                cantores_disponiveis = [
+                    c for c in cantores 
+                    if not self._ja_escalado_como_pregador_em_outra_igreja(
+                        c.id, data_culto, igreja.id, itens_criados
                     )
+                ]
+                
+                # Classificar cantores disponíveis por score
+                cantores_disponiveis_alto = [c for c in cantores_disponiveis if float(c.score_atual or 70) >= self.SCORE_ALTO_MIN]
+                cantores_disponiveis_medio = [c for c in cantores_disponiveis if self.SCORE_INTERMEDIARIO_MIN <= float(c.score_atual or 70) < self.SCORE_ALTO_MIN]
+                
+                if cantores_disponiveis:
+                    if dia_semana == DiaSemana.SABADO and request.priorizar_sabado:
+                        cantor = self._selecionar_pessoa(
+                            cantores_disponiveis_alto or cantores_disponiveis_medio or cantores_disponiveis,
+                            participacoes_cantor,
+                            ultima_data_cantor,
+                            data_culto,
+                            distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
+                            distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
+                            request.usar_score,
+                            indisponibilidades,
+                            bloqueios,
+                            preferencias,
+                            igreja.id if distrito.config_usa_preferencia else None
+                        )
+                    else:
+                        pool = cantores_disponiveis_medio + cantores_disponiveis_alto if cantores_disponiveis_medio else cantores_disponiveis
+                        cantor = self._selecionar_pessoa(
+                            pool,
+                            participacoes_cantor,
+                            ultima_data_cantor,
+                            data_culto,
+                            distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
+                            distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
+                            request.usar_score,
+                            indisponibilidades,
+                            bloqueios,
+                            preferencias,
+                            igreja.id if distrito.config_usa_preferencia else None
+                        )
                 else:
-                    pool = cantores_medio + cantores_alto if cantores_medio else cantores
-                    cantor = self._selecionar_pessoa(
-                        pool,
-                        participacoes_cantor,
-                        ultima_data_cantor,
-                        data_culto,
-                        distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
-                        distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
-                        request.usar_score,
-                        indisponibilidades,
-                        bloqueios,
-                        preferencias,
-                        igreja.id if distrito.config_usa_preferencia else None
-                    )
+                    logger.warning(f"Nenhum cantor disponível para {igreja.nome} em {data_culto} - todos já escalados como pregador em outras igrejas")
             
             # Criar item da escala
             # Se não houver tema_id, usa tema_customizado padrão (obrigatório pela constraint)
@@ -312,6 +363,9 @@ class EscalaService:
             }
             
             self.item_repo.create(item_data)
+            
+            # Rastrear item criado para validações de conflito
+            itens_criados.append(item_data)
             
             # Atualizar contadores
             if pregador:
@@ -479,6 +533,24 @@ class EscalaService:
             random.shuffle(pool)
         
         return pool[0] if pool else None
+    
+    def _ja_escalado_como_pregador_em_outra_igreja(
+        self, 
+        usuario_id: int, 
+        data_culto: date, 
+        igreja_atual_id: int,
+        itens_ja_criados: list
+    ) -> bool:
+        """
+        Verifica se o usuário já foi escalado como pregador no mesmo dia em OUTRA igreja.
+        Apenas para itens já criados na geração atual.
+        """
+        for item in itens_ja_criados:
+            if (item["pregador_id"] == usuario_id and 
+                item["data_culto"] == data_culto and 
+                item["igreja_id"] != igreja_atual_id):
+                return True
+        return False
 
     def publish(self, escala_id: int, current_user: Usuario) -> Escala:
         """Publica escala e envia notificações se configurado"""
@@ -547,6 +619,54 @@ class EscalaService:
         item = self.item_repo.get_by_id(item_id)
         if not item:
             raise NotFoundException("Item de escala", item_id)
+        
+        # Validar se pregador/cantor já está escalado em outro culto no mesmo dia
+        if pregador_id and pregador_id > 0:
+            conflito = self.db.query(ItemEscala).filter(
+                ItemEscala.id != item_id,
+                ItemEscala.data_culto == item.data_culto,
+                ItemEscala.pregador_id == pregador_id
+            ).first()
+            
+            if conflito:
+                pregador = self.usuario_repo.get_by_id(pregador_id)
+                igreja_conflito = self.db.query(Igreja).filter(Igreja.id == conflito.igreja_id).first()
+                raise ConflictException(
+                    f"O pregador {pregador.nome_completo if pregador else ''} já está escalado em {igreja_conflito.nome if igreja_conflito else 'outra igreja'} "
+                    f"no dia {item.data_culto.strftime('%d/%m/%Y')} às {conflito.horario}"
+                )
+        
+        if cantor_id and cantor_id > 0:
+            conflito = self.db.query(ItemEscala).filter(
+                ItemEscala.id != item_id,
+                ItemEscala.data_culto == item.data_culto,
+                ItemEscala.cantor_id == cantor_id
+            ).first()
+            
+            if conflito:
+                cantor = self.usuario_repo.get_by_id(cantor_id)
+                igreja_conflito = self.db.query(Igreja).filter(Igreja.id == conflito.igreja_id).first()
+                raise ConflictException(
+                    f"O cantor {cantor.nome_completo if cantor else ''} já está escalado em {igreja_conflito.nome if igreja_conflito else 'outra igreja'} "
+                    f"no dia {item.data_culto.strftime('%d/%m/%Y')} às {conflito.horario}"
+                )
+            
+            # Validar se o cantor já está como pregador em OUTRA igreja no mesmo dia
+            conflito_pregador = self.db.query(ItemEscala).filter(
+                ItemEscala.id != item_id,
+                ItemEscala.data_culto == item.data_culto,
+                ItemEscala.pregador_id == cantor_id,
+                ItemEscala.igreja_id != item.igreja_id
+            ).first()
+            
+            if conflito_pregador:
+                cantor = self.usuario_repo.get_by_id(cantor_id)
+                igreja_conflito = self.db.query(Igreja).filter(Igreja.id == conflito_pregador.igreja_id).first()
+                raise ConflictException(
+                    f"{cantor.nome_completo if cantor else ''} já está escalado como PREGADOR em {igreja_conflito.nome if igreja_conflito else 'outra igreja'} "
+                    f"no dia {item.data_culto.strftime('%d/%m/%Y')} às {conflito_pregador.horario}. "
+                    f"Não é possível escalar como cantor em igrejas diferentes no mesmo dia."
+                )
         
         update_data = {}
         if pregador_id is not None:

@@ -4,14 +4,20 @@ Endpoints de Usuários
 from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
+from datetime import date
 
 from app.database import get_db
 from app.services.usuario_service import UsuarioService
 from app.schemas.usuario import (
-    UsuarioCreate, UsuarioUpdate, UsuarioResponse, UsuarioListResponse
+    UsuarioCreate, UsuarioUpdate, UsuarioResponse, UsuarioListResponse,
+    UsuarioLimitedResponse, UsuarioLimitedListResponse
 )
 from app.models.usuario import Usuario, TipoUsuario
-from app.api.deps import get_current_user, require_admin, require_pastor
+from app.api.deps import (
+    get_current_user, require_admin, require_pastor, 
+    get_user_distrito_id, can_edit_user, verify_distrito_access
+)
+from app.core.exceptions import ForbiddenException
 
 
 router = APIRouter()
@@ -42,7 +48,7 @@ def auto_cadastro(
     return service.create(data, auto_cadastro=True)
 
 
-@router.get("/", response_model=UsuarioListResponse)
+@router.get("/", response_model=UsuarioListResponse | UsuarioLimitedListResponse)
 def listar_usuarios(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -54,22 +60,58 @@ def listar_usuarios(
 ):
     """
     Lista usuários com filtros.
+    
+    - ADMIN: Vê todos os usuários com dados completos
+    - PASTOR/LIDER: Vê usuários do seu distrito com dados completos
+    - PREGADOR/CANTOR: Vê usuários do distrito com dados limitados (nome, foto, score)
+    - MEMBRO: Vê usuários do distrito com dados limitados
     """
     service = UsuarioService(db)
     
-    # Se não for admin, filtrar por distrito
-    if not current_user.is_admin and current_user.distrito_id:
-        distrito_id = current_user.distrito_id
+    # Determinar se deve retornar dados limitados
+    return_limited = current_user.tipo in [
+        TipoUsuario.PREGADOR, 
+        TipoUsuario.CANTOR, 
+        TipoUsuario.MEMBRO
+    ]
     
+    # Forçar filtro por distrito do usuário se não for admin
+    if current_user.tipo != TipoUsuario.ADMIN:
+        user_distrito_id = get_user_distrito_id(current_user)
+        if not user_distrito_id:
+            raise ForbiddenException("Usuário sem distrito associado")
+        distrito_id = user_distrito_id
+    
+    # Buscar usuários
     usuarios, total = service.list_all(skip, limit, tipo, distrito_id, search)
     
-    return {
-        "items": usuarios,
-        "total": total,
-        "page": skip // limit + 1,
-        "size": limit,
-        "pages": (total + limit - 1) // limit
-    }
+    # Retornar com dados limitados ou completos
+    if return_limited:
+        limited_items = [
+            UsuarioLimitedResponse(
+                id=u.id,
+                nome_completo=u.nome_completo,
+                foto_url=u.foto_url,
+                tipo=u.tipo,
+                score_atual=u.score_atual
+            )
+            for u in usuarios
+        ]
+        return UsuarioLimitedListResponse(
+            items=limited_items,
+            total=total,
+            page=skip // limit + 1,
+            size=limit,
+            pages=(total + limit - 1) // limit
+        )
+    
+    return UsuarioListResponse(
+        items=usuarios,
+        total=total,
+        page=skip // limit + 1,
+        size=limit,
+        pages=(total + limit - 1) // limit
+    )
 
 
 @router.get("/pregadores")
@@ -116,6 +158,101 @@ def listar_pendentes(
     return service.list_pendentes_aprovacao(distrito_id)
 
 
+@router.get("/disponiveis-para-troca")
+def listar_disponiveis_para_troca(
+    data_culto: date,
+    tipo: TipoUsuario = Query(..., description="PREGADOR ou CANTOR"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Lista pregadores ou cantores disponíveis para troca em uma data específica.
+    
+    Filtra automaticamente por:
+    - Usuários do mesmo distrito
+    - Indisponibilidades cadastradas
+    - Bloqueios temporários
+    - Status ativo
+    
+    Apenas PREGADOR ou CANTOR podem usar este endpoint.
+    """
+    from app.models.indisponibilidade import Indisponibilidade
+    from app.models.bloqueio_temporario import BloqueioTemporario
+    from app.models.enums import StatusGeral
+    from sqlalchemy import and_, or_
+    
+    # Apenas pregadores/cantores podem solicitar troca
+    if current_user.tipo not in [TipoUsuario.PREGADOR, TipoUsuario.CANTOR]:
+        raise ForbiddenException("Apenas pregadores e cantores podem solicitar trocas")
+    
+    # Validar tipo solicitado
+    if tipo not in [TipoUsuario.PREGADOR, TipoUsuario.CANTOR]:
+        raise ForbiddenException("Tipo deve ser PREGADOR ou CANTOR")
+    
+    user_distrito_id = get_user_distrito_id(current_user)
+    if not user_distrito_id:
+        raise ForbiddenException("Usuário sem distrito associado")
+    
+    # Buscar usuários do mesmo tipo e distrito
+    query = db.query(Usuario).filter(
+        Usuario.tipo == tipo,
+        Usuario.distrito_id == user_distrito_id,
+        Usuario.status == StatusGeral.ATIVO,
+        Usuario.id != current_user.id,  # Excluir o próprio usuário
+        Usuario.email != "master@iasd.com"
+    )
+    
+    # Excluir usuários com indisponibilidade na data
+    subquery_indisponibilidade = db.query(Indisponibilidade.usuario_id).filter(
+        and_(
+            Indisponibilidade.data_inicio <= data_culto,
+            Indisponibilidade.data_fim >= data_culto
+        )
+    )
+    query = query.filter(~Usuario.id.in_(subquery_indisponibilidade))
+    
+    # Excluir usuários com bloqueio temporário na data
+    subquery_bloqueio = db.query(BloqueioTemporario.usuario_id).filter(
+        and_(
+            BloqueioTemporario.data_inicio <= data_culto,
+            BloqueioTemporario.data_fim >= data_culto
+        )
+    )
+    query = query.filter(~Usuario.id.in_(subquery_bloqueio))
+    
+    # Excluir usuários já escalados na mesma data
+    from app.models.item_escala import ItemEscala
+    
+    if tipo == TipoUsuario.PREGADOR:
+        # Excluir pregadores já escalados como pregador na data
+        subquery_escalados = db.query(ItemEscala.pregador_id).filter(
+            ItemEscala.data_culto == data_culto,
+            ItemEscala.pregador_id.isnot(None)
+        )
+        query = query.filter(~Usuario.id.in_(subquery_escalados))
+    else:  # CANTOR
+        # Excluir cantores já escalados como cantor na data
+        subquery_escalados = db.query(ItemEscala.cantor_id).filter(
+            ItemEscala.data_culto == data_culto,
+            ItemEscala.cantor_id.isnot(None)
+        )
+        query = query.filter(~Usuario.id.in_(subquery_escalados))
+    
+    usuarios_disponiveis = query.all()
+    
+    # Retornar com dados limitados
+    return [
+        UsuarioLimitedResponse(
+            id=u.id,
+            nome_completo=u.nome_completo,
+            foto_url=u.foto_url,
+            tipo=u.tipo,
+            score_atual=u.score_atual
+        )
+        for u in usuarios_disponiveis
+    ]
+
+
 @router.get("/{usuario_id}", response_model=UsuarioResponse)
 def obter_usuario(
     usuario_id: int,
@@ -138,8 +275,20 @@ def atualizar_usuario(
 ):
     """
     Atualiza usuário.
+    
+    - ADMIN: pode atualizar qualquer usuário
+    - PASTOR/LIDER: pode atualizar usuários do seu distrito
+    - PREGADOR/CANTOR/MEMBRO: pode atualizar apenas a si mesmo
     """
     service = UsuarioService(db)
+    
+    # Buscar usuário alvo
+    target_user = service.get_by_id(usuario_id)
+    
+    # Verificar permissão de edição
+    if not can_edit_user(current_user, target_user):
+        raise ForbiddenException("Sem permissão para editar este usuário")
+    
     return service.update(usuario_id, data, current_user)
 
 
