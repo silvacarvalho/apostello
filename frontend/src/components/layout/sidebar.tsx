@@ -37,12 +37,19 @@ const navItems: NavItem[] = [
     title: "Dashboard",
     href: "/dashboard",
     icon: <LayoutDashboard className="h-5 w-5" />,
+    roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL", "PREGADOR", "CANTOR"],
   },
   {
     title: "Escalas",
     href: "/escalas",
     icon: <Calendar className="h-5 w-5" />,
-    roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL", "MEMBRO"],
+    roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL"],
+  },
+  {
+    title: "Escalas",
+    href: "/escalas/minha-igreja",
+    icon: <Calendar className="h-5 w-5" />,
+    roles: ["MEMBRO"],
   },
   {
     title: "Usuários",

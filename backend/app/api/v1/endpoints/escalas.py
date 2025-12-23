@@ -327,19 +327,24 @@ def gerar_escala(
     return service.generate(data, current_user)
 
 
-@router.get("/", response_model=EscalaListResponse)
+@router.get("/")
 def listar_escalas(
     distrito_id: Optional[int] = Query(None),
+    igreja_id: Optional[int] = Query(None),
+    mes: Optional[int] = Query(None),
+    ano: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    Lista escalas de um distrito.
+    Lista escalas de um distrito com filtros opcionais.
     
     - ADMIN: pode especificar distrito_id ou listar todos
     - PASTOR/LIDER/PREGADOR/CANTOR/MEMBRO: vê apenas escalas do seu distrito (distrito_id é ignorado)
+    - Filtros opcionais: igreja_id, mes, ano
+    - Se igreja_id for especificado, retorna a escala do mês/ano com apenas os itens dessa igreja
     """
     # Se não for admin, usa o distrito do usuário
     if current_user.tipo != TipoUsuario.ADMIN:
@@ -355,9 +360,187 @@ def listar_escalas(
     # Verificar acesso ao distrito
     verify_distrito_access(current_user, distrito_id)
     
-    service = EscalaService(db)
-    escalas, total = service.list_by_distrito(distrito_id, skip, limit)
-    return {"items": escalas, "total": total}
+    # Se igreja_id for especificado, verificar se pertence ao distrito
+    if igreja_id:
+        from app.models.igreja import Igreja
+        igreja = db.query(Igreja).filter(Igreja.id == igreja_id).first()
+        if not igreja or igreja.distrito_id != distrito_id:
+            raise ForbiddenException("Igreja não pertence ao distrito do usuário")
+    
+    # Construir query base
+    query = db.query(Escala).filter(Escala.distrito_id == distrito_id)
+    
+    # Aplicar filtros opcionais
+    if mes:
+        query = query.filter(Escala.mes == mes)
+    if ano:
+        query = query.filter(Escala.ano == ano)
+    
+    # Buscar escalas
+    escalas = query.order_by(Escala.ano.desc(), Escala.mes.desc()).offset(skip).limit(limit).all()
+    
+    # Se igreja_id foi especificado, filtrar apenas os itens dessa igreja
+    if igreja_id:
+        from sqlalchemy.orm import joinedload
+        from datetime import date as date_type
+        
+        # Se mes e ano foram especificados, buscar itens diretamente pela data_culto
+        if mes and ano:
+            # Calcular primeiro e último dia do mês
+            import calendar
+            ultimo_dia = calendar.monthrange(ano, mes)[1]
+            data_inicio = date_type(ano, mes, 1)
+            data_fim = date_type(ano, mes, ultimo_dia)
+            
+            # Buscar itens da igreja no período especificado
+            itens = db.query(ItemEscala).options(
+                joinedload(ItemEscala.pregador),
+                joinedload(ItemEscala.cantor)
+            ).filter(
+                ItemEscala.igreja_id == igreja_id,
+                ItemEscala.data_culto >= data_inicio,
+                ItemEscala.data_culto <= data_fim
+            ).order_by(ItemEscala.data_culto, ItemEscala.horario).all()
+            
+            # Serializar itens manualmente
+            itens_serialized = []
+            for item in itens:
+                item_dict = {
+                    "id": item.id,
+                    "data_culto": item.data_culto.isoformat(),
+                    "horario_culto_id": None,  # Não há relação com horario_culto
+                    "pregador_id": item.pregador_id,
+                    "cantor_id": item.cantor_id,
+                    "pregador_confirmou": item.status_confirmacao_pregador.value == "CONFIRMADO" if item.status_confirmacao_pregador else False,
+                    "cantor_confirmou": item.status_confirmacao_cantor.value == "CONFIRMADO" if item.status_confirmacao_cantor else False,
+                }
+                
+                # Adicionar dados do pregador
+                if item.pregador:
+                    item_dict["pregador"] = {
+                        "id": item.pregador.id,
+                        "nome_completo": item.pregador.nome_completo,
+                        "foto_url": item.pregador.foto_url
+                    }
+                else:
+                    item_dict["pregador"] = None
+                
+                # Adicionar dados do cantor
+                if item.cantor:
+                    item_dict["cantor"] = {
+                        "id": item.cantor.id,
+                        "nome_completo": item.cantor.nome_completo,
+                        "foto_url": item.cantor.foto_url
+                    }
+                else:
+                    item_dict["cantor"] = None
+                
+                # Adicionar dados do horário (usar o campo Time diretamente)
+                item_dict["horario_culto"] = {
+                    "id": None,
+                    "dia_semana": item.data_culto.strftime("%A"),  # Nome do dia da semana
+                    "horario": str(item.horario)
+                }
+                
+                itens_serialized.append(item_dict)
+            
+            # Se há itens, buscar ou criar uma escala virtual
+            if itens_serialized:
+                # Buscar se existe uma escala real para este mês
+                escala_real = escalas[0] if escalas else None
+                
+                if escala_real:
+                    escala_dict = {
+                        "id": escala_real.id,
+                        "mes": escala_real.mes,
+                        "ano": escala_real.ano,
+                        "status": escala_real.status.value,
+                        "itens": itens_serialized
+                    }
+                else:
+                    # Criar escala virtual se não existir
+                    escala_dict = {
+                        "id": 0,
+                        "mes": mes,
+                        "ano": ano,
+                        "status": "PUBLICADA",
+                        "itens": itens_serialized
+                    }
+                
+                return [escala_dict]
+            else:
+                return []
+        
+        # Se não há mes/ano, usar a lógica original com escalas
+        escalas_com_itens = []
+        for escala in escalas:
+            # Buscar itens da escala para esta igreja específica
+            itens = db.query(ItemEscala).options(
+                joinedload(ItemEscala.pregador),
+                joinedload(ItemEscala.cantor)
+            ).filter(
+                ItemEscala.escala_id == escala.id,
+                ItemEscala.igreja_id == igreja_id
+            ).order_by(ItemEscala.data_culto, ItemEscala.horario).all()
+            
+            # Serializar itens manualmente
+            itens_serialized = []
+            for item in itens:
+                item_dict = {
+                    "id": item.id,
+                    "data_culto": item.data_culto.isoformat(),
+                    "horario_culto_id": None,
+                    "pregador_id": item.pregador_id,
+                    "cantor_id": item.cantor_id,
+                    "pregador_confirmou": item.status_confirmacao_pregador.value == "CONFIRMADO" if item.status_confirmacao_pregador else False,
+                    "cantor_confirmou": item.status_confirmacao_cantor.value == "CONFIRMADO" if item.status_confirmacao_cantor else False,
+                }
+                
+                # Adicionar dados do pregador
+                if item.pregador:
+                    item_dict["pregador"] = {
+                        "id": item.pregador.id,
+                        "nome_completo": item.pregador.nome_completo,
+                        "foto_url": item.pregador.foto_url
+                    }
+                else:
+                    item_dict["pregador"] = None
+                
+                # Adicionar dados do cantor
+                if item.cantor:
+                    item_dict["cantor"] = {
+                        "id": item.cantor.id,
+                        "nome_completo": item.cantor.nome_completo,
+                        "foto_url": item.cantor.foto_url
+                    }
+                else:
+                    item_dict["cantor"] = None
+                
+                # Adicionar dados do horário (usar o campo Time diretamente)
+                item_dict["horario_culto"] = {
+                    "id": None,
+                    "dia_semana": item.data_culto.strftime("%A"),
+                    "horario": str(item.horario)
+                }
+                
+                itens_serialized.append(item_dict)
+            
+            # Criar objeto escala com itens filtrados
+            escala_dict = {
+                "id": escala.id,
+                "mes": escala.mes,
+                "ano": escala.ano,
+                "status": escala.status.value,
+                "itens": itens_serialized
+            }
+            escalas_com_itens.append(escala_dict)
+        
+        return escalas_com_itens
+    else:
+        # Retornar escalas normalmente sem itens
+        from app.schemas.escala import EscalaResponse
+        items = [EscalaResponse.model_validate(e) for e in escalas]
+        return {"items": items, "total": len(items)}
 
 
 @router.get("/minhas")
@@ -730,6 +913,20 @@ def solicitar_troca(
     item = db.query(ItemEscala).filter(ItemEscala.id == item_id).first()
     if not item:
         raise NotFoundException("Item de escala não encontrado")
+    
+    # Buscar configuração do distrito para verificar se trocas são permitidas
+    from app.models.configuracao_distrito import ConfiguracaoDistrito
+    escala = db.query(Escala).filter(Escala.id == item.escala_id).first()
+    if escala:
+        config = db.query(ConfiguracaoDistrito).filter(
+            ConfiguracaoDistrito.distrito_id == escala.distrito_id
+        ).first()
+        
+        if config and not config.permitir_trocas:
+            raise ForbiddenException(
+                "Trocas de pregadores/cantores estão desabilitadas para este distrito. "
+                "Entre em contato com o pastor distrital."
+            )
     
     # Verificar se usuário está escalado neste item
     if tipo == "PREGADOR" and item.pregador_id != current_user.id:

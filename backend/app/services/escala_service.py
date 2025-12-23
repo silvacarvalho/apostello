@@ -105,11 +105,24 @@ class EscalaService:
             raise ConflictException(f"Já existe escala para {request.mes}/{request.ano}")
         
         # Buscar configurações do distrito
+        from app.models.configuracao_distrito import ConfiguracaoDistrito
+        
         distrito = self.distrito_repo.get_by_id(request.distrito_id)
         if not distrito:
             raise NotFoundException("Distrito", request.distrito_id)
         
+        # Buscar ou criar configuração do distrito
+        config = self.db.query(ConfiguracaoDistrito).filter(
+            ConfiguracaoDistrito.distrito_id == request.distrito_id
+        ).first()
+        
+        # Usar valores da configuração ou valores padrão do distrito
+        recorrencia_maxima = config.recorrencia_maxima_mes if config else distrito.config_recorrencia_maxima
+        intervalo_minimo = config.intervalo_minimo_dias if config else distrito.config_intervalo_minimo
+        usa_preferencia = config.sistema_preferencias_habilitado if config else distrito.config_usa_preferencia
+        
         logger.info(f"Gerando escala para {distrito.nome} - {request.mes}/{request.ano}")
+        logger.info(f"Configurações: Recorrência máxima={recorrencia_maxima}, Intervalo mínimo={intervalo_minimo} dias")
         
         # Criar escala
         escala = self.escala_repo.create({
@@ -273,13 +286,13 @@ class EscalaService:
                     participacoes_pregador,
                     ultima_data_pregador,
                     data_culto,
-                    distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
-                    distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
+                    recorrencia_maxima if request.respeitar_recorrencia else 999,
+                    intervalo_minimo if request.respeitar_intervalo else 0,
                     request.usar_score,
                     indisponibilidades,
                     bloqueios,
                     preferencias,
-                    igreja.id if distrito.config_usa_preferencia else None
+                    igreja.id if usa_preferencia else None
                 )
             else:
                 # Domingos e Quartas: score médio ou alto
@@ -289,13 +302,13 @@ class EscalaService:
                     participacoes_pregador,
                     ultima_data_pregador,
                     data_culto,
-                    distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
-                    distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
+                    recorrencia_maxima if request.respeitar_recorrencia else 999,
+                    intervalo_minimo if request.respeitar_intervalo else 0,
                     request.usar_score,
                     indisponibilidades,
                     bloqueios,
                     preferencias,
-                    igreja.id if distrito.config_usa_preferencia else None
+                    igreja.id if usa_preferencia else None
                 )
             
             # Selecionar cantor
@@ -320,13 +333,13 @@ class EscalaService:
                             participacoes_cantor,
                             ultima_data_cantor,
                             data_culto,
-                            distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
-                            distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
+                            recorrencia_maxima if request.respeitar_recorrencia else 999,
+                            intervalo_minimo if request.respeitar_intervalo else 0,
                             request.usar_score,
                             indisponibilidades,
                             bloqueios,
                             preferencias,
-                            igreja.id if distrito.config_usa_preferencia else None
+                            igreja.id if usa_preferencia else None
                         )
                     else:
                         pool = cantores_disponiveis_medio + cantores_disponiveis_alto if cantores_disponiveis_medio else cantores_disponiveis
@@ -335,13 +348,13 @@ class EscalaService:
                             participacoes_cantor,
                             ultima_data_cantor,
                             data_culto,
-                            distrito.config_recorrencia_maxima if request.respeitar_recorrencia else 999,
-                            distrito.config_intervalo_minimo if request.respeitar_intervalo else 0,
+                            recorrencia_maxima if request.respeitar_recorrencia else 999,
+                            intervalo_minimo if request.respeitar_intervalo else 0,
                             request.usar_score,
                             indisponibilidades,
                             bloqueios,
                             preferencias,
-                            igreja.id if distrito.config_usa_preferencia else None
+                            igreja.id if usa_preferencia else None
                         )
                 else:
                     logger.warning(f"Nenhum cantor disponível para {igreja.nome} em {data_culto} - todos já escalados como pregador em outras igrejas")
@@ -694,6 +707,39 @@ class EscalaService:
         confirmado: bool
     ) -> ItemEscala:
         """Confirma presença em um item da escala"""
+        from app.models.configuracao_distrito import ConfiguracaoDistrito
+        
+        # Buscar item
+        item = self.item_repo.get_by_id(item_id)
+        if not item:
+            raise NotFoundException("Item de escala", item_id)
+        
+        # Verificar se usuário está escalado
+        if item.pregador_id != current_user.id and item.cantor_id != current_user.id:
+            raise ForbiddenException("Você não está escalado neste item")
+        
+        # Buscar configuração do distrito
+        escala = self.escala_repo.get_by_id(item.escala_id)
+        if escala:
+            config = self.db.query(ConfiguracaoDistrito).filter(
+                ConfiguracaoDistrito.distrito_id == escala.distrito_id
+            ).first()
+            
+            if config and config.confirmacao_obrigatoria:
+                # Calcular prazo de confirmação
+                from datetime import datetime, timedelta
+                prazo_horas = config.prazo_confirmacao_horas
+                
+                # Prazo é calculado a partir da data de publicação da escala
+                if escala.data_publicacao:
+                    data_limite = escala.data_publicacao + timedelta(hours=prazo_horas)
+                    
+                    if datetime.now(timezone.utc) > data_limite:
+                        raise BadRequestException(
+                            f"Prazo para confirmação expirado. O prazo era de {prazo_horas} horas após a publicação "
+                            f"(até {data_limite.strftime('%d/%m/%Y %H:%M')})"
+                        )
+        
         return self.item_repo.confirmar_presenca(item_id, current_user.id, confirmado)
 
     def get_my_schedule(

@@ -30,6 +30,9 @@ class Avaliacao(Base):
     criterio_4 = Column(Integer, nullable=False)  # PREGADOR: Impacto Espiritual | CANTOR: Apresentação
     criterio_5 = Column(Integer, nullable=False)  # Avaliação Geral
     
+    # Confirmação de identidade (se o avaliado é realmente quem estava escalado)
+    confirmou_identidade = Column(Integer, default=True, nullable=False)  # True/False
+    
     comentario = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

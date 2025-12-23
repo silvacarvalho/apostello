@@ -2,7 +2,7 @@
 Schemas de Escala
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Any, List
 from datetime import datetime
 
 from app.models.escala import StatusEscala
@@ -42,6 +42,23 @@ class EscalaResponse(BaseModel):
     pastor_id: int
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EscalaWithItensResponse(BaseModel):
+    """Schema de resposta de escala com itens"""
+    id: int
+    distrito_id: int
+    mes: int
+    ano: int
+    status: StatusEscala
+    data_publicacao: Optional[datetime]
+    pastor_id: int
+    created_at: datetime
+    updated_at: datetime
+    itens: List[Any] = []  # Lista de ItemEscala
 
     class Config:
         from_attributes = True

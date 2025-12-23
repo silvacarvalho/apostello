@@ -189,7 +189,7 @@ export default function DashboardPage() {
   // Redirecionar membros para a página de escalas
   useEffect(() => {
     if (user && isMembro(user)) {
-      router.push("/escalas");
+      router.push("/escalas/minha-igreja");
     }
   }, [user, router]);
 
@@ -897,7 +897,7 @@ export default function DashboardPage() {
                   <>
                     <div className="text-center mb-4">
                       <div className="text-4xl font-bold text-primary">
-                        {avaliacoes.media_geral?.toFixed(1) || "N/A"}
+                        {typeof avaliacoes.media_geral === 'number' ? avaliacoes.media_geral.toFixed(1) : "N/A"}
                       </div>
                       <p className="text-sm text-muted-foreground">Média Geral</p>
                       <div className="flex justify-center gap-1 mt-2">
@@ -905,7 +905,7 @@ export default function DashboardPage() {
                           <Star
                             key={star}
                             className={`h-4 w-4 ${
-                              star <= (avaliacoes.media_geral || 0)
+                              star <= (typeof avaliacoes.media_geral === 'number' ? avaliacoes.media_geral : 0)
                                 ? "fill-primary text-primary"
                                 : "text-muted-foreground"
                             }`}

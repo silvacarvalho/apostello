@@ -19,6 +19,7 @@ class AvaliacaoBase(BaseModel):
     criterio_3: int = Field(..., ge=1, le=5)
     criterio_4: int = Field(..., ge=1, le=5)
     criterio_5: int = Field(..., ge=1, le=5)
+    confirmou_identidade: bool = Field(True, description="Se o pregador/cantor é realmente quem estava escalado")
     comentario: Optional[str] = None
 
 
@@ -39,6 +40,7 @@ class AvaliacaoResponse(BaseModel):
     criterio_3: int
     criterio_4: int
     criterio_5: int
+    confirmou_identidade: bool
     comentario: Optional[str]
     created_at: datetime
     updated_at: datetime
@@ -59,3 +61,49 @@ class AvaliacaoListResponse(BaseModel):
     items: list[AvaliacaoResponse]
     total: int
     media_geral: Decimal
+
+
+class AvaliadoInfo(BaseModel):
+    """Informações do avaliado para exibir no formulário de avaliação"""
+    id: int
+    nome_completo: str
+    foto_perfil: Optional[str] = None
+    tipo: TipoAvaliado
+    
+    class Config:
+        from_attributes = True
+
+
+class ItemAvaliacaoPendente(BaseModel):
+    """Item de escala pendente de avaliação com dados do avaliado"""
+    item_id: int
+    escala_id: int
+    data_culto: datetime
+    igreja_id: int
+    igreja_nome: str
+    pregador: Optional[AvaliadoInfo] = None
+    cantor: Optional[AvaliadoInfo] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class QuestionarioAvaliacaoResponse(BaseModel):
+    """Schema completo para o questionário de avaliação"""
+    item_escala: ItemAvaliacaoPendente
+    criterios_pregador: dict = {
+        "criterio_1": "Conteúdo Bíblico",
+        "criterio_2": "Comunicação",
+        "criterio_3": "Tempo/Organização",
+        "criterio_4": "Impacto Espiritual",
+        "criterio_5": "Avaliação Geral"
+    }
+    criterios_cantor: dict = {
+        "criterio_1": "Técnica Vocal",
+        "criterio_2": "Interpretação",
+        "criterio_3": "Ministração",
+        "criterio_4": "Apresentação",
+        "criterio_5": "Avaliação Geral"
+    }
+    pergunta_confirmacao: str = "Esta pessoa é realmente quem estava escalado(a) para esta função?"
+

@@ -14,6 +14,8 @@ from app.models.avaliacao import Avaliacao, TipoAvaliado
 from app.models.item_escala import ItemEscala, StatusRealizacao
 from app.models.usuario import Usuario, TipoUsuario
 from app.models.historico_score import HistoricoScore, MotivoScore
+from app.models.configuracao_distrito import ConfiguracaoDistrito
+from app.models.escala import Escala
 from app.schemas.avaliacao import AvaliacaoCreate
 from app.repositories.usuario_repository import UsuarioRepository
 
@@ -35,9 +37,23 @@ class AvaliacaoService:
         if not item:
             raise NotFoundException("Item de escala", data.item_escala_id)
         
-        # Verificar se culto foi realizado
-        if item.status_realizacao != StatusRealizacao.REALIZADO:
-            raise BadRequestException("Só é possível avaliar cultos realizados")
+        # Buscar configuração do distrito para verificar prazo
+        escala = self.db.query(Escala).filter(Escala.id == item.escala_id).first()
+        if escala:
+            config = self.db.query(ConfiguracaoDistrito).filter(
+                ConfiguracaoDistrito.distrito_id == escala.distrito_id
+            ).first()
+            
+            if config:
+                prazo_dias = config.prazo_avaliacao_dias
+                data_limite = item.data_culto + timedelta(days=prazo_dias)
+                
+                from datetime import date
+                if date.today() > data_limite:
+                    raise BadRequestException(
+                        f"Prazo para avaliação expirado. O prazo era de {prazo_dias} dias após o culto "
+                        f"(até {data_limite.strftime('%d/%m/%Y')})"
+                    )
         
         # Verificar se avaliador é membro da igreja
         if avaliador.tipo != TipoUsuario.MEMBRO:
@@ -75,10 +91,17 @@ class AvaliacaoService:
             criterio_3=data.criterio_3,
             criterio_4=data.criterio_4,
             criterio_5=data.criterio_5,
+            confirmou_identidade=data.confirmou_identidade,
             comentario=data.comentario
         )
         
         self.db.add(avaliacao)
+        self.db.flush()
+        
+        # Confirmação automática de presença através da avaliação
+        if data.confirmou_identidade:
+            self._processar_confirmacao_automatica(item, data.tipo, data.avaliado_id)
+        
         self.db.commit()
         self.db.refresh(avaliacao)
         
@@ -137,16 +160,29 @@ class AvaliacaoService:
         avaliador_id: int
     ) -> List[ItemEscala]:
         """Lista itens pendentes de avaliação para um membro"""
-        # Buscar cultos realizados nos últimos 7 dias que o membro não avaliou
         from datetime import date
+        from app.models.igreja import Igreja
         
-        data_limite = date.today() - timedelta(days=7)
+        # Buscar distrito da igreja para obter configuração
+        igreja = self.db.query(Igreja).filter(Igreja.id == igreja_id).first()
+        if not igreja:
+            return []
+        
+        # Buscar configuração do distrito
+        config = self.db.query(ConfiguracaoDistrito).filter(
+            ConfiguracaoDistrito.distrito_id == igreja.distrito_id
+        ).first()
+        
+        # Usar prazo configurado ou padrão de 7 dias
+        prazo_dias = config.prazo_avaliacao_dias if config else 7
+        data_limite = date.today() - timedelta(days=prazo_dias)
         
         # Subquery de itens já avaliados pelo usuário
         avaliados_ids = self.db.query(Avaliacao.item_escala_id).filter(
             Avaliacao.avaliador_id == avaliador_id
         ).subquery()
         
+        # Buscar itens pendentes dentro do prazo
         return self.db.query(ItemEscala).filter(
             ItemEscala.igreja_id == igreja_id,
             ItemEscala.status_realizacao == StatusRealizacao.REALIZADO,
@@ -196,9 +232,81 @@ class AvaliacaoService:
             score_novo=Decimal(str(novo_score)),
             delta=Decimal(str(delta)),
             motivo_tipo=MotivoScore.AVALIACAO,
-            referencia_id=nova_avaliacao.id,
-            descricao=f"Avaliação recebida - média {media_geral:.2f}"
+            observacao=f"Nova avaliação recebida (média {media_geral:.2f}/5)"
         )
         
         self.db.add(historico)
+        self.db.commit()
+    
+    def _processar_confirmacao_automatica(
+        self, 
+        item: ItemEscala, 
+        tipo: TipoAvaliado,
+        avaliado_id: int
+    ):
+        """
+        Processa confirmação automática de presença através da avaliação
+        Quando um membro avalia confirmando a identidade, marca automaticamente como CONFIRMADO
+        """
+        from app.models.item_escala import StatusConfirmacao
+        from app.models.notificacao import TipoNotificacao
+        from app.services.notificacao_service import NotificacaoService
+        
+        confirmacao_realizada = False
+        
+        if tipo == TipoAvaliado.PREGADOR and item.pregador_id == avaliado_id:
+            if item.status_confirmacao_pregador != StatusConfirmacao.CONFIRMADO:
+                item.status_confirmacao_pregador = StatusConfirmacao.CONFIRMADO
+                item.data_confirmacao_pregador = datetime.now()
+                confirmacao_realizada = True
+        
+        elif tipo == TipoAvaliado.CANTOR and item.cantor_id == avaliado_id:
+            if item.status_confirmacao_cantor != StatusConfirmacao.CONFIRMADO:
+                item.status_confirmacao_cantor = StatusConfirmacao.CONFIRMADO
+                item.data_confirmacao_cantor = datetime.now()
+                confirmacao_realizada = True
+        
+        if confirmacao_realizada:
+            # Reverter penalidade NAO_CONFIRMOU_PRAZO se existir
+            from app.models.penalidade import Penalidade, TipoPenalidade
+            
+            penalidade_nao_confirmou = self.db.query(Penalidade).filter(
+                Penalidade.item_escala_id == item.id,
+                Penalidade.usuario_id == avaliado_id,
+                Penalidade.tipo == TipoPenalidade.NAO_CONFIRMOU_PRAZO,
+                Penalidade.ativa == True
+            ).first()
+            
+            if penalidade_nao_confirmou:
+                # Desativar penalidade pois a pessoa compareceu
+                penalidade_nao_confirmou.ativa = False
+                penalidade_nao_confirmou.motivo += " - REVERTIDA: Confirmado comparecimento via avaliação"
+                
+                # Recalcular score removendo a penalidade
+                from app.services.penalidade_service import PenalidadeService
+                penalidade_service = PenalidadeService(self.db)
+                penalidade_service._recalcular_score_reverter_penalidade(
+                    avaliado_id, 
+                    penalidade_nao_confirmou
+                )
+            
+            # Notificar pastor sobre confirmação automática
+            escala = self.db.query(Escala).filter(Escala.id == item.escala_id).first()
+            if escala and escala.pastor_id:
+                notificacao_service = NotificacaoService(self.db)
+                usuario = self.db.query(Usuario).filter(Usuario.id == avaliado_id).first()
+                
+                from app.models.igreja import Igreja
+                igreja = self.db.query(Igreja).filter(Igreja.id == item.igreja_id).first()
+                
+                notificacao_service.create(
+                    usuario_id=escala.pastor_id,
+                    tipo=TipoNotificacao.CONFIRMACAO,
+                    titulo=f"✅ Presença Confirmada Automaticamente",
+                    mensagem=f"{usuario.nome_completo if usuario else 'Usuário'} ({tipo.value}) "
+                            f"teve presença confirmada através de avaliação dos membros em "
+                            f"{igreja.nome if igreja else 'igreja'} no dia {item.data_culto.strftime('%d/%m/%Y')}.",
+                    link=f"/escalas/{escala.id}/detalhes"
+                )
+        
         self.db.commit()

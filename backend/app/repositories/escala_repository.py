@@ -185,7 +185,7 @@ class ItemEscalaRepository(BaseRepository[ItemEscala]):
         usuario_id: int, 
         confirmado: bool
     ) -> Optional[ItemEscala]:
-        """Confirma ou recusa presença"""
+        """Confirma ou recusa presença (sem validação de prazo - feita no service)"""
         from datetime import datetime
         
         item = self.get_by_id(item_id)

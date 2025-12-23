@@ -10,7 +10,8 @@ from app.models.base import Base
 
 
 class TipoPenalidade(str, enum.Enum):
-    FALTA_SEM_AVISO = "FALTA_SEM_AVISO"
+    NAO_CONFIRMOU_PRAZO = "NAO_CONFIRMOU_PRAZO"  # Não confirmou no prazo (-3)
+    FALTA_SEM_AVISO = "FALTA_SEM_AVISO"  # Não confirmou E não apareceu (-12)
     DESMARCACAO_SEM_TROCA = "DESMARCACAO_SEM_TROCA"
     DESMARCACAO_48H = "DESMARCACAO_48H"
     ATRASO = "ATRASO"
