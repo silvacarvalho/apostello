@@ -10,6 +10,24 @@ import re
 from app.models.usuario import TipoUsuario, StatusGeral, StatusAprovacao
 
 
+class DistritoSimples(BaseModel):
+    """Schema simplificado de distrito para retorno aninhado"""
+    id: int
+    nome: str
+
+    class Config:
+        from_attributes = True
+
+
+class IgrejaSimples(BaseModel):
+    """Schema simplificado de igreja para retorno aninhado"""
+    id: int
+    nome: str
+
+    class Config:
+        from_attributes = True
+
+
 class UsuarioBase(BaseModel):
     """Schema base de usuário"""
     nome_completo: str = Field(..., min_length=3, max_length=255)
@@ -102,6 +120,8 @@ class UsuarioResponse(BaseModel):
     tipo: TipoUsuario
     distrito_id: Optional[int]
     igreja_id: Optional[int]
+    distrito: Optional[DistritoSimples] = None
+    igreja: Optional[IgrejaSimples] = None
     score_atual: Optional[Decimal]
     contador_mes_atual: Optional[int]
     contador_total_participacoes: Optional[int]
@@ -111,6 +131,9 @@ class UsuarioResponse(BaseModel):
     pode_cantar: bool
     status: StatusGeral
     status_aprovacao: StatusAprovacao
+    data_solicitacao_cadastro: Optional[datetime] = None
+    data_aprovacao: Optional[datetime] = None
+    motivo_recusa: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     ultimo_login: Optional[datetime]
@@ -185,3 +208,59 @@ class UsuarioLimitedListResponse(BaseModel):
     page: int
     size: int
     pages: int
+
+
+class MembroAutoCadastroCreate(BaseModel):
+    """Schema para auto-cadastro de membro"""
+    nome_completo: str = Field(..., min_length=3, max_length=255)
+    email: EmailStr
+    cpf: str = Field(..., min_length=11, max_length=14)
+    telefone: str = Field(..., max_length=20)
+    data_nascimento: date = Field(..., description="Data de nascimento obrigatória")
+    igreja_id: int = Field(..., description="Igreja que o membro quer se vincular")
+    senha: str = Field(..., min_length=8, max_length=100)
+    foto_url: Optional[str] = None
+
+    @validator('cpf')
+    def validate_cpf(cls, v):
+        """Remove formatação e valida CPF com dígito verificador"""
+        cpf = re.sub(r'[^\d]', '', v)
+        if len(cpf) != 11:
+            raise ValueError('CPF deve ter 11 dígitos')
+        
+        # Verifica CPFs inválidos conhecidos (todos dígitos iguais)
+        if cpf == cpf[0] * 11:
+            raise ValueError('CPF inválido')
+        
+        # Calcula primeiro dígito verificador
+        soma = sum(int(cpf[i]) * (10 - i) for i in range(9))
+        d1 = (soma * 10 % 11) % 10
+        
+        # Calcula segundo dígito verificador
+        soma = sum(int(cpf[i]) * (11 - i) for i in range(10))
+        d2 = (soma * 10 % 11) % 10
+        
+        if cpf[-2:] != f"{d1}{d2}":
+            raise ValueError('CPF inválido')
+        
+        return cpf
+
+    @validator('telefone')
+    def validate_phone(cls, v):
+        """Remove formatação do telefone"""
+        if v:
+            return re.sub(r'[^\d]', '', v)
+        return v
+
+    @validator('senha')
+    def validate_password(cls, v):
+        """Valida força da senha"""
+        if len(v) < 8:
+            raise ValueError('Senha deve ter no mínimo 8 caracteres')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Senha deve conter ao menos uma letra maiúscula')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Senha deve conter ao menos uma letra minúscula')
+        if not re.search(r'\d', v):
+            raise ValueError('Senha deve conter ao menos um número')
+        return v

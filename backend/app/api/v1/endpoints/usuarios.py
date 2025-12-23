@@ -10,7 +10,7 @@ from app.database import get_db
 from app.services.usuario_service import UsuarioService
 from app.schemas.usuario import (
     UsuarioCreate, UsuarioUpdate, UsuarioResponse, UsuarioListResponse,
-    UsuarioLimitedResponse, UsuarioLimitedListResponse
+    UsuarioLimitedResponse, UsuarioLimitedListResponse, MembroAutoCadastroCreate
 )
 from app.models.usuario import Usuario, TipoUsuario
 from app.api.deps import (
@@ -46,6 +46,18 @@ def auto_cadastro(
     """
     service = UsuarioService(db)
     return service.create(data, auto_cadastro=True)
+
+
+@router.post("/auto-cadastro/membro", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
+def auto_cadastro_membro(
+    data: MembroAutoCadastroCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Auto cadastro de membros (pendente de aprovação do pastor).
+    """
+    service = UsuarioService(db)
+    return service.create_membro_auto_cadastro(data)
 
 
 @router.get("/", response_model=UsuarioListResponse | UsuarioLimitedListResponse)
@@ -156,6 +168,42 @@ def listar_pendentes(
         distrito_id = current_user.distrito_id
     
     return service.list_pendentes_aprovacao(distrito_id)
+
+
+@router.get("/aprovados")
+def listar_aprovados(
+    distrito_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_pastor)
+):
+    """
+    Lista usuários aprovados.
+    """
+    service = UsuarioService(db)
+    
+    # Pastor só vê do seu distrito
+    if current_user.is_pastor and not current_user.is_admin:
+        distrito_id = current_user.distrito_id
+    
+    return service.list_aprovados(distrito_id)
+
+
+@router.get("/recusados")
+def listar_recusados(
+    distrito_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_pastor)
+):
+    """
+    Lista usuários recusados.
+    """
+    service = UsuarioService(db)
+    
+    # Pastor só vê do seu distrito
+    if current_user.is_pastor and not current_user.is_admin:
+        distrito_id = current_user.distrito_id
+    
+    return service.list_recusados(distrito_id)
 
 
 @router.get("/disponiveis-para-troca")
@@ -334,14 +382,15 @@ def desativar_usuario(
 @router.post("/{usuario_id}/aprovar", response_model=UsuarioResponse)
 def aprovar_usuario(
     usuario_id: int,
+    nova_igreja_id: Optional[int] = Query(None, description="ID da nova igreja se pastor quiser alterar"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_pastor)
 ):
     """
-    Aprova cadastro de usuário.
+    Aprova cadastro de usuário com opção de alterar a igreja.
     """
     service = UsuarioService(db)
-    return service.approve(usuario_id, current_user, aprovar=True)
+    return service.approve(usuario_id, current_user, aprovar=True, nova_igreja_id=nova_igreja_id)
 
 
 @router.post("/{usuario_id}/recusar", response_model=UsuarioResponse)
@@ -356,3 +405,18 @@ def recusar_usuario(
     """
     service = UsuarioService(db)
     return service.approve(usuario_id, current_user, aprovar=False, motivo=motivo)
+
+
+@router.post("/{usuario_id}/reaprovar", response_model=UsuarioResponse)
+def reaprovar_usuario(
+    usuario_id: int,
+    nova_igreja_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_pastor)
+):
+    """
+    Reaprova um cadastro que foi recusado anteriormente.
+    Altera status para ATIVO, status_aprovacao para APROVADO e atualiza data_aprovacao.
+    """
+    service = UsuarioService(db)
+    return service.reaprove(usuario_id, current_user, nova_igreja_id)

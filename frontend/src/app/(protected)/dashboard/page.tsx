@@ -151,6 +151,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Pendentes de aprovação (pastor)
+  const [pendentesCount, setPendentesCount] = useState(0);
+  const [loadingPendentes, setLoadingPendentes] = useState(false);
+  
+  // Aprovados e Recusados (pastor)
+  const [aprovadosCount, setAprovadosCount] = useState(0);
+  const [recusadosCount, setRecusadosCount] = useState(0);
+  const [loadingAprovadosRecusados, setLoadingAprovadosRecusados] = useState(false);
+  
   // Conflitos de escalas
   const [conflitos, setConflitos] = useState<ConflictosResponse | null>(null);
   const [loadingConflitos, setLoadingConflitos] = useState(false);
@@ -198,6 +207,8 @@ export default function DashboardPage() {
           if (userDistritoId) {
             fetchConflitos(userDistritoId);
           }
+          fetchPendentes();
+          fetchAprovadosRecusados();
         }
         
         // Buscar próximas escalas se for pregador, cantor, pastor ou líder
@@ -259,6 +270,34 @@ export default function DashboardPage() {
         console.error("Erro ao carregar avaliações:", err);
       } finally {
         setLoadingAvaliacoes(false);
+      }
+    }
+
+    async function fetchPendentes() {
+      try {
+        setLoadingPendentes(true);
+        const data = await api.get<any[]>("/api/v1/usuarios/pendentes");
+        setPendentesCount(data.length || 0);
+      } catch (err: any) {
+        console.error("Erro ao carregar pendentes:", err);
+      } finally {
+        setLoadingPendentes(false);
+      }
+    }
+
+    async function fetchAprovadosRecusados() {
+      try {
+        setLoadingAprovadosRecusados(true);
+        const [aprovados, recusados] = await Promise.all([
+          api.get<any[]>("/api/v1/usuarios/aprovados"),
+          api.get<any[]>("/api/v1/usuarios/recusados")
+        ]);
+        setAprovadosCount(aprovados.length || 0);
+        setRecusadosCount(recusados.length || 0);
+      } catch (err: any) {
+        console.error("Erro ao carregar aprovados/recusados:", err);
+      } finally {
+        setLoadingAprovadosRecusados(false);
       }
     }
 
@@ -536,6 +575,91 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Alerta de Usuários Pendentes de Aprovação */}
+      {user && isPastor(user) && pendentesCount > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+              <Users className="h-5 w-5" />
+              Cadastros Pendentes de Aprovação
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Existem <span className="font-semibold">{pendentesCount} novo(s) cadastro(s)</span> aguardando sua aprovação.
+                Revise e aprove os membros que solicitaram acesso ao sistema.
+              </p>
+              <div className="flex items-center gap-3">
+                <Link href="/usuarios/pendentes">
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Gerenciar Aprovações
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Links para Aprovados e Recusados */}
+      {user && isPastor(user) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20" onClick={() => router.push("/usuarios/aprovados")}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-green-700 dark:text-green-400">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Cadastros Aprovados
+                </div>
+                {loadingAprovadosRecusados ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <span className="text-3xl font-bold">{aprovadosCount}</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-green-800 dark:text-green-200 mb-3">
+                Total de cadastros aprovados no sistema
+              </p>
+              <Button variant="outline" size="sm" className="w-full border-green-300 hover:bg-green-100">
+                Ver Todos
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20" onClick={() => router.push("/usuarios/recusados")}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-red-700 dark:text-red-400">
+                <div className="flex items-center gap-2">
+                  <X className="h-5 w-5" />
+                  Cadastros Recusados
+                </div>
+                {loadingAprovadosRecusados ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <span className="text-3xl font-bold">{recusadosCount}</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-red-800 dark:text-red-200 mb-3">
+                Total de cadastros recusados no sistema
+              </p>
+              <Button variant="outline" size="sm" className="w-full border-red-300 hover:bg-red-100">
+                Ver Todos
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Estatísticas por Distrito */}

@@ -2,7 +2,7 @@
 Repository de Usuário
 """
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
 
 from app.repositories.base import BaseRepository
@@ -14,6 +14,13 @@ class UsuarioRepository(BaseRepository[Usuario]):
 
     def __init__(self, db: Session):
         super().__init__(Usuario, db)
+
+    def get_by_id(self, id: int) -> Optional[Usuario]:
+        """Busca usuário por ID com eager loading de relacionamentos"""
+        return self.db.query(Usuario)\
+            .options(joinedload(Usuario.distrito), joinedload(Usuario.igreja))\
+            .filter(Usuario.id == id)\
+            .first()
 
     def get_all(
         self, 
@@ -103,14 +110,51 @@ class UsuarioRepository(BaseRepository[Usuario]):
 
     def get_pendentes_aprovacao(self, distrito_id: Optional[int] = None) -> List[Usuario]:
         """Lista usuários pendentes de aprovação"""
-        query = self.db.query(Usuario).filter(
-            Usuario.status_aprovacao == StatusAprovacao.PENDENTE_APROVACAO
-        )
+        query = self.db.query(Usuario)\
+            .options(joinedload(Usuario.distrito), joinedload(Usuario.igreja))\
+            .filter(
+                Usuario.status_aprovacao == StatusAprovacao.PENDENTE_APROVACAO
+            )
         
         if distrito_id:
             query = query.filter(Usuario.distrito_id == distrito_id)
         
         return query.order_by(Usuario.data_solicitacao_cadastro).all()
+
+    def get_aprovados(self, distrito_id: Optional[int] = None) -> List[Usuario]:
+        """Lista usuários aprovados"""
+        query = self.db.query(Usuario)\
+            .options(joinedload(Usuario.distrito), joinedload(Usuario.igreja))\
+            .filter(
+                Usuario.status_aprovacao == StatusAprovacao.APROVADO,
+                Usuario.data_aprovacao.isnot(None)
+            )
+        
+        if distrito_id:
+            query = query.filter(Usuario.distrito_id == distrito_id)
+        
+        return query.order_by(Usuario.data_aprovacao.desc()).all()
+
+    def get_recusados(self, distrito_id: Optional[int] = None) -> List[Usuario]:
+        """Lista usuários recusados"""
+        query = self.db.query(Usuario)\
+            .options(joinedload(Usuario.distrito), joinedload(Usuario.igreja))\
+            .filter(
+                Usuario.status_aprovacao == StatusAprovacao.RECUSADO
+            )
+        
+        if distrito_id:
+            query = query.filter(Usuario.distrito_id == distrito_id)
+        
+        return query.order_by(Usuario.data_aprovacao.desc()).all()
+
+    def get_pastor_by_distrito(self, distrito_id: int) -> Optional[Usuario]:
+        """Busca pastor/líder de um distrito"""
+        return self.db.query(Usuario).filter(
+            Usuario.distrito_id == distrito_id,
+            Usuario.tipo.in_([TipoUsuario.PASTOR_DISTRITAL, TipoUsuario.LIDER_DISTRITAL]),
+            Usuario.status == StatusGeral.ATIVO
+        ).first()
 
     def search(
         self, 

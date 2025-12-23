@@ -123,10 +123,43 @@ async function fetchApi<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    
+    // Extrair mensagem de erro de diferentes estruturas do FastAPI
+    let errorMessage = "Erro na requisição";
+    
+    // Primeiro, verificar se há array 'errors' com mensagens específicas
+    if (error.errors && Array.isArray(error.errors)) {
+      // Novo formato: {detail: "Erro de validação", errors: [{field, message, type}]}
+      errorMessage = error.errors
+        .map((e: any) => {
+          const field = e.field ? e.field.replace("body.", "") : "";
+          const msg = e.message || e.msg || "";
+          return field ? `${field}: ${msg}` : msg;
+        })
+        .join("; ");
+    } else if (error.detail) {
+      // FastAPI retorna detail como string ou array
+      if (typeof error.detail === "string") {
+        errorMessage = error.detail;
+      } else if (Array.isArray(error.detail)) {
+        // Pydantic validation errors (formato antigo)
+        errorMessage = error.detail
+          .map((e: any) => {
+            const field = e.loc ? e.loc.join(".") : "";
+            return field ? `${field}: ${e.msg}` : e.msg;
+          })
+          .join(", ");
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    } else if (error.msg) {
+      errorMessage = error.msg;
+    }
+    
     throw new ApiError(
       response.status,
-      error.detail || "Erro na requisição",
-      error.errors
+      errorMessage,
+      error.errors || (Array.isArray(error.detail) ? error.detail : undefined)
     );
   }
 

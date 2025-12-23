@@ -23,6 +23,23 @@ from app.core.exceptions import ForbiddenException
 router = APIRouter()
 
 
+@router.get("/publico/{distrito_id}", response_model=IgrejaListResponse)
+def listar_igrejas_publico(
+    distrito_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Lista igrejas ativas de um distrito (endpoint público para auto-cadastro).
+    """
+    service = IgrejaService(db)
+    igrejas, total = service.list_all(distrito_id, skip=0, limit=500)
+    
+    return {
+        "items": igrejas,
+        "total": total
+    }
+
+
 @router.post("/", response_model=IgrejaResponse, status_code=status.HTTP_201_CREATED)
 def criar_igreja(
     data: IgrejaCreate,
