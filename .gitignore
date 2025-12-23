@@ -3,5 +3,6 @@ frontend/.next
 .DS_Store
 
 backend/venv/
+backend/uploads/
 __pycache__/
 

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
-import { Bell, Moon, Sun, Search } from "lucide-react";
+import { Bell, Moon, Sun, Search, User } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +24,20 @@ export function Header() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { user, logout } = useAuthStore();
+  const [fotoUrl, setFotoUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    // Atualizar foto de perfil quando usuário mudar
+    if (user?.foto_url && user?.id) {
+      setFotoUrl(`/api/v1/perfil/foto/${user.id}?t=${Date.now()}`);
+    } else {
+      setFotoUrl(undefined);
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -109,7 +120,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.foto_url || undefined} />
+                <AvatarImage src={fotoUrl} />
                 <AvatarFallback className="text-xs">
                   {user ? getInitials(user.nome_completo) : "?"}
                 </AvatarFallback>
@@ -126,8 +137,12 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Configurações</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/configuracoes" className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Meu Perfil
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"

@@ -180,6 +180,32 @@ class UsuarioChangePassword(BaseModel):
         return v
 
 
+class UsuarioUpdate(BaseModel):
+    """Schema para atualização de usuário (admin)"""
+    nome_completo: Optional[str] = Field(None, min_length=3, max_length=255)
+    email: Optional[EmailStr] = None
+    cpf: Optional[str] = Field(None, min_length=11, max_length=14)
+    telefone: Optional[str] = Field(None, max_length=20)
+    whatsapp: Optional[str] = Field(None, max_length=20)
+    data_nascimento: Optional[date] = None
+    foto_url: Optional[str] = None
+    tipo: Optional[TipoUsuario] = None
+    distrito_id: Optional[int] = None
+    igreja_id: Optional[int] = None
+    pode_pregar: Optional[bool] = None
+    pode_cantar: Optional[bool] = None
+    status: Optional[StatusGeral] = None
+    senha: Optional[str] = Field(None, min_length=6)
+
+
+class PerfilUpdate(BaseModel):
+    """Schema para atualização do próprio perfil (campos limitados)"""
+    nome_completo: Optional[str] = Field(None, min_length=3, max_length=255)
+    telefone: Optional[str] = Field(None, max_length=20)
+    whatsapp: Optional[str] = Field(None, max_length=20)
+    data_nascimento: Optional[date] = None
+
+
 class UsuarioListResponse(BaseModel):
     """Schema para listagem de usuários"""
     items: list[UsuarioResponse]
@@ -263,4 +289,31 @@ class MembroAutoCadastroCreate(BaseModel):
             raise ValueError('Senha deve conter ao menos uma letra minúscula')
         if not re.search(r'\d', v):
             raise ValueError('Senha deve conter ao menos um número')
+        return v
+
+
+class PasswordUpdate(BaseModel):
+    """Schema para alteração de senha"""
+    senha_atual: str = Field(..., min_length=1)
+    nova_senha: str = Field(..., min_length=8, max_length=100)
+    confirmar_senha: str = Field(..., min_length=8, max_length=100)
+
+    @validator('nova_senha')
+    def validate_new_password(cls, v):
+        """Valida força da nova senha"""
+        if len(v) < 8:
+            raise ValueError('Senha deve ter no mínimo 8 caracteres')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Senha deve conter ao menos uma letra maiúscula')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Senha deve conter ao menos uma letra minúscula')
+        if not re.search(r'\d', v):
+            raise ValueError('Senha deve conter ao menos um número')
+        return v
+
+    @validator('confirmar_senha')
+    def passwords_match(cls, v, values):
+        """Valida se as senhas coincidem"""
+        if 'nova_senha' in values and v != values['nova_senha']:
+            raise ValueError('As senhas não coincidem')
         return v

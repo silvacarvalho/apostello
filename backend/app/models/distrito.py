@@ -41,6 +41,7 @@ class Distrito(Base):
     igrejas = relationship("Igreja", back_populates="distrito", cascade="all, delete-orphan")
     escalas = relationship("Escala", back_populates="distrito", cascade="all, delete-orphan")
     usuarios = relationship("Usuario", foreign_keys="Usuario.distrito_id", back_populates="distrito")
+    configuracao = relationship("ConfiguracaoDistrito", back_populates="distrito", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Distrito(id={self.id}, nome='{self.nome}')>"

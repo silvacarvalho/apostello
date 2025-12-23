@@ -63,6 +63,7 @@ class Usuario(Base):
     
     # Preferências e indisponibilidades
     preferencias_igreja = relationship("PreferenciaIgreja", back_populates="usuario", cascade="all, delete-orphan")
+    preferencia_notificacao = relationship("PreferenciaNotificacao", back_populates="usuario", uselist=False, cascade="all, delete-orphan")
     indisponibilidades = relationship("Indisponibilidade", back_populates="usuario", cascade="all, delete-orphan")
     bloqueios_recebidos = relationship("BloqueioTemporario", foreign_keys="BloqueioTemporario.usuario_id", back_populates="usuario")
     

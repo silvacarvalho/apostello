@@ -59,7 +59,9 @@ class Settings(BaseSettings):
 
     # Upload
     UPLOAD_DIR: str = "uploads"
+    FOTO_PERFIL_DIR: str = "uploads/perfil"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
+    ALLOWED_IMAGE_EXTENSIONS: set = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
     # Notificações de Escala
     NOTIFICAR_ESCALA: bool = False

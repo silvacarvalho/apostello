@@ -191,6 +191,40 @@ export const api = {
   delete: <T>(endpoint: string, token?: string) =>
     fetchApi<T>(endpoint, { method: "DELETE", token }),
 
+  // Upload de arquivo (FormData)
+  upload: async <T>(endpoint: string, formData: FormData, token?: string): Promise<T> => {
+    // Obter token válido
+    let authToken = token;
+    if (!authToken) {
+      const validToken = await getValidToken();
+      if (validToken) {
+        authToken = validToken;
+      }
+    }
+
+    const headers: Record<string, string> = {};
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        response.status,
+        errorData.detail || `Erro ${response.status}`,
+        errorData.errors
+      );
+    }
+
+    return response.json() as Promise<T>;
+  },
+
   // Form data (para login OAuth2)
   postForm: <T>(endpoint: string, data: URLSearchParams) =>
     fetch(`${API_URL}${endpoint}`, {
