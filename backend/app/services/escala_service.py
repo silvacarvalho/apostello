@@ -278,47 +278,78 @@ class EscalaService:
             data_culto = culto["data_culto"]
             dia_semana = culto["dia_semana"]
             
+            # Filtrar pregadores que já estão escalados no mesmo dia (qualquer igreja)
+            # Isso evita conflitos de mesma pessoa em múltiplas igrejas no mesmo dia
+            pregadores_disponiveis = [
+                p for p in pregadores 
+                if not self._ja_escalado_no_mesmo_dia(
+                    p.id, data_culto, igreja.id, itens_criados, "pregador"
+                )
+            ]
+            
+            # Classificar pregadores disponíveis por score
+            pregadores_disponiveis_alto = [p for p in pregadores_disponiveis if float(p.score_atual or 70) >= self.SCORE_ALTO_MIN]
+            pregadores_disponiveis_medio = [p for p in pregadores_disponiveis if self.SCORE_INTERMEDIARIO_MIN <= float(p.score_atual or 70) < self.SCORE_ALTO_MIN]
+            
             # Selecionar pregador baseado na prioridade do dia
-            if dia_semana == DiaSemana.SABADO and request.priorizar_sabado:
-                # Sábados: priorizar score alto
-                pregador = self._selecionar_pessoa(
-                    pregadores_alto or pregadores_medio or pregadores,
-                    participacoes_pregador,
-                    ultima_data_pregador,
-                    data_culto,
-                    recorrencia_maxima if request.respeitar_recorrencia else 999,
-                    intervalo_minimo if request.respeitar_intervalo else 0,
-                    request.usar_score,
-                    indisponibilidades,
-                    bloqueios,
-                    preferencias,
-                    igreja.id if usa_preferencia else None
-                )
+            pregador = None
+            if pregadores_disponiveis:
+                if dia_semana == DiaSemana.SABADO and request.priorizar_sabado:
+                    # Sábados: priorizar score alto
+                    pregador = self._selecionar_pessoa(
+                        pregadores_disponiveis_alto or pregadores_disponiveis_medio or pregadores_disponiveis,
+                        participacoes_pregador,
+                        ultima_data_pregador,
+                        data_culto,
+                        recorrencia_maxima if request.respeitar_recorrencia else 999,
+                        intervalo_minimo if request.respeitar_intervalo else 0,
+                        request.usar_score,
+                        indisponibilidades,
+                        bloqueios,
+                        preferencias,
+                        igreja.id if usa_preferencia else None
+                    )
+                else:
+                    # Domingos e Quartas: score médio ou alto
+                    pool = pregadores_disponiveis_medio + pregadores_disponiveis_alto if pregadores_disponiveis_medio else pregadores_disponiveis
+                    pregador = self._selecionar_pessoa(
+                        pool,
+                        participacoes_pregador,
+                        ultima_data_pregador,
+                        data_culto,
+                        recorrencia_maxima if request.respeitar_recorrencia else 999,
+                        intervalo_minimo if request.respeitar_intervalo else 0,
+                        request.usar_score,
+                        indisponibilidades,
+                        bloqueios,
+                        preferencias,
+                        igreja.id if usa_preferencia else None
+                    )
+                
+                # Se não encontrou pregador respeitando regras, flexibiliza completamente
+                # Pregador é OBRIGATÓRIO - todas as igrejas devem ter pregador
+                if not pregador:
+                    pregador = self._selecionar_pregador_forcado(
+                        pregadores_disponiveis,
+                        participacoes_pregador,
+                        data_culto,
+                        indisponibilidades,
+                        bloqueios
+                    )
+                    if pregador:
+                        logger.info(f"Pregador {pregador.nome_completo} selecionado com flexibilização para {igreja.nome} em {data_culto}")
             else:
-                # Domingos e Quartas: score médio ou alto
-                pool = pregadores_medio + pregadores_alto if pregadores_medio else pregadores
-                pregador = self._selecionar_pessoa(
-                    pool,
-                    participacoes_pregador,
-                    ultima_data_pregador,
-                    data_culto,
-                    recorrencia_maxima if request.respeitar_recorrencia else 999,
-                    intervalo_minimo if request.respeitar_intervalo else 0,
-                    request.usar_score,
-                    indisponibilidades,
-                    bloqueios,
-                    preferencias,
-                    igreja.id if usa_preferencia else None
-                )
+                logger.warning(f"Nenhum pregador disponível para {igreja.nome} em {data_culto} - todos já escalados no mesmo dia")
             
             # Selecionar cantor
             cantor = None
             if cantores:
-                # Filtrar cantores que já estão escalados como pregador em OUTRA igreja no mesmo dia
+                # Filtrar cantores que já estão escalados no mesmo dia (como pregador OU cantor em qualquer igreja)
+                # Isso evita conflitos cruzados (cantor ser pregador em outra igreja no mesmo dia)
                 cantores_disponiveis = [
                     c for c in cantores 
-                    if not self._ja_escalado_como_pregador_em_outra_igreja(
-                        c.id, data_culto, igreja.id, itens_criados
+                    if not self._ja_escalado_no_mesmo_dia(
+                        c.id, data_culto, igreja.id, itens_criados, "cantor"
                     )
                 ]
                 
@@ -357,7 +388,7 @@ class EscalaService:
                             igreja.id if usa_preferencia else None
                         )
                 else:
-                    logger.warning(f"Nenhum cantor disponível para {igreja.nome} em {data_culto} - todos já escalados como pregador em outras igrejas")
+                    logger.warning(f"Nenhum cantor disponível para {igreja.nome} em {data_culto} - todos já escalados no mesmo dia")
             
             # Criar item da escala
             # Se não houver tema_id, usa tema_customizado padrão (obrigatório pela constraint)
@@ -496,7 +527,17 @@ class EscalaService:
         preferencias: dict,
         igreja_id: Optional[int] = None
     ) -> Optional[Usuario]:
-        """Seleciona pessoa para escalar baseado em regras"""
+        """
+        Seleciona pessoa para escalar baseado em regras.
+        
+        IMPORTANTE: A lista 'pessoas' já deve estar pré-filtrada para não incluir
+        pessoas que já estão escaladas no mesmo dia em outras igrejas (conflitos).
+        Esta função NÃO verifica conflitos de escala, apenas:
+        - Recorrência máxima no mês
+        - Intervalo mínimo entre participações  
+        - Indisponibilidades e bloqueios
+        - Preferências de igreja
+        """
         candidatos = []
         candidatos_preferenciais = []
         
@@ -512,7 +553,7 @@ class EscalaService:
                 if dias_desde < intervalo_minimo:
                     continue
             
-            # Verificar disponibilidade
+            # Verificar disponibilidade (indisponibilidades e bloqueios)
             if not self._esta_disponivel(pessoa.id, data_culto, indisponibilidades, bloqueios):
                 continue
             
@@ -526,13 +567,23 @@ class EscalaService:
         pool = candidatos_preferenciais if candidatos_preferenciais else candidatos
         
         if not pool:
-            # Se ninguém disponível, escolher quem tem menos participações (flexibilizando regras)
-            pool = sorted(
-                [p for p in pessoas if self._esta_disponivel(p.id, data_culto, indisponibilidades, bloqueios)],
-                key=lambda p: participacoes.get(p.id, 0)
-            )[:3]
+            # Se ninguém disponível com regras estritas, flexibilizar apenas intervalo
+            # MAS manter restrição de recorrência para não sobrecarregar
+            # IMPORTANTE: Iterar apenas sobre 'pessoas' que já foi filtrada para conflitos
+            pool_flexivel = []
+            for p in pessoas:
+                if not self._esta_disponivel(p.id, data_culto, indisponibilidades, bloqueios):
+                    continue
+                # Flexibiliza intervalo, mas mantém recorrência máxima
+                if participacoes.get(p.id, 0) < max_recorrencia:
+                    pool_flexivel.append(p)
+            
+            # Ordenar por menos participações
+            pool = sorted(pool_flexivel, key=lambda p: participacoes.get(p.id, 0))[:3]
         
         if not pool:
+            # Não há ninguém disponível mesmo flexibilizando regras
+            # Retorna None para que o item seja criado sem pregador/cantor
             return None
         
         if usar_score:
@@ -547,22 +598,100 @@ class EscalaService:
         
         return pool[0] if pool else None
     
-    def _ja_escalado_como_pregador_em_outra_igreja(
+    def _selecionar_pregador_forcado(
+        self,
+        pregadores_disponiveis: List[Usuario],
+        participacoes: dict,
+        data_culto: date,
+        indisponibilidades: dict,
+        bloqueios: dict
+    ) -> Optional[Usuario]:
+        """
+        Seleciona pregador FORÇADAMENTE quando não há candidatos respeitando as regras.
+        Ignora limites de recorrência e intervalo mínimo, mas:
+        - Respeita indisponibilidades e bloqueios
+        - Mantém equilíbrio (prioriza quem tem menos participações)
+        
+        Este método garante que TODAS as igrejas tenham pregador.
+        """
+        candidatos = []
+        
+        for pregador in pregadores_disponiveis:
+            # Única verificação: está disponível na data (sem indisponibilidades/bloqueios)?
+            if self._esta_disponivel(pregador.id, data_culto, indisponibilidades, bloqueios):
+                candidatos.append(pregador)
+        
+        if not candidatos:
+            # Se todos estão indisponíveis, pegar qualquer um (último recurso)
+            candidatos = list(pregadores_disponiveis)
+        
+        if not candidatos:
+            return None
+        
+        # Ordenar por menos participações para manter equilíbrio
+        candidatos_ordenados = sorted(
+            candidatos,
+            key=lambda p: (participacoes.get(p.id, 0), -float(p.score_atual or 70))
+        )
+        
+        return candidatos_ordenados[0]
+
+    def _ja_escalado_no_mesmo_dia(
         self, 
         usuario_id: int, 
         data_culto: date, 
         igreja_atual_id: int,
-        itens_ja_criados: list
+        itens_ja_criados: list,
+        tipo_verificar: str = "pregador"
     ) -> bool:
         """
-        Verifica se o usuário já foi escalado como pregador no mesmo dia em OUTRA igreja.
-        Apenas para itens já criados na geração atual.
+        Verifica se o usuário já foi escalado no mesmo dia em QUALQUER igreja (incluindo a atual).
+        Isso evita conflitos onde a pessoa seria escalada em múltiplos cultos no mesmo dia.
+        
+        Args:
+            usuario_id: ID do usuário a verificar
+            data_culto: Data do culto
+            igreja_atual_id: ID da igreja atual
+            itens_ja_criados: Lista de itens já criados na geração atual
+            tipo_verificar: "pregador" - verifica campo pregador_id, 
+                           "cantor" - verifica campo cantor_id,
+                           "ambos" - verifica se escalado como pregador OU cantor em outra igreja
+        
+        Returns:
+            True se já escalado e deve ser evitado, False se disponível
         """
         for item in itens_ja_criados:
-            if (item["pregador_id"] == usuario_id and 
-                item["data_culto"] == data_culto and 
-                item["igreja_id"] != igreja_atual_id):
-                return True
+            if item["data_culto"] != data_culto:
+                continue
+            
+            # Se é outra igreja, verifica qualquer tipo de escalação (pregador ou cantor)
+            if item["igreja_id"] != igreja_atual_id:
+                if tipo_verificar == "ambos":
+                    # Verifica se está escalado como pregador OU cantor em outra igreja
+                    if item.get("pregador_id") == usuario_id or item.get("cantor_id") == usuario_id:
+                        return True
+                elif tipo_verificar == "pregador":
+                    # Verificar se já é pregador em outra igreja
+                    if item.get("pregador_id") == usuario_id:
+                        return True
+                    # Também verificar se já é cantor em outra igreja (conflito cruzado)
+                    if item.get("cantor_id") == usuario_id:
+                        return True
+                elif tipo_verificar == "cantor":
+                    # Verificar se já é cantor em outra igreja
+                    if item.get("cantor_id") == usuario_id:
+                        return True
+                    # Também verificar se já é pregador em outra igreja (conflito cruzado)
+                    if item.get("pregador_id") == usuario_id:
+                        return True
+            else:
+                # Mesma igreja - verificar se já escalado no mesmo culto
+                # (não deve acontecer, mas por segurança)
+                if tipo_verificar == "pregador" and item.get("pregador_id") == usuario_id:
+                    return True
+                if tipo_verificar == "cantor" and item.get("cantor_id") == usuario_id:
+                    return True
+        
         return False
 
     def publish(self, escala_id: int, current_user: Usuario) -> Escala:
@@ -633,7 +762,7 @@ class EscalaService:
         if not item:
             raise NotFoundException("Item de escala", item_id)
         
-        # Validar se pregador/cantor já está escalado em outro culto no mesmo dia
+        # Validar se pregador já está escalado em outro culto no mesmo dia (como pregador)
         if pregador_id and pregador_id > 0:
             conflito = self.db.query(ItemEscala).filter(
                 ItemEscala.id != item_id,
@@ -647,6 +776,23 @@ class EscalaService:
                 raise ConflictException(
                     f"O pregador {pregador.nome_completo if pregador else ''} já está escalado em {igreja_conflito.nome if igreja_conflito else 'outra igreja'} "
                     f"no dia {item.data_culto.strftime('%d/%m/%Y')} às {conflito.horario}"
+                )
+            
+            # Validar se o pregador já está como cantor em OUTRA igreja no mesmo dia
+            conflito_cantor = self.db.query(ItemEscala).filter(
+                ItemEscala.id != item_id,
+                ItemEscala.data_culto == item.data_culto,
+                ItemEscala.cantor_id == pregador_id,
+                ItemEscala.igreja_id != item.igreja_id
+            ).first()
+            
+            if conflito_cantor:
+                pregador = self.usuario_repo.get_by_id(pregador_id)
+                igreja_conflito = self.db.query(Igreja).filter(Igreja.id == conflito_cantor.igreja_id).first()
+                raise ConflictException(
+                    f"{pregador.nome_completo if pregador else ''} já está escalado como CANTOR em {igreja_conflito.nome if igreja_conflito else 'outra igreja'} "
+                    f"no dia {item.data_culto.strftime('%d/%m/%Y')} às {conflito_cantor.horario}. "
+                    f"Não é possível escalar como pregador em igrejas diferentes no mesmo dia."
                 )
         
         if cantor_id and cantor_id > 0:

@@ -565,7 +565,7 @@ export default function DashboardPage() {
                 <Button 
                   variant="default" 
                   size="sm"
-                  onClick={() => window.location.href = '/dashboard/escalas'}
+                  onClick={() => window.location.href = '/escalas'}
                   className="bg-amber-600 hover:bg-amber-700 text-white"
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />
@@ -1112,7 +1112,7 @@ export default function DashboardPage() {
                             variant="outline"
                             onClick={() => {
                               setShowConflitosDialog(false);
-                              window.location.href = `/dashboard/escalas?escala_id=${item.escala_id}`;
+                              window.location.href = `/escalas?escala_id=${item.escala_id}`;
                             }}
                             className="ml-4"
                           >
@@ -1139,7 +1139,7 @@ export default function DashboardPage() {
             <Button 
               onClick={() => {
                 setShowConflitosDialog(false);
-                window.location.href = '/dashboard/escalas';
+                window.location.href = '/escalas';
               }}
               className="bg-amber-600 hover:bg-amber-700 text-white"
             >
@@ -1259,30 +1259,25 @@ export default function DashboardPage() {
               <RefreshCw className="h-5 w-5" />
               Solicitar Troca de Escala
             </DialogTitle>
-            <DialogDescription>
-              Selecione um substituto e informe o motivo da troca
-            </DialogDescription>
           </DialogHeader>
 
           {escalaSelecionadaTroca && (
             <div className="space-y-4">
-              {/* Informações da escala */}
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">{escalaSelecionadaTroca.igreja_nome}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(escalaSelecionadaTroca.data_culto + 'T00:00:00').toLocaleDateString('pt-BR')} • {escalaSelecionadaTroca.horario}
-                    </p>
-                    <Badge variant={escalaSelecionadaTroca.tipo === 'pregador' ? 'default' : 'secondary'}>
-                      {escalaSelecionadaTroca.tipo === 'pregador' ? 'Pregação' : 'Louvor'}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Informações da escala - compacto */}
+              <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Badge variant={escalaSelecionadaTroca.tipo === 'pregador' ? 'default' : 'secondary'}>
+                    {escalaSelecionadaTroca.tipo === 'pregador' ? 'Pregação' : 'Louvor'}
+                  </Badge>
+                  <span className="font-medium">{escalaSelecionadaTroca.igreja_nome}</span>
+                </div>
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {new Date(escalaSelecionadaTroca.data_culto + 'T00:00:00').toLocaleDateString('pt-BR')} • {escalaSelecionadaTroca.horario}
+                </span>
+              </div>
 
               {/* Seleção de substituto */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Label htmlFor="substituto">Selecione o substituto *</Label>
                 {loadingSubstitutos ? (
                   <div className="flex justify-center py-4">
@@ -1293,11 +1288,11 @@ export default function DashboardPage() {
                     value={substitutoSelecionado?.toString()}
                     onValueChange={(value) => setSubstitutoSelecionado(parseInt(value))}
                   >
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <div className="space-y-1 max-h-[200px] overflow-y-auto border rounded-lg p-2">
                       {substitutos.map((sub: any) => (
                         <div
                           key={sub.id}
-                          className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent cursor-pointer"
+                          className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
                           onClick={() => setSubstitutoSelecionado(sub.id)}
                         >
                           <RadioGroupItem value={sub.id.toString()} id={`sub-${sub.id}`} />
@@ -1305,33 +1300,31 @@ export default function DashboardPage() {
                             htmlFor={`sub-${sub.id}`}
                             className="flex-1 cursor-pointer"
                           >
-                            <div>
-                              <p className="font-medium">{sub.nome_completo}</p>
-                              {sub.score_atual && (
-                                <p className="text-xs text-muted-foreground">Score: {sub.score_atual}</p>
-                              )}
-                            </div>
+                            <span className="font-medium">{sub.nome_completo}</span>
+                            {sub.score_atual && (
+                              <span className="text-xs text-muted-foreground ml-2">(Score: {sub.score_atual})</span>
+                            )}
                           </Label>
                         </div>
                       ))}
                     </div>
                   </RadioGroup>
                 ) : (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
+                  <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
                     Nenhum substituto disponível para esta data
                   </p>
                 )}
               </div>
 
               {/* Motivo da troca */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Label htmlFor="motivo">Motivo da troca *</Label>
                 <Textarea
                   id="motivo"
                   placeholder="Explique o motivo da solicitação de troca..."
                   value={motivoTroca}
                   onChange={(e) => setMotivoTroca(e.target.value)}
-                  rows={4}
+                  rows={3}
                   className="resize-none"
                 />
               </div>
