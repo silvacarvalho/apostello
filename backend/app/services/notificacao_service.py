@@ -1,5 +1,5 @@
 """
-Serviço de Notificação - Email, WhatsApp, In-App
+Serviço de Notificação - Email, WhatsApp, SMS, In-App
 """
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -8,11 +8,16 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import httpx
+import logging
 
 from app.core.config import settings
 from app.models.notificacao import Notificacao, TipoNotificacao
 from app.models.log_notificacao import LogNotificacao, CanalNotificacao, StatusEnvio
 from app.models.usuario import Usuario
+from app.models.preferencia_notificacao import PreferenciaNotificacao
+from app.services.twilio_service import TwilioService
+
+logger = logging.getLogger(__name__)
 
 
 class NotificacaoService:
@@ -20,6 +25,7 @@ class NotificacaoService:
 
     def __init__(self, db: Session):
         self.db = db
+        self.twilio_service = TwilioService(db)
 
     def create(
         self,
@@ -27,9 +33,20 @@ class NotificacaoService:
         tipo: TipoNotificacao,
         titulo: str,
         mensagem: str,
-        link: Optional[str] = None
+        link: Optional[str] = None,
+        enviar_canais_externos: bool = True
     ) -> Notificacao:
-        """Cria notificação in-app"""
+        """
+        Cria notificação in-app e opcionalmente envia via canais externos (WhatsApp/SMS)
+        
+        Args:
+            usuario_id: ID do usuário
+            tipo: Tipo da notificação
+            titulo: Título da notificação
+            mensagem: Mensagem da notificação
+            link: Link opcional
+            enviar_canais_externos: Se True, envia via WhatsApp/SMS baseado nas preferências
+        """
         notificacao = Notificacao(
             usuario_id=usuario_id,
             tipo=tipo,
@@ -42,7 +59,89 @@ class NotificacaoService:
         self.db.commit()
         self.db.refresh(notificacao)
         
+        # Enviar via canais externos se configurado
+        if enviar_canais_externos:
+            self._enviar_por_canais_preferidos(notificacao, tipo)
+        
         return notificacao
+
+    def _enviar_por_canais_preferidos(self, notificacao: Notificacao, tipo: TipoNotificacao):
+        """
+        Envia notificação via WhatsApp e/ou SMS baseado nas preferências do usuário
+        """
+        # Buscar usuário e suas preferências
+        usuario = self.db.query(Usuario).filter(Usuario.id == notificacao.usuario_id).first()
+        if not usuario:
+            logger.warning(f"Usuário {notificacao.usuario_id} não encontrado para envio de notificação")
+            return
+        
+        preferencias = self.db.query(PreferenciaNotificacao).filter(
+            PreferenciaNotificacao.usuario_id == notificacao.usuario_id
+        ).first()
+        
+        if not preferencias:
+            logger.info(f"Usuário {usuario.nome_completo} não tem preferências de notificação configuradas")
+            return
+        
+        # Verificar se o tipo de notificação está habilitado nas preferências
+        tipo_habilitado = self._verificar_tipo_habilitado(preferencias, tipo)
+        if not tipo_habilitado:
+            logger.info(f"Tipo {tipo.value} não habilitado para usuário {usuario.nome_completo}")
+            return
+        
+        # Montar mensagem para envio externo
+        mensagem_externa = f"📢 {notificacao.titulo}\n\n{notificacao.mensagem}"
+        
+        # Obter número de telefone/WhatsApp do usuário
+        numero_whatsapp = usuario.whatsapp or usuario.telefone
+        numero_sms = usuario.telefone
+        
+        # Enviar via WhatsApp se habilitado
+        if preferencias.whatsapp and numero_whatsapp:
+            logger.info(f"Enviando WhatsApp para {usuario.nome_completo} ({numero_whatsapp})")
+            result = self.twilio_service.send_whatsapp(
+                numero_whatsapp, 
+                mensagem_externa,
+                notificacao.id
+            )
+            if result["success"]:
+                logger.info(f"✅ WhatsApp enviado com sucesso para {usuario.nome_completo}")
+            else:
+                logger.warning(f"❌ Falha ao enviar WhatsApp: {result.get('error')}")
+        
+        # Enviar via SMS se habilitado
+        if preferencias.sms and numero_sms:
+            logger.info(f"Enviando SMS para {usuario.nome_completo} ({numero_sms})")
+            result = self.twilio_service.send_sms(
+                numero_sms, 
+                mensagem_externa,
+                notificacao.id
+            )
+            if result["success"]:
+                logger.info(f"✅ SMS enviado com sucesso para {usuario.nome_completo}")
+            else:
+                logger.warning(f"❌ Falha ao enviar SMS: {result.get('error')}")
+
+    def _verificar_tipo_habilitado(self, preferencias: PreferenciaNotificacao, tipo: TipoNotificacao) -> bool:
+        """
+        Verifica se o tipo de notificação está habilitado nas preferências do usuário
+        """
+        mapeamento = {
+            TipoNotificacao.ESCALA_PUBLICADA: preferencias.novas_escalas,
+            TipoNotificacao.LEMBRETE_7D: preferencias.lembretes,
+            TipoNotificacao.LEMBRETE_3D: preferencias.lembretes,
+            TipoNotificacao.LEMBRETE_24H: preferencias.lembretes,
+            TipoNotificacao.AVALIACAO: preferencias.avaliacoes,
+            TipoNotificacao.TROCA: preferencias.trocas_escalas,
+            TipoNotificacao.PENALIDADE: True,  # Sempre enviar penalidades
+            TipoNotificacao.CONFIRMACAO: preferencias.lembretes,
+            TipoNotificacao.AUTO_CADASTRO_APROVADO: True,
+            TipoNotificacao.AUTO_CADASTRO_RECUSADO: True,
+            TipoNotificacao.AUTO_CADASTRO_PENDENTE: True,
+            TipoNotificacao.SISTEMA: True,  # Sempre enviar notificações de sistema
+        }
+        
+        return mapeamento.get(tipo, True)
 
     def mark_as_read(self, notificacao_id: int, usuario_id: int) -> bool:
         """Marca notificação como lida"""
@@ -145,13 +244,83 @@ class NotificacaoService:
                 )
             return False
 
+    def send_sms(
+        self,
+        phone: str,
+        message: str,
+        notificacao_id: Optional[int] = None
+    ) -> bool:
+        """
+        Envia SMS via Twilio
+        
+        Args:
+            phone: Número de telefone do destinatário
+            message: Mensagem a ser enviada
+            notificacao_id: ID da notificação para log
+        
+        Returns:
+            True se enviado com sucesso, False caso contrário
+        """
+        result = self.twilio_service.send_sms(phone, message, notificacao_id)
+        
+        if result["success"] and notificacao_id:
+            # Atualizar notificação
+            notificacao = self.db.query(Notificacao).filter(
+                Notificacao.id == notificacao_id
+            ).first()
+            if notificacao:
+                notificacao.enviada_sms = True
+                notificacao.data_envio_sms = datetime.now(timezone.utc)
+                self.db.commit()
+        
+        return result["success"]
+
+    def send_whatsapp_twilio(
+        self,
+        phone: str,
+        message: str,
+        notificacao_id: Optional[int] = None
+    ) -> bool:
+        """
+        Envia WhatsApp via Twilio
+        
+        Args:
+            phone: Número de telefone do destinatário
+            message: Mensagem a ser enviada
+            notificacao_id: ID da notificação para log
+        
+        Returns:
+            True se enviado com sucesso, False caso contrário
+        """
+        result = self.twilio_service.send_whatsapp(phone, message, notificacao_id)
+        
+        if result["success"] and notificacao_id:
+            # Atualizar notificação
+            notificacao = self.db.query(Notificacao).filter(
+                Notificacao.id == notificacao_id
+            ).first()
+            if notificacao:
+                notificacao.enviada_whatsapp = True
+                notificacao.data_envio_whatsapp = datetime.now(timezone.utc)
+                self.db.commit()
+        
+        return result["success"]
+
     async def send_whatsapp(
         self,
         phone: str,
         message: str,
         notificacao_id: Optional[int] = None
     ) -> bool:
-        """Envia mensagem via WhatsApp"""
+        """
+        Envia mensagem via WhatsApp
+        Tenta Twilio primeiro, depois API genérica como fallback
+        """
+        # Tentar Twilio primeiro
+        if self.twilio_service.whatsapp_configured:
+            return self.send_whatsapp_twilio(phone, message, notificacao_id)
+        
+        # Fallback para API genérica (Evolution API, etc)
         if not settings.WHATSAPP_API_URL or not settings.WHATSAPP_API_TOKEN:
             return False
         

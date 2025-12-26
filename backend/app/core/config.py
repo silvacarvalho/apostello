@@ -51,6 +51,16 @@ class Settings(BaseSettings):
     WHATSAPP_API_URL: Optional[str] = None
     WHATSAPP_API_TOKEN: Optional[str] = None
 
+    # Twilio
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_PHONE_NUMBER: Optional[str] = None
+    TWILIO_WHATSAPP_NUMBER: Optional[str] = None
+
+    # Password Reset
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 1
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # Redis
     REDIS_URL: Optional[str] = None
 

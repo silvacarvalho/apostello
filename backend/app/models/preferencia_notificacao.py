@@ -25,6 +25,7 @@ class PreferenciaNotificacao(Base):
     # Canais de notificação
     email = Column(Boolean, default=True, nullable=False)
     push = Column(Boolean, default=True, nullable=False)
+    sms = Column(Boolean, default=False, nullable=False)
     whatsapp = Column(Boolean, default=False, nullable=False)
     
     # Auditoria

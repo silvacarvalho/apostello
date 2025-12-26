@@ -53,6 +53,7 @@ export default function ConfiguracoesPage() {
   const [substituicoes, setSubstituicoes] = useState(true);
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(true);
+  const [smsNotif, setSmsNotif] = useState(false);
   const [whatsappNotif, setWhatsappNotif] = useState(false);
 
   // Estados para alteração de senha
@@ -77,6 +78,7 @@ export default function ConfiguracoesPage() {
       setSubstituicoes(response.substituicoes);
       setEmailNotif(response.email);
       setPushNotif(response.push);
+      setSmsNotif(response.sms || false);
       setWhatsappNotif(response.whatsapp);
     } catch (error) {
       console.error("Erro ao carregar preferências:", error);
@@ -216,6 +218,7 @@ export default function ConfiguracoesPage() {
         substituicoes: substituicoes,
         email: emailNotif,
         push: pushNotif,
+        sms: smsNotif,
         whatsapp: whatsappNotif,
       });
 
@@ -653,6 +656,17 @@ export default function ConfiguracoesPage() {
                 />
                 <Label htmlFor="whatsapp_notif" className="cursor-pointer">
                   WhatsApp
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sms_notif"
+                  checked={smsNotif}
+                  onCheckedChange={(checked) => setSmsNotif(!!checked)}
+                />
+                <Label htmlFor="sms_notif" className="cursor-pointer">
+                  SMS
                 </Label>
               </div>
             </CardContent>

@@ -15,6 +15,7 @@ class PreferenciaNotificacaoBase(BaseModel):
     substituicoes: bool = True
     email: bool = True
     push: bool = True
+    sms: bool = False
     whatsapp: bool = False
 
 
@@ -33,6 +34,7 @@ class PreferenciaNotificacaoUpdate(BaseModel):
     substituicoes: bool | None = None
     email: bool | None = None
     push: bool | None = None
+    sms: bool | None = None
     whatsapp: bool | None = None
 
 

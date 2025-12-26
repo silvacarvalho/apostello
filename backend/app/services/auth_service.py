@@ -1,10 +1,12 @@
 """
 Serviço de Autenticação
 """
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import (
     verify_password, get_password_hash, 
     create_tokens, decode_token, Token
@@ -119,14 +121,64 @@ class AuthService:
         return True
 
     def reset_password(self, email: str) -> str:
-        """Inicia processo de reset de senha"""
+        """
+        Inicia processo de reset de senha - gera token e retorna para envio
+        Por segurança, sempre retorna mensagem genérica
+        """
         usuario = self.repository.get_by_email(email)
         
         if not usuario:
             # Por segurança, não revelamos se o email existe
-            return "Se o email existir, você receberá instruções"
+            return None
         
-        # TODO: Implementar envio de email com token de reset
-        # Por agora, retornamos mensagem genérica
+        # Gerar token seguro
+        token = secrets.token_urlsafe(32)
         
-        return "Se o email existir, você receberá instruções"
+        # Definir expiração (1 hora por padrão)
+        expires = datetime.utcnow() + timedelta(
+            hours=settings.PASSWORD_RESET_TOKEN_EXPIRE_HOURS
+        )
+        
+        # Salvar token no banco
+        usuario.reset_token = token
+        usuario.reset_token_expires = expires
+        self.db.commit()
+        
+        return token
+
+    def verify_reset_token(self, token: str) -> Optional[Usuario]:
+        """Verifica se o token de reset é válido e retorna o usuário"""
+        usuario = self.db.query(Usuario).filter(
+            Usuario.reset_token == token
+        ).first()
+        
+        if not usuario:
+            return None
+        
+        # Verificar se o token não expirou
+        if usuario.reset_token_expires < datetime.utcnow():
+            # Limpar token expirado
+            usuario.reset_token = None
+            usuario.reset_token_expires = None
+            self.db.commit()
+            return None
+        
+        return usuario
+
+    def reset_password_with_token(self, token: str, nova_senha: str) -> bool:
+        """Reseta a senha usando o token de recuperação"""
+        usuario = self.verify_reset_token(token)
+        
+        if not usuario:
+            raise BadRequestException("Token inválido ou expirado")
+        
+        # Atualizar senha
+        usuario.senha_hash = get_password_hash(nova_senha)
+        
+        # Limpar token após uso
+        usuario.reset_token = None
+        usuario.reset_token_expires = None
+        
+        self.db.commit()
+        
+        return True

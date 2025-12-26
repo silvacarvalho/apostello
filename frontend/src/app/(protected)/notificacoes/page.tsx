@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Bell,
   Check,
@@ -110,6 +111,7 @@ const formatTimeAgo = (dateStr: string) => {
 };
 
 export default function NotificacoesPage() {
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState("todas");
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
@@ -140,6 +142,30 @@ export default function NotificacoesPage() {
     fetchSolicitacoesPendentesPastor();
     fetchSolicitacoesEmergenciaisPendentes();
   }, []);
+
+  // Expandir notificação automaticamente se vier via query param
+  useEffect(() => {
+    const idParam = searchParams?.get("notificacao_id");
+    if (!idParam || notificacoes.length === 0) return;
+    const id = parseInt(idParam);
+    if (isNaN(id)) return;
+    // Só expande se a notificação existir na lista
+    const existe = notificacoes.some(n => n.id === id);
+    if (!existe) return;
+    setNotificacoesExpandidas((prev) => {
+      if (prev.has(id)) return prev;
+      const novoSet = new Set(prev);
+      novoSet.add(id);
+      return novoSet;
+    });
+    // Scroll até a notificação, se possível
+    setTimeout(() => {
+      const el = document.getElementById(`notificacao-${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 300);
+  }, [searchParams, notificacoes]);
 
   const fetchSolicitacoesPendentes = async () => {
     try {
@@ -707,6 +733,7 @@ export default function NotificacoesPage() {
                     return (
                       <div
                         key={notificacao.id}
+                        id={`notificacao-${notificacao.id}`}
                         className={`flex items-start gap-4 p-4 hover:bg-accent/50 transition-colors ${
                           !notificacao.lida ? "bg-primary/5" : ""
                         }`}

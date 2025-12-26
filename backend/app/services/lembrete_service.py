@@ -124,7 +124,8 @@ class LembreteService:
             horario=horario_formatado
         )
         
-        self.notificacao_service.create(
+        # Criar notificação in-app
+        notificacao = self.notificacao_service.create(
             usuario_id=usuario.id,
             tipo=tipo_notificacao,
             titulo=titulo,
@@ -132,7 +133,59 @@ class LembreteService:
             link=f"/escalas"
         )
         
+        # Enviar por canais externos conforme preferência do usuário
+        self._enviar_por_canais_preferidos(usuario, titulo, mensagem, notificacao.id)
+        
         logger.debug(f"Lembrete enviado para {usuario.nome_completo}: {titulo}")
+
+    def _enviar_por_canais_preferidos(
+        self,
+        usuario: Usuario,
+        titulo: str,
+        mensagem: str,
+        notificacao_id: int
+    ):
+        """Envia notificação pelos canais preferidos do usuário (SMS, WhatsApp, Email)"""
+        # Verificar preferências do usuário
+        preferencia = usuario.preferencia_notificacao
+        
+        if not preferencia:
+            # Se não tem preferências, não envia por canais externos
+            return
+        
+        # Verificar se lembretes estão habilitados
+        if not preferencia.lembretes:
+            return
+        
+        # Enviar por SMS se habilitado e telefone disponível
+        if preferencia.sms and usuario.telefone:
+            try:
+                mensagem_sms = f"{titulo}\n{mensagem}"
+                self.notificacao_service.send_sms(
+                    usuario.telefone,
+                    mensagem_sms,
+                    notificacao_id
+                )
+                logger.info(f"SMS enviado para {usuario.nome_completo}")
+            except Exception as e:
+                logger.error(f"Erro ao enviar SMS para {usuario.nome_completo}: {e}")
+        
+        # Enviar por WhatsApp se habilitado e número disponível
+        if preferencia.whatsapp and usuario.whatsapp:
+            try:
+                mensagem_whatsapp = f"*{titulo}*\n\n{mensagem}"
+                self.notificacao_service.send_whatsapp_twilio(
+                    usuario.whatsapp,
+                    mensagem_whatsapp,
+                    notificacao_id
+                )
+                logger.info(f"WhatsApp enviado para {usuario.nome_completo}")
+            except Exception as e:
+                logger.error(f"Erro ao enviar WhatsApp para {usuario.nome_completo}: {e}")
+        
+        # Enviar por Email se habilitado
+        # if preferencia.email and usuario.email:
+        #     TODO: Implementar envio de email assíncrono
 
     def _ja_enviou_lembrete(
         self, 

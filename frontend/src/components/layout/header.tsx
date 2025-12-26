@@ -209,10 +209,8 @@ export function Header() {
                   key={notif.id}
                   className="flex flex-col items-start gap-1 py-3 cursor-pointer"
                   onClick={() => {
-                    marcarComoLida(notif.id);
-                    if (notif.link) {
-                      window.location.href = notif.link;
-                    }
+                    // Redireciona para a página de notificações com a notificação aberta
+                    window.location.href = `/notificacoes?notificacao_id=${notif.id}`;
                   }}
                 >
                   <div className="flex items-start justify-between w-full">
