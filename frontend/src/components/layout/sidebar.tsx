@@ -82,7 +82,7 @@ const navItems: NavItem[] = [
     title: "Temas",
     href: "/temas",
     icon: <BookOpen className="h-5 w-5" />,
-    roles: ["ADMIN", "PASTOR_DISTRITAL"],
+    roles: ["ADMIN", "ASSOCIACAO"],
   },
   {
     title: "Bloqueios",
