@@ -21,6 +21,7 @@ class TipoNotificacao(str, enum.Enum):
     AUTO_CADASTRO_APROVADO = "AUTO_CADASTRO_APROVADO"
     AUTO_CADASTRO_RECUSADO = "AUTO_CADASTRO_RECUSADO"
     AUTO_CADASTRO_PENDENTE = "AUTO_CADASTRO_PENDENTE"
+    SISTEMA = "SISTEMA"  # Notificações de sistema (indisponibilidades, etc)
 
 
 class Notificacao(Base):

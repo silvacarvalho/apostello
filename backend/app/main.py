@@ -12,6 +12,7 @@ import logging
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.api.v1.router import api_router
+from app.core.scheduler import init_scheduler, shutdown_scheduler
 
 
 # Configurar logging
@@ -28,7 +29,23 @@ async def lifespan(app: FastAPI):
     logger.info(f"🚀 Iniciando {settings.APP_NAME} v{settings.APP_VERSION}")
     logger.info(f"📍 Ambiente: {settings.ENVIRONMENT}")
     logger.info(f"🔧 Debug: {settings.DEBUG}")
+    
+    # Inicializar scheduler de jobs
+    try:
+        init_scheduler()
+        logger.info("⏰ Scheduler de lembretes iniciado")
+    except Exception as e:
+        logger.error(f"Erro ao iniciar scheduler: {e}")
+    
     yield
+    
+    # Shutdown scheduler
+    try:
+        shutdown_scheduler()
+        logger.info("⏰ Scheduler encerrado")
+    except Exception as e:
+        logger.error(f"Erro ao encerrar scheduler: {e}")
+    
     logger.info("👋 Encerrando aplicação")
 
 

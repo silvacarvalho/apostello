@@ -718,6 +718,63 @@ class EscalaService:
         
         return escala
 
+    def archive(self, escala_id: int, current_user: Usuario) -> Escala:
+        """Arquiva uma escala publicada"""
+        escala = self.get_by_id(escala_id)
+        
+        if not current_user.is_admin and not current_user.is_pastor:
+            raise ForbiddenException("Sem permissão para arquivar escalas")
+        
+        if escala.status == StatusEscala.ARQUIVADA:
+            raise BadRequestException("Escala já está arquivada")
+        
+        if escala.status == StatusEscala.RASCUNHO:
+            raise BadRequestException("Apenas escalas publicadas podem ser arquivadas")
+        
+        escala.status = StatusEscala.ARQUIVADA
+        
+        self.db.commit()
+        self.db.refresh(escala)
+        
+        logger.info(f"Escala {escala_id} arquivada por {current_user.nome_completo}")
+        
+        return escala
+
+    def archive_old_scales(self, months_old: int = 2) -> int:
+        """
+        Arquiva automaticamente escalas publicadas de meses anteriores.
+        Retorna o número de escalas arquivadas.
+        """
+        from datetime import date
+        
+        hoje = date.today()
+        
+        # Calcular o mês limite (mês atual - months_old)
+        ano_limite = hoje.year
+        mes_limite = hoje.month - months_old
+        
+        while mes_limite <= 0:
+            mes_limite += 12
+            ano_limite -= 1
+        
+        # Buscar escalas publicadas anteriores ao limite
+        escalas_para_arquivar = self.db.query(Escala).filter(
+            Escala.status == StatusEscala.PUBLICADA,
+            ((Escala.ano < ano_limite) | 
+             ((Escala.ano == ano_limite) & (Escala.mes < mes_limite)))
+        ).all()
+        
+        count = 0
+        for escala in escalas_para_arquivar:
+            escala.status = StatusEscala.ARQUIVADA
+            count += 1
+            logger.info(f"Escala {escala.id} ({escala.mes:02d}/{escala.ano}) arquivada automaticamente")
+        
+        if count > 0:
+            self.db.commit()
+        
+        return count
+
     def _enviar_notificacoes_escala(self, escala: Escala):
         """Envia notificações para todos os escalados"""
         logger.info(f"Iniciando envio de notificações para escala {escala.id}")

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Calendar,
+  CalendarDays,
   Users,
   Church,
   MapPin,
@@ -15,6 +16,8 @@ import {
   Menu,
   X,
   BookOpen,
+  CalendarOff,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -52,6 +55,12 @@ const navItems: NavItem[] = [
     roles: ["MEMBRO"],
   },
   {
+    title: "Calendário",
+    href: "/calendario",
+    icon: <CalendarDays className="h-5 w-5" />,
+    roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL", "PREGADOR", "CANTOR"],
+  },
+  {
     title: "Usuários",
     href: "/usuarios",
     icon: <Users className="h-5 w-5" />,
@@ -74,6 +83,18 @@ const navItems: NavItem[] = [
     href: "/temas",
     icon: <BookOpen className="h-5 w-5" />,
     roles: ["ADMIN", "PASTOR_DISTRITAL"],
+  },
+  {
+    title: "Bloqueios",
+    href: "/bloqueios",
+    icon: <Shield className="h-5 w-5" />,
+    roles: ["ADMIN", "PASTOR_DISTRITAL"],
+  },
+  {
+    title: "Indisponibilidades",
+    href: "/indisponibilidades",
+    icon: <CalendarOff className="h-5 w-5" />,
+    roles: ["PREGADOR", "CANTOR"],
   },
   {
     title: "Avaliações",

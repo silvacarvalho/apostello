@@ -289,6 +289,19 @@ def listar_minhas_proximas_escalas(
             ])
         ).first()
         
+        # Verificar se o distrito permite trocas
+        from app.models.configuracao_distrito import ConfiguracaoDistrito
+        from app.models.escala import Escala as EscalaModel
+        
+        escala_obj = db.query(EscalaModel).filter(EscalaModel.id == escala_id).first()
+        trocas_permitidas = True
+        if escala_obj:
+            config = db.query(ConfiguracaoDistrito).filter(
+                ConfiguracaoDistrito.distrito_id == escala_obj.distrito_id
+            ).first()
+            if config:
+                trocas_permitidas = config.permitir_trocas
+        
         escalas.append({
             "item_id": item.id,
             "escala_id": escala_id,
@@ -301,7 +314,8 @@ def listar_minhas_proximas_escalas(
             "confirmado": item.status_confirmacao_pregador.value if item.pregador_id == current_user.id else item.status_confirmacao_cantor.value,
             "tema": tema_texto,
             "tem_troca_pendente": solicitacao_pendente is not None,
-            "solicitacao_troca_id": solicitacao_pendente.id if solicitacao_pendente else None
+            "solicitacao_troca_id": solicitacao_pendente.id if solicitacao_pendente else None,
+            "trocas_permitidas": trocas_permitidas
         })
     
     return {
@@ -835,6 +849,43 @@ def publicar_escala(
     return service.publish(escala_id, current_user)
 
 
+@router.post("/{escala_id}/arquivar", response_model=EscalaResponse)
+def arquivar_escala(
+    escala_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_pastor)
+):
+    """
+    Arquiva uma escala publicada.
+    Apenas escalas publicadas podem ser arquivadas.
+    """
+    service = EscalaService(db)
+    return service.archive(escala_id, current_user)
+
+
+@router.post("/arquivar-antigas")
+def arquivar_escalas_antigas(
+    meses: int = Query(default=2, ge=1, le=12, description="Número de meses no passado para considerar como 'antiga'"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_pastor)
+):
+    """
+    Arquiva automaticamente escalas publicadas de meses anteriores.
+    Por padrão, arquiva escalas de 2 ou mais meses atrás.
+    Requer permissão de administrador.
+    """
+    if not current_user.is_admin:
+        raise ForbiddenException("Apenas administradores podem executar arquivamento automático")
+    
+    service = EscalaService(db)
+    count = service.archive_old_scales(meses)
+    
+    return {
+        "message": f"{count} escala(s) arquivada(s) automaticamente",
+        "escalas_arquivadas": count
+    }
+
+
 @router.delete("/{escala_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_escala(
     escala_id: int,
@@ -1044,8 +1095,11 @@ def responder_solicitacao_substituto(
 ):
     """
     Substituto aceita ou recusa uma solicitação de troca.
+    Se o distrito não exigir aprovação do pastor, a troca é efetivada imediatamente.
     """
     from app.models.solicitacao_troca import SolicitacaoTroca, StatusSolicitacaoTroca
+    from app.models.item_escala import StatusConfirmacao
+    from app.models.configuracao_distrito import ConfiguracaoDistrito
     from app.core.exceptions import NotFoundException, ForbiddenException
     from app.services.notificacao_service import NotificacaoService
     from app.models.notificacao import TipoNotificacao
@@ -1074,33 +1128,91 @@ def responder_solicitacao_substituto(
     igreja_nome = igreja.nome if igreja else "igreja"
     solicitante = db.query(Usuario).filter(Usuario.id == solicitacao.solicitante_id).first()
     
+    # Buscar configuração do distrito para verificar se aprovação do pastor é obrigatória
+    escala = db.query(Escala).filter(Escala.id == item.escala_id).first() if item else None
+    config = None
+    if escala:
+        config = db.query(ConfiguracaoDistrito).filter(
+            ConfiguracaoDistrito.distrito_id == escala.distrito_id
+        ).first()
+    
+    # Se config não existir, assume que aprovação é obrigatória (comportamento padrão)
+    aprovar_trocas_obrigatorio = config.aprovar_trocas_obrigatorio if config else True
+    
     notificacao_service = NotificacaoService(db)
     
     if aceitar:
-        # Atualizar status para PENDENTE_PASTOR
-        solicitacao.status = StatusSolicitacaoTroca.PENDENTE_PASTOR
         solicitacao.data_resposta_substituto = datetime.utcnow()
         
-        # Notificar solicitante
-        notificacao_service.create(
-            usuario_id=solicitacao.solicitante_id,
-            tipo=TipoNotificacao.TROCA,
-            titulo=f"Substituto Aceitou a Troca",
-            mensagem=f"{current_user.nome_completo} aceitou assumir a {solicitacao.tipo.value.lower()} na {igreja_nome} no dia {item.data_culto.strftime('%d/%m/%Y')}. Aguardando aprovação do pastor.",
-            link=f"/notificacoes"
-        )
-        
-        # Notificar pastor
-        if solicitacao.pastor_id:
+        if aprovar_trocas_obrigatorio:
+            # Precisa de aprovação do pastor
+            solicitacao.status = StatusSolicitacaoTroca.PENDENTE_PASTOR
+            
+            # Notificar solicitante
             notificacao_service.create(
-                usuario_id=solicitacao.pastor_id,
+                usuario_id=solicitacao.solicitante_id,
                 tipo=TipoNotificacao.TROCA,
-                titulo=f"Troca Aceita - Aguardando Aprovação",
-                mensagem=f"{current_user.nome_completo} aceitou substituir {solicitante.nome_completo} na {solicitacao.tipo.value.lower()} em {igreja_nome}. Aprove ou recuse esta troca.",
-                link=f"/notificacoes?solicitacao_id={solicitacao.id}&item_escala_id={item.id}&tipo={solicitacao.tipo.value}"
+                titulo=f"Substituto Aceitou a Troca",
+                mensagem=f"{current_user.nome_completo} aceitou assumir a {solicitacao.tipo.value.lower()} na {igreja_nome} no dia {item.data_culto.strftime('%d/%m/%Y')}. Aguardando aprovação do pastor.",
+                link=f"/notificacoes"
             )
-        
-        message = "Solicitação aceita. Aguardando aprovação do pastor."
+            
+            # Notificar pastor
+            if solicitacao.pastor_id:
+                notificacao_service.create(
+                    usuario_id=solicitacao.pastor_id,
+                    tipo=TipoNotificacao.TROCA,
+                    titulo=f"Troca Aceita - Aguardando Aprovação",
+                    mensagem=f"{current_user.nome_completo} aceitou substituir {solicitante.nome_completo} na {solicitacao.tipo.value.lower()} em {igreja_nome}. Aprove ou recuse esta troca.",
+                    link=f"/notificacoes?solicitacao_id={solicitacao.id}&item_escala_id={item.id}&tipo={solicitacao.tipo.value}"
+                )
+            
+            message = "Solicitação aceita. Aguardando aprovação do pastor."
+        else:
+            # NÃO precisa de aprovação do pastor - aprovar automaticamente
+            solicitacao.status = StatusSolicitacaoTroca.APROVADA
+            solicitacao.data_resposta_pastor = datetime.utcnow()
+            solicitacao.observacao_pastor = "Aprovado automaticamente (configuração do distrito)"
+            
+            # REALIZAR A TROCA: substituir o pregador/cantor no item da escala
+            if solicitacao.tipo.value == "PREGADOR":
+                item.pregador_id = solicitacao.substituto_id
+                item.status_confirmacao_pregador = StatusConfirmacao.CONFIRMADO
+                item.data_confirmacao_pregador = datetime.utcnow()
+            elif solicitacao.tipo.value == "CANTOR":
+                item.cantor_id = solicitacao.substituto_id
+                item.status_confirmacao_cantor = StatusConfirmacao.CONFIRMADO
+                item.data_confirmacao_cantor = datetime.utcnow()
+            
+            # Notificar solicitante
+            notificacao_service.create(
+                usuario_id=solicitacao.solicitante_id,
+                tipo=TipoNotificacao.TROCA,
+                titulo=f"Troca Efetivada",
+                mensagem=f"{current_user.nome_completo} aceitou assumir a {solicitacao.tipo.value.lower()} na {igreja_nome} no dia {item.data_culto.strftime('%d/%m/%Y')}. A troca foi efetivada automaticamente.",
+                link=f"/dashboard"
+            )
+            
+            # Notificar substituto (atual usuário)
+            notificacao_service.create(
+                usuario_id=current_user.id,
+                tipo=TipoNotificacao.TROCA,
+                titulo=f"Troca Efetivada - Você Está Escalado",
+                mensagem=f"Você está confirmado como {solicitacao.tipo.value.lower()} na {igreja_nome} no dia {item.data_culto.strftime('%d/%m/%Y')} às {item.horario.strftime('%H:%M')}.",
+                link=f"/dashboard"
+            )
+            
+            # Notificar pastor (informativo, não precisa de ação)
+            if solicitacao.pastor_id:
+                notificacao_service.create(
+                    usuario_id=solicitacao.pastor_id,
+                    tipo=TipoNotificacao.TROCA,
+                    titulo=f"Troca Efetivada Automaticamente",
+                    mensagem=f"{solicitante.nome_completo} solicitou troca com {current_user.nome_completo} para {solicitacao.tipo.value.lower()} na {igreja_nome} ({item.data_culto.strftime('%d/%m/%Y')}). A troca foi aceita e efetivada automaticamente.",
+                    link=f"/escalas"
+                )
+            
+            message = "Solicitação aceita e troca efetivada automaticamente!"
     else:
         # Atualizar status para RECUSADA
         solicitacao.status = StatusSolicitacaoTroca.RECUSADA

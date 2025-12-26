@@ -142,6 +142,22 @@ type Toast = Omit<ToasterToast, "id">
 function toast({ ...props }: Toast) {
   const id = genId()
 
+  // Auto-detect success variant based on title
+  const autoVariant = (() => {
+    if (props.variant) return props.variant;
+    const title = typeof props.title === 'string' ? props.title.toLowerCase() : '';
+    if (title.includes('sucesso') || title.includes('success') || 
+        title.includes('salvo') || title.includes('criado') || 
+        title.includes('atualizado') || title.includes('excluído') ||
+        title.includes('removido') || title.includes('adicionado') ||
+        title.includes('enviado') || title.includes('confirmado') ||
+        title.includes('aprovado') || title.includes('publicada') ||
+        title.includes('concluído')) {
+      return 'success';
+    }
+    return props.variant;
+  })();
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
@@ -153,6 +169,7 @@ function toast({ ...props }: Toast) {
     type: "ADD_TOAST",
     toast: {
       ...props,
+      variant: autoVariant,
       id,
       open: true,
       onOpenChange: (open) => {

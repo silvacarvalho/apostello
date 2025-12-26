@@ -241,6 +241,40 @@ export const api = {
       }
       return res.json() as Promise<T>;
     }),
+
+  // Download de arquivo (blob)
+  downloadBlob: async (endpoint: string): Promise<Blob> => {
+    const authStore = useAuthStore.getState();
+    let authToken = authStore.accessToken;
+    
+    if (authStore.isTokenExpired()) {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        authToken = newToken;
+      }
+    }
+
+    const headers: Record<string, string> = {};
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        response.status,
+        errorData.detail || `Erro ${response.status}`,
+        errorData.errors
+      );
+    }
+
+    return response.blob();
+  },
 };
 
 export { ApiError };

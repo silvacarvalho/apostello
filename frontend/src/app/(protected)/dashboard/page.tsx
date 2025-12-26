@@ -136,6 +136,7 @@ interface ProximaEscala {
   tema: string | null;
   tem_troca_pendente: boolean;
   solicitacao_troca_id: number | null;
+  trocas_permitidas: boolean;
 }
 
 interface ProximasEscalasResponse {
@@ -394,8 +395,14 @@ export default function DashboardPage() {
       console.error("Erro ao solicitar troca:", err);
       const errorMessage = err?.response?.data?.detail || "Erro ao solicitar troca. Tente novamente.";
       
-      // Mensagem personalizada para erro de duplicação
-      if (errorMessage.includes("Já existe uma solicitação de troca pendente")) {
+      // Mensagens personalizadas para diferentes tipos de erro
+      if (errorMessage.includes("desabilitadas") || errorMessage.includes("Trocas de pregadores/cantores estão desabilitadas")) {
+        toast({
+          variant: "destructive",
+          title: "Trocas Desabilitadas",
+          description: "Trocas de pregadores/cantores estão desabilitadas para este distrito. Entre em contato com o pastor distrital.",
+        });
+      } else if (errorMessage.includes("Já existe uma solicitação de troca pendente")) {
         toast({
           variant: "destructive",
           title: "Solicitação Duplicada",
@@ -800,7 +807,7 @@ export default function DashboardPage() {
                                 <RefreshCw className="h-3 w-3 mr-1" />
                                 Troca Pendente
                               </Badge>
-                            ) : (
+                            ) : escala.trocas_permitidas ? (
                               <Button
                                 size="sm"
                                 variant="secondary"
@@ -810,6 +817,10 @@ export default function DashboardPage() {
                                 <RefreshCw className="h-3 w-3 mr-1" />
                                 Solicitar Troca
                               </Button>
+                            ) : (
+                              <Badge variant="outline" className="justify-center text-muted-foreground">
+                                Trocas não permitidas
+                              </Badge>
                             )}
                           </div>
                         )}

@@ -21,6 +21,11 @@ import {
   XCircle,
   Sparkles,
   Edit,
+  FileText,
+  FileSpreadsheet,
+  Printer,
+  Download,
+  Archive,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -70,7 +75,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuthStore, isAdmin, isPastor, getUserDistritoId } from "@/stores/auth-store";
@@ -250,6 +254,19 @@ export default function EscalasPage() {
   // Modal de publicação
   const [escalaToPublish, setEscalaToPublish] = useState<Escala | null>(null);
 
+  // Modal de arquivamento
+  const [escalaToArchive, setEscalaToArchive] = useState<Escala | null>(null);
+
+  // Filtro de status
+  const [filtroStatus, setFiltroStatus] = useState<string>("TODAS");
+
+  // Modal de exportação/impressão
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [escalaToExport, setEscalaToExport] = useState<Escala | null>(null);
+  const [igrejasExport, setIgrejasExport] = useState<{ id: number; nome: string }[]>([]);
+  const [selectedIgrejaExport, setSelectedIgrejaExport] = useState<string>("");
+  const [loadingExport, setLoadingExport] = useState<string | null>(null);
+
   // Modal de validação de geração
   const [showValidationAlert, setShowValidationAlert] = useState(false);
   const [validationData, setValidationData] = useState<{
@@ -428,6 +445,138 @@ export default function EscalasPage() {
     handleGenerate(true); // Pula validação
   };
 
+  // Abrir modal de exportação
+  const handleOpenExportDialog = async (escala: Escala) => {
+    setEscalaToExport(escala);
+    setSelectedIgrejaExport("");
+    setIsExportDialogOpen(true);
+    
+    // Carregar igrejas do distrito da escala
+    try {
+      const response = await api.get<{ items: { id: number; nome: string }[] }>(
+        `/api/v1/igrejas/?distrito_id=${escala.distrito_id}`
+      );
+      setIgrejasExport(response.items || []);
+    } catch (err) {
+      console.error("Erro ao carregar igrejas:", err);
+      setIgrejasExport([]);
+    }
+  };
+
+  // Download PDF
+  const handleDownloadPDF = async () => {
+    if (!escalaToExport) return;
+    
+    setLoadingExport("pdf");
+    try {
+      let url = `/api/v1/relatorios/escala/${escalaToExport.id}/pdf`;
+      if (selectedIgrejaExport && selectedIgrejaExport !== "all") {
+        url += `?igreja_id=${selectedIgrejaExport}`;
+      }
+      
+      const blob = await api.downloadBlob(url);
+      const igreja = igrejasExport.find(i => i.id.toString() === selectedIgrejaExport);
+      const igrejaSlug = igreja ? `_${igreja.nome.replace(/\s+/g, '_')}` : '';
+      const filename = `escala_${escalaToExport.mes}_${escalaToExport.ano}${igrejaSlug}.pdf`;
+      
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+      
+      toast({
+        title: "Download concluído",
+        description: `Arquivo ${filename} baixado com sucesso`,
+      });
+    } catch (err) {
+      console.error("Erro ao baixar PDF:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingExport(null);
+    }
+  };
+
+  // Download Excel
+  const handleDownloadExcel = async () => {
+    if (!escalaToExport) return;
+    
+    setLoadingExport("excel");
+    try {
+      let url = `/api/v1/relatorios/escala/${escalaToExport.id}/excel`;
+      if (selectedIgrejaExport && selectedIgrejaExport !== "all") {
+        url += `?igreja_id=${selectedIgrejaExport}`;
+      }
+      
+      const blob = await api.downloadBlob(url);
+      const igreja = igrejasExport.find(i => i.id.toString() === selectedIgrejaExport);
+      const igrejaSlug = igreja ? `_${igreja.nome.replace(/\s+/g, '_')}` : '';
+      const filename = `escala_${escalaToExport.mes}_${escalaToExport.ano}${igrejaSlug}.xlsx`;
+      
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+      
+      toast({
+        title: "Download concluído",
+        description: `Arquivo ${filename} baixado com sucesso`,
+      });
+    } catch (err) {
+      console.error("Erro ao baixar Excel:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar Excel",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingExport(null);
+    }
+  };
+
+  // Imprimir PDF no navegador
+  const handlePrintPDF = async () => {
+    if (!escalaToExport) return;
+    
+    setLoadingExport("print");
+    try {
+      let url = `/api/v1/relatorios/escala/${escalaToExport.id}/pdf`;
+      if (selectedIgrejaExport && selectedIgrejaExport !== "all") {
+        url += `?igreja_id=${selectedIgrejaExport}`;
+      }
+      
+      const blob = await api.downloadBlob(url);
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Abrir em nova aba para impressão
+      const printWindow = window.open(blobUrl, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      
+      toast({
+        title: "PDF aberto para impressão",
+        description: "Use Ctrl+P ou o menu do navegador para imprimir.",
+      });
+    } catch (err) {
+      console.error("Erro ao abrir PDF:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao abrir PDF para impressão",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingExport(null);
+    }
+  };
+
   // Ver detalhes da escala
   const handleViewDetails = async (escala: Escala) => {
     setSelectedEscala(escala);
@@ -489,6 +638,27 @@ export default function EscalasPage() {
     } catch (err: any) {
       toast({
         title: "Erro ao excluir",
+        description: err.message || "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Arquivar escala
+  const handleArchive = async () => {
+    if (!escalaToArchive) return;
+
+    try {
+      await api.post(`/api/v1/escalas/${escalaToArchive.id}/arquivar`, {});
+      toast({
+        title: "Sucesso",
+        description: "Escala arquivada com sucesso!",
+      });
+      setEscalaToArchive(null);
+      fetchEscalas();
+    } catch (err: any) {
+      toast({
+        title: "Erro ao arquivar",
         description: err.message || "Erro desconhecido",
         variant: "destructive",
       });
@@ -629,127 +799,47 @@ export default function EscalasPage() {
         )}
       </div>
 
-      {/* Tabs */}
-      <Tabs 
-        defaultValue={canManage ? "gerenciar" : "minhas"} 
-        className="space-y-4"
-        onValueChange={(val) => {
-          if (val === "minhas") {
-            fetchMinhasEscalas();
-          }
-        }}
-      >
-        <TabsList>
-          <TabsTrigger value="minhas">Minhas Escalas</TabsTrigger>
-          {canManage && <TabsTrigger value="gerenciar">Gerenciar</TabsTrigger>}
-        </TabsList>
+      {/* Conteúdo Principal */}
+      {canManage ? (
+        /* Gerenciar Escalas - Para Admins/Pastores/Líderes */
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Mostrar seletor de distrito apenas para admins */}
+            {isAdmin(user) && (
+              <DistritoCombobox
+                value={selectedDistritoId}
+                onValueChange={(val) => {
+                  setSelectedDistritoId(val);
+                  setPage(0);
+                }}
+                placeholder="Selecione o distrito"
+                className="w-full md:w-[300px]"
+              />
+            )}
+            
+            {/* Para não-admins, mostrar distrito atual */}
+            {!isAdmin(user) && selectedDistritoId && (
+              <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/50">
+                <Church className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {distritos.find(d => d.id === selectedDistritoId)?.nome || `Distrito ${selectedDistritoId}`}
+                </span>
+              </div>
+            )}
 
-        {/* Minhas Escalas */}
-        <TabsContent value="minhas" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Próximos Compromissos</CardTitle>
-              <CardDescription>
-                Seus agendamentos de pregação e louvor
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingMinhas ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : minhasEscalas.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Você não possui escalas agendadas</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {minhasEscalas.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors gap-4"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-primary/10 shrink-0">
-                          <span className="text-lg font-bold text-primary">
-                            {parseDate(item.data_culto).getDate()}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {parseDate(item.data_culto).toLocaleDateString("pt-BR", {
-                              month: "short",
-                            })}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.igreja_nome}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {item.tipo} • {item.horario}
-                          </p>
-                          {item.tema && (
-                            <p className="text-sm text-primary mt-1">
-                              Tema: {item.tema}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-auto">
-                        <Badge className={getStatusColor(item.status)}>
-                          {item.status}
-                        </Badge>
-                        {item.status === "PENDENTE" && (
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleConfirmar(item.id, true)}
-                            >
-                              Confirmar
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleConfirmar(item.id, false)}
-                            >
-                              Recusar
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Gerenciar Escalas */}
-        {canManage && (
-          <TabsContent value="gerenciar" className="space-y-4">
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Mostrar seletor de distrito apenas para admins */}
-              {isAdmin(user) && (
-                <DistritoCombobox
-                  value={selectedDistritoId}
-                  onValueChange={(val) => {
-                    setSelectedDistritoId(val);
-                    setPage(0);
-                  }}
-                  placeholder="Selecione o distrito"
-                  className="w-full md:w-[300px]"
-                />
-              )}
-              
-              {/* Para não-admins, mostrar distrito atual */}
-              {!isAdmin(user) && selectedDistritoId && (
-                <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/50">
-                  <Church className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">
-                    Distrito {distritos.find(d => d.id === selectedDistritoId)?.nome || selectedDistritoId}
-                  </span>
-                </div>
-              )}
+            {/* Filtro por status */}
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Filtrar por status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODAS">Todas</SelectItem>
+                <SelectItem value="RASCUNHO">Rascunho</SelectItem>
+                <SelectItem value="PUBLICADA">Publicada</SelectItem>
+                <SelectItem value="ARQUIVADA">Arquivada</SelectItem>
+              </SelectContent>
+            </Select>
 
               <Button variant="outline" onClick={fetchEscalas}>
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -790,14 +880,16 @@ export default function EscalasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {escalas.length === 0 ? (
+                      {escalas.filter(e => filtroStatus === "TODAS" || e.status === filtroStatus).length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                            Nenhuma escala encontrada para este distrito
+                            {filtroStatus === "TODAS" 
+                              ? "Nenhuma escala encontrada para este distrito"
+                              : `Nenhuma escala com status "${filtroStatus}" encontrada`}
                           </TableCell>
                         </TableRow>
                       ) : (
-                        escalas.map((escala) => (
+                        escalas.filter(e => filtroStatus === "TODAS" || e.status === filtroStatus).map((escala) => (
                           <TableRow key={escala.id}>
                             <TableCell className="font-medium">
                               {getEscalaTitulo(escala)}
@@ -828,8 +920,18 @@ export default function EscalasPage() {
                                     <Eye className="h-4 w-4 mr-2" />
                                     Visualizar
                                   </DropdownMenuItem>
+                                  {(escala.status === "RASCUNHO" || escala.status === "PUBLICADA") && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleOpenExportDialog(escala)}>
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Exportar / Imprimir
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                   {escala.status === "RASCUNHO" && (
                                     <>
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => setEscalaToPublish(escala)}>
                                         <Send className="h-4 w-4 mr-2" />
                                         Publicar
@@ -841,6 +943,15 @@ export default function EscalasPage() {
                                       >
                                         <Trash2 className="h-4 w-4 mr-2" />
                                         Excluir
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {escala.status === "PUBLICADA" && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => setEscalaToArchive(escala)}>
+                                        <Archive className="h-4 w-4 mr-2" />
+                                        Arquivar
                                       </DropdownMenuItem>
                                     </>
                                   )}
@@ -885,9 +996,85 @@ export default function EscalasPage() {
                 )}
               </>
             )}
-          </TabsContent>
-        )}
-      </Tabs>
+        </div>
+      ) : (
+        /* Minhas Escalas - Para Pregadores/Cantores que não gerenciam */
+        <Card>
+          <CardHeader>
+            <CardTitle>Próximos Compromissos</CardTitle>
+            <CardDescription>
+              Seus agendamentos de pregação e louvor
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingMinhas ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : minhasEscalas.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Você não possui escalas agendadas</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {minhasEscalas.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors gap-4"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-primary/10 shrink-0">
+                        <span className="text-lg font-bold text-primary">
+                          {parseDate(item.data_culto).getDate()}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {parseDate(item.data_culto).toLocaleDateString("pt-BR", {
+                            month: "short",
+                          })}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium">{item.igreja_nome}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.tipo} • {item.horario}
+                        </p>
+                        {item.tema && (
+                          <p className="text-sm text-primary mt-1">
+                            Tema: {item.tema}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Badge className={getStatusColor(item.status)}>
+                        {item.status}
+                      </Badge>
+                      {item.status === "PENDENTE" && (
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleConfirmar(item.id, true)}
+                          >
+                            Confirmar
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleConfirmar(item.id, false)}
+                          >
+                            Recusar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Dialog: Gerar Escala */}
       <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
@@ -1302,6 +1489,25 @@ export default function EscalasPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Alert: Confirmar arquivamento */}
+      <AlertDialog open={!!escalaToArchive} onOpenChange={(open) => !open && setEscalaToArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Arquivar escala</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja arquivar a escala "{escalaToArchive && getEscalaTitulo(escalaToArchive)}"?
+              Escalas arquivadas não aparecem na listagem principal, mas podem ser visualizadas usando o filtro de status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive}>
+              Arquivar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Alert: Validação de igrejas sem horários */}
       <AlertDialog open={showValidationAlert} onOpenChange={setShowValidationAlert}>
         <AlertDialogContent>
@@ -1443,6 +1649,98 @@ export default function EscalasPage() {
             <Button onClick={handleSaveItem} disabled={savingItem}>
               {savingItem && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Exportação */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Exportar Escala
+            </DialogTitle>
+            <DialogDescription>
+              {escalaToExport && (
+                <>
+                  Escala de {MESES.find(m => m.value === escalaToExport.mes)?.label || escalaToExport.mes}/{escalaToExport.ano}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Igreja (opcional)</Label>
+              <Select value={selectedIgrejaExport} onValueChange={setSelectedIgrejaExport}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas as igrejas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as igrejas</SelectItem>
+                  {igrejasExport.map((igreja) => (
+                    <SelectItem key={igreja.id} value={igreja.id.toString()}>
+                      {igreja.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Selecione uma igreja para gerar um relatório individual em uma página
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-3 gap-3">
+              <Button
+                onClick={handleDownloadPDF}
+                disabled={loadingExport !== null}
+                className="flex flex-col items-center gap-2 h-auto py-4"
+              >
+                {loadingExport === "pdf" ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <FileText className="h-6 w-6" />
+                )}
+                <span className="text-sm">Baixar PDF</span>
+              </Button>
+
+              <Button
+                onClick={handlePrintPDF}
+                disabled={loadingExport !== null}
+                variant="secondary"
+                className="flex flex-col items-center gap-2 h-auto py-4"
+              >
+                {loadingExport === "print" ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <Printer className="h-6 w-6" />
+                )}
+                <span className="text-sm">Imprimir</span>
+              </Button>
+
+              <Button
+                onClick={handleDownloadExcel}
+                disabled={loadingExport !== null}
+                variant="outline"
+                className="flex flex-col items-center gap-2 h-auto py-4"
+              >
+                {loadingExport === "excel" ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-6 w-6" />
+                )}
+                <span className="text-sm">Baixar Excel</span>
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
