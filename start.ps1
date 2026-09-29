@@ -9,7 +9,7 @@ $buildNumber = $windowsVersion.Build
 
 # Windows 11 tem build 22000 ou superior, Windows 10 tem build inferior
 if ($buildNumber -ge 22000) {
-    $BACKEND_PORT = 8001  # Windows 11
+    $BACKEND_PORT = 8002  # Windows 11 (8000 = servico WCF do Windows, 8001 = Laravel/Herd)
     $OS_NAME = "Windows 11"
 } else {
     $BACKEND_PORT = 8000  # Windows 10
