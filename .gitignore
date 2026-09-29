@@ -8,3 +8,6 @@ __pycache__/
 
 frontend/.env.local
 backend/.env
+
+# Logs do teste no celular
+.teste-celular/
