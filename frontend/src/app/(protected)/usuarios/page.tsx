@@ -15,7 +15,13 @@ import {
   Phone,
   Loader2,
   RefreshCw,
+  UserCheck,
+  Mic2,
+  Music,
+  Clock,
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +111,23 @@ const initialFormData: FormData = {
   pode_pregar: false,
   pode_cantar: false,
 };
+
+function statusClass(status: string): string {
+  return status === "INATIVO" || status === "RECUSADO" ? "bg-destructive/10 text-destructive" : "";
+}
+
+function statusVariant(status: string): "success" | "warning" | "destructive" | "secondary" {
+  if (status === "ATIVO") return "success";
+  if (status === "PENDENTE") return "warning";
+  if (status === "INATIVO" || status === "RECUSADO") return "destructive";
+  return "secondary";
+}
+
+function scoreClass(score: number): string {
+  if (score >= 8) return "text-success";
+  if (score >= 6) return "text-warning";
+  return "text-destructive";
+}
 
 export default function UsuariosPage() {
   const { user, accessToken } = useAuthStore();
@@ -365,27 +388,20 @@ export default function UsuariosPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            Usuários
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie pregadores, cantores e membros do sistema
-          </p>
-        </div>
+      <PageHeader
+        title="Usuários"
+        description="Gerencie pregadores, cantores e membros do sistema"
+        icon={<Users className="h-5 w-5" />}
+        actions={
+          <>
+            <Button variant="outline" onClick={fetchData} disabled={loading} className="flex-1 sm:flex-none">
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-          
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Usuário
               </Button>
@@ -417,7 +433,7 @@ export default function UsuariosPage() {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
                     <Label htmlFor="cpf">CPF *</Label>
                     <Input
@@ -493,27 +509,27 @@ export default function UsuariosPage() {
                 )}                
                 {/* Habilidades de escalação */}
                 {formData.tipo && formData.tipo !== "ADMIN" && formData.tipo !== "ASSOCIACAO" && formData.tipo !== "MEMBRO" && (
-                  <div className="grid gap-3 p-4 border rounded-lg bg-muted/30">
+                  <div className="grid gap-3 rounded-xl border bg-muted/40 p-4">
                     <Label className="text-sm font-semibold">Habilidades de Escalação</Label>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex min-h-[44px] items-center gap-3">
                       <input
                         type="checkbox"
                         id="pode_pregar"
                         checked={formData.pode_pregar || false}
                         onChange={(e) => setFormData({ ...formData, pode_pregar: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300"
+                        className="h-5 w-5 rounded border-input accent-primary"
                       />
                       <Label htmlFor="pode_pregar" className="text-sm font-normal cursor-pointer">
                         Pode pregar
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex min-h-[44px] items-center gap-3">
                       <input
                         type="checkbox"
                         id="pode_cantar"
                         checked={formData.pode_cantar || false}
                         onChange={(e) => setFormData({ ...formData, pode_cantar: e.target.checked })}
-                        className="h-4 w-4 rounded border-gray-300"
+                        className="h-5 w-5 rounded border-input accent-primary"
                       />
                       <Label htmlFor="pode_cantar" className="text-sm font-normal cursor-pointer">
                         Pode cantar
@@ -549,37 +565,35 @@ export default function UsuariosPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">Total de usuários</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.pregadores}</div>
-            <p className="text-xs text-muted-foreground">Pregadores</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.cantores}</div>
-            <p className="text-xs text-muted-foreground">Cantores</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className={`text-2xl font-bold ${stats.pendentes > 0 ? 'text-orange-500' : ''}`}>
-              {stats.pendentes}
-            </div>
-            <p className="text-xs text-muted-foreground">Pendentes de aprovação</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        {[
+          { label: "Total de usuários", value: stats.total, icon: Users, tone: "bg-accent text-accent-foreground" },
+          { label: "Pregadores", value: stats.pregadores, icon: Mic2, tone: "bg-accent text-accent-foreground" },
+          { label: "Cantores", value: stats.cantores, icon: Music, tone: "bg-accent text-accent-foreground" },
+          {
+            label: "Pendentes de aprovação",
+            value: stats.pendentes,
+            icon: Clock,
+            tone: stats.pendentes > 0 ? "bg-warning/15 text-warning" : "bg-accent text-accent-foreground",
+          },
+        ].map((item) => (
+          <Card key={item.label}>
+            <CardContent className="flex items-center gap-3 p-4 sm:p-5">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.tone}`}>
+                <item.icon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-2xl font-bold leading-none">{item.value}</div>
+                <p className="mt-1 text-xs leading-tight text-muted-foreground">{item.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Tabs */}
@@ -591,7 +605,7 @@ export default function UsuariosPage() {
           <TabsTrigger value="pendentes" className="relative">
             Pendentes
             {stats.pendentes > 0 && (
-              <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
+              <Badge variant="warning" className="ml-2 h-5 min-w-5 justify-center px-1.5">
                 {stats.pendentes}
               </Badge>
             )}
@@ -599,17 +613,62 @@ export default function UsuariosPage() {
         </TabsList>
 
         {/* Todos / Pregadores / Cantores */}
-        {["todos", "pregadores", "cantores"].map((tab) => (
+        {["todos", "pregadores", "cantores"].map((tab) => {
+          const tabUsers = filteredUsers.filter((u) => {
+            if (tab === "pregadores") return u.tipo === "PREGADOR";
+            if (tab === "cantores") return u.tipo === "CANTOR";
+            return true;
+          });
+          const renderActions = (usuario: Usuario) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" disabled={loadingAction} aria-label="Ações">
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Ver Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {usuario.status === "ATIVO" ? (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => handleToggleStatus(usuario.id, false)}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Desativar
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    className="text-success"
+                    onClick={() => handleToggleStatus(usuario.id, true)}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Ativar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+          return (
           <TabsContent key={tab} value={tab} className="space-y-4">
             {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col gap-3 md:flex-row">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome ou email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-10 shadow-soft"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -624,138 +683,126 @@ export default function UsuariosPage() {
               </Select>
             </div>
 
-            {/* Table */}
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Usuário</TableHead>
-                    {!showLimitedData && <TableHead>Contato</TableHead>}
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Score</TableHead>
-                    {!showLimitedData && <TableHead>Status</TableHead>}
-                    {!showLimitedData && <TableHead className="text-right">Ações</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers
-                    .filter((u) => {
-                      if (tab === "pregadores") return u.tipo === "PREGADOR";
-                      if (tab === "cantores") return u.tipo === "CANTOR";
-                      return true;
-                    })
-                    .map((usuario) => (
-                      <TableRow key={usuario.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarImage src={usuario.foto_url || undefined} />
-                              <AvatarFallback>
-                                {getInitials(usuario.nome_completo)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{usuario.nome_completo}</p>
-                              {!showLimitedData && (
-                                <p className="text-sm text-muted-foreground">
-                                  {distritos.find(d => d.id === usuario.distrito_id)?.nome || "Sem distrito"}
-                                </p>
-                              )}
-                            </div>
+            {tabUsers.length === 0 ? (
+              <EmptyState
+                icon={<Users className="h-6 w-6" />}
+                title="Nenhum usuário encontrado"
+                description="Ajuste a busca ou os filtros para ver outros resultados."
+              />
+            ) : (
+              <>
+                {/* Lista (celular) */}
+                <div className="space-y-3 md:hidden">
+                  {tabUsers.map((usuario) => (
+                    <Card key={usuario.id}>
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <Avatar className="h-12 w-12 shrink-0">
+                          <AvatarImage src={usuario.foto_url || undefined} />
+                          <AvatarFallback>{getInitials(usuario.nome_completo)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold">{usuario.nome_completo}</p>
+                          {!showLimitedData && (
+                            <p className="truncate text-sm text-muted-foreground">{usuario.email}</p>
+                          )}
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <Badge variant="outline">{getUserRole(usuario.tipo)}</Badge>
+                            {!showLimitedData && (
+                              <Badge variant={statusVariant(usuario.status)} className={statusClass(usuario.status)}>{usuario.status}</Badge>
+                            )}
+                            <span className={`text-xs font-semibold ${scoreClass(Number(usuario.score_atual) || 0)}`}>
+                              {Number(usuario.score_atual || 0).toFixed(1)}
+                            </span>
                           </div>
-                        </TableCell>
-                        {!showLimitedData && (
+                        </div>
+                        {!showLimitedData && <div className="shrink-0">{renderActions(usuario)}</div>}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Tabela (desktop) */}
+                <Card className="hidden overflow-hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuário</TableHead>
+                        {!showLimitedData && <TableHead>Contato</TableHead>}
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Score</TableHead>
+                        {!showLimitedData && <TableHead>Status</TableHead>}
+                        {!showLimitedData && <TableHead className="text-right">Ações</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tabUsers.map((usuario) => (
+                        <TableRow key={usuario.id}>
                           <TableCell>
-                            <div className="text-sm">
-                              <div className="flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                {usuario.email}
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarImage src={usuario.foto_url || undefined} />
+                                <AvatarFallback>
+                                  {getInitials(usuario.nome_completo)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{usuario.nome_completo}</p>
+                                {!showLimitedData && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {distritos.find(d => d.id === usuario.distrito_id)?.nome || "Sem distrito"}
+                                  </p>
+                                )}
                               </div>
-                              {usuario.telefone && (
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <Phone className="h-3 w-3" />
-                                  {formatPhone(usuario.telefone)}
-                                </div>
-                              )}
                             </div>
                           </TableCell>
-                        )}
-                        <TableCell>
-                          <Badge variant="outline">
-                            {getUserRole(usuario.tipo)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className={getScoreColor(Number(usuario.score_atual) || 0)}>
-                            {Number(usuario.score_atual || 0).toFixed(1)}
-                          </span>
-                        </TableCell>
-                        {!showLimitedData && (
-                          <>
+                          {!showLimitedData && (
                             <TableCell>
-                              <Badge className={getStatusColor(usuario.status)}>
-                                {usuario.status}
-                              </Badge>
+                              <div className="text-sm">
+                                <div className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />
+                                  {usuario.email}
+                                </div>
+                                {usuario.telefone && (
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Phone className="h-3 w-3" />
+                                    {formatPhone(usuario.telefone)}
+                                  </div>
+                                )}
+                              </div>
                             </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" disabled={loadingAction}>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Ver Perfil
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Editar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  {usuario.status === "ATIVO" ? (
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={() => handleToggleStatus(usuario.id, false)}
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2" />
-                                      Desativar
-                                    </DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem
-                                      className="text-green-600"
-                                      onClick={() => handleToggleStatus(usuario.id, true)}
-                                    >
-                                      <CheckCircle className="h-4 w-4 mr-2" />
-                                      Ativar
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    ))}
-                  {filteredUsers.filter((u) => {
-                    if (tab === "pregadores") return u.tipo === "PREGADOR";
-                    if (tab === "cantores") return u.tipo === "CANTOR";
-                    return true;
-                  }).length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={showLimitedData ? 3 : 6} className="text-center py-8 text-muted-foreground">
-                        Nenhum usuário encontrado
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
+                          )}
+                          <TableCell>
+                            <Badge variant="outline">
+                              {getUserRole(usuario.tipo)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`font-semibold ${scoreClass(Number(usuario.score_atual) || 0)}`}>
+                              {Number(usuario.score_atual || 0).toFixed(1)}
+                            </span>
+                          </TableCell>
+                          {!showLimitedData && (
+                            <>
+                              <TableCell>
+                                <Badge variant={statusVariant(usuario.status)} className={statusClass(usuario.status)}>
+                                  {usuario.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {renderActions(usuario)}
+                              </TableCell>
+                            </>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Card>
+              </>
+            )}
           </TabsContent>
-        ))}
+          );
+        })}
 
         {/* Pendentes */}
         <TabsContent value="pendentes" className="space-y-4">
@@ -768,28 +815,30 @@ export default function UsuariosPage() {
             </CardHeader>
             <CardContent>
               {pendentes.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhum cadastro pendente de aprovação
-                </div>
+                <EmptyState
+                  icon={<UserCheck className="h-6 w-6" />}
+                  title="Nenhum cadastro pendente de aprovação"
+                  description="Tudo em dia por aqui."
+                />
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {pendentes.map((usuario) => (
                     <div
                       key={usuario.id}
-                      className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border gap-4"
+                      className="flex flex-col gap-4 rounded-xl border bg-card p-4 md:flex-row md:items-center md:justify-between"
                     >
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
+                      <div className="flex min-w-0 items-start gap-3 md:items-center md:gap-4">
+                        <Avatar className="h-12 w-12 shrink-0">
                           <AvatarFallback>
                             {getInitials(usuario.nome_completo)}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="font-medium">{usuario.nome_completo}</p>
-                          <p className="text-sm text-muted-foreground">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{usuario.nome_completo}</p>
+                          <p className="break-all text-sm text-muted-foreground">
                             {usuario.email} • {usuario.telefone ? formatPhone(usuario.telefone) : "Sem telefone"}
                           </p>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                             <Badge variant="outline">
                               {getUserRole(usuario.tipo)}
                             </Badge>
@@ -804,10 +853,9 @@ export default function UsuariosPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 ml-auto">
+                      <div className="grid grid-cols-2 gap-2 md:ml-auto md:flex md:items-center">
                         <Button
                           variant="outline"
-                          size="sm"
                           className="text-destructive"
                           onClick={() => handleReject(usuario.id)}
                           disabled={loadingAction}
@@ -816,7 +864,6 @@ export default function UsuariosPage() {
                           Recusar
                         </Button>
                         <Button
-                          size="sm"
                           onClick={() => handleApprove(usuario.id)}
                           disabled={loadingAction}
                         >

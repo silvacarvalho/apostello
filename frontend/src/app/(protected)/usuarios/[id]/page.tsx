@@ -156,29 +156,29 @@ export default function UsuarioDetalhesPage() {
     const statuses: Record<string, { label: string; color: string; icon: any }> = {
       PENDENTE_APROVACAO: {
         label: "Pendente de Aprovação",
-        color: "bg-yellow-500",
+        color: "bg-warning/15 text-warning",
         icon: Clock,
       },
       APROVADO: {
         label: "Aprovado",
-        color: "bg-green-500",
+        color: "bg-success/15 text-success",
         icon: CheckCircle,
       },
       RECUSADO: {
         label: "Recusado",
-        color: "bg-red-500",
+        color: "bg-destructive/10 text-destructive",
         icon: XCircle,
       },
     };
-    return statuses[status] || { label: status, color: "bg-gray-500", icon: AlertCircle };
+    return statuses[status] || { label: status, color: "bg-muted text-muted-foreground", icon: AlertCircle };
   };
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8">
+      <div>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto"></div>
             <p className="mt-4 text-muted-foreground">Carregando...</p>
           </div>
         </div>
@@ -188,8 +188,8 @@ export default function UsuarioDetalhesPage() {
 
   if (error || !usuario) {
     return (
-      <div className="container mx-auto py-8">
-        <Card className="border-destructive">
+      <div>
+        <Card className="border-destructive/40">
           <CardContent className="py-8">
             <div className="text-center text-destructive">
               <AlertCircle className="mx-auto h-12 w-12 mb-4" />
@@ -210,31 +210,29 @@ export default function UsuarioDetalhesPage() {
   const StatusIcon = statusInfo.icon;
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <Button variant="ghost" onClick={() => router.back()} className="-ml-3">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
         {/* Coluna Principal - Informações Pessoais */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="md:col-span-2 space-y-4 sm:space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-start gap-4">
-                <Avatar className="h-20 w-20">
+              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
+                <Avatar className="h-24 w-24 shrink-0 sm:h-20 sm:w-20">
                   <AvatarImage src={usuario.foto_url || undefined} />
                   <AvatarFallback className="text-2xl">
                     {usuario.nome_completo.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <CardTitle className="text-2xl mb-2">
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="mb-2 break-words text-xl sm:text-2xl">
                     {usuario.nome_completo}
                   </CardTitle>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
                     <Badge variant="outline">{getTipoLabel(usuario.tipo)}</Badge>
                     {usuario.pode_pregar && (
                       <Badge variant="secondary">Pregador</Badge>
@@ -242,7 +240,7 @@ export default function UsuarioDetalhesPage() {
                     {usuario.pode_cantar && (
                       <Badge variant="secondary">Cantor</Badge>
                     )}
-                    <Badge className={statusInfo.color}>
+                    <Badge className={`border-transparent ${statusInfo.color}`}>
                       <StatusIcon className="mr-1 h-3 w-3" />
                       {statusInfo.label}
                     </Badge>
@@ -251,66 +249,66 @@ export default function UsuarioDetalhesPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="min-w-0 space-y-1 rounded-xl bg-muted/50 p-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="h-4 w-4" />
                     <span className="font-medium">E-mail</span>
                   </div>
-                  <p className="text-sm">{usuario.email}</p>
+                  <p className="break-all text-sm font-medium">{usuario.email}</p>
                 </div>
 
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1 rounded-xl bg-muted/50 p-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <User className="h-4 w-4" />
                     <span className="font-medium">CPF</span>
                   </div>
-                  <p className="text-sm">{formatCPF(usuario.cpf)}</p>
+                  <p className="text-sm font-medium">{formatCPF(usuario.cpf)}</p>
                 </div>
 
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1 rounded-xl bg-muted/50 p-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="h-4 w-4" />
                     <span className="font-medium">Telefone</span>
                   </div>
-                  <p className="text-sm">{formatPhone(usuario.telefone)}</p>
+                  <p className="text-sm font-medium">{formatPhone(usuario.telefone)}</p>
                 </div>
 
                 {usuario.whatsapp && (
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1 rounded-xl bg-muted/50 p-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Phone className="h-4 w-4" />
                       <span className="font-medium">WhatsApp</span>
                     </div>
-                    <p className="text-sm">{formatPhone(usuario.whatsapp)}</p>
+                    <p className="text-sm font-medium">{formatPhone(usuario.whatsapp)}</p>
                   </div>
                 )}
 
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1 rounded-xl bg-muted/50 p-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span className="font-medium">Data de Nascimento</span>
                   </div>
-                  <p className="text-sm">{formatDate(usuario.data_nascimento)}</p>
+                  <p className="text-sm font-medium">{formatDate(usuario.data_nascimento)}</p>
                 </div>
 
                 {usuario.distrito && (
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1 rounded-xl bg-muted/50 p-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <MapPin className="h-4 w-4" />
                       <span className="font-medium">Distrito</span>
                     </div>
-                    <p className="text-sm">{usuario.distrito.nome}</p>
+                    <p className="text-sm font-medium">{usuario.distrito.nome}</p>
                   </div>
                 )}
 
                 {usuario.igreja && (
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1 rounded-xl bg-muted/50 p-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Church className="h-4 w-4" />
                       <span className="font-medium">Igreja</span>
                     </div>
-                    <p className="text-sm">{usuario.igreja.nome}</p>
+                    <p className="text-sm font-medium">{usuario.igreja.nome}</p>
                   </div>
                 )}
               </div>
@@ -319,7 +317,7 @@ export default function UsuarioDetalhesPage() {
 
           {/* Motivo de Recusa */}
           {usuario.status_aprovacao === "RECUSADO" && usuario.motivo_recusa && (
-            <Card className="border-destructive">
+            <Card className="border-destructive/40">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive">
                   <XCircle className="h-5 w-5" />
@@ -327,13 +325,13 @@ export default function UsuarioDetalhesPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-destructive/10 p-4 rounded-md">
+                <div className="rounded-xl bg-destructive/10 p-4">
                   <p className="text-sm">{usuario.motivo_recusa}</p>
                 </div>
                 <Button
                   onClick={() => setShowReaprovarDialog(true)}
                   disabled={isReaproving}
-                  className="w-full bg-green-600 hover:bg-green-700"
+                  className="w-full bg-success text-success-foreground hover:bg-success/90"
                 >
                   <RefreshCw className={`mr-2 h-4 w-4 ${isReaproving ? "animate-spin" : ""}`} />
                   {isReaproving ? "Reaprovando..." : "Reaprovar Cadastro"}
@@ -344,7 +342,7 @@ export default function UsuarioDetalhesPage() {
         </div>
 
         {/* Coluna Lateral - Estatísticas e Datas */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Datas Importantes */}
           <Card>
             <CardHeader>
@@ -359,7 +357,7 @@ export default function UsuarioDetalhesPage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     Solicitação de Cadastro
                   </p>
-                  <p className="text-sm">{formatDate(usuario.data_solicitacao_cadastro)}</p>
+                  <p className="text-sm font-medium">{formatDate(usuario.data_solicitacao_cadastro)}</p>
                 </div>
               )}
 
@@ -370,7 +368,7 @@ export default function UsuarioDetalhesPage() {
                     <p className="text-sm font-medium text-muted-foreground">
                       {usuario.status_aprovacao === "APROVADO" ? "Data de Aprovação" : "Data de Recusa"}
                     </p>
-                    <p className="text-sm">{formatDate(usuario.data_aprovacao)}</p>
+                    <p className="text-sm font-medium">{formatDate(usuario.data_aprovacao)}</p>
                   </div>
                 </>
               )}
@@ -404,7 +402,7 @@ export default function UsuarioDetalhesPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Desmarcações</span>
-                    <span className="font-medium text-orange-600">{usuario.contador_desmarcacoes}</span>
+                    <span className="font-medium text-warning">{usuario.contador_desmarcacoes}</span>
                   </div>
                 </div>
               </CardContent>
@@ -423,7 +421,7 @@ export default function UsuarioDetalhesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReaprovar} className="bg-green-600 hover:bg-green-700">
+            <AlertDialogAction onClick={handleReaprovar} className="bg-success text-success-foreground hover:bg-success/90">
               Reaprovar
             </AlertDialogAction>
           </AlertDialogFooter>

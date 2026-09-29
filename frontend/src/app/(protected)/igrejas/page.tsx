@@ -63,8 +63,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useAuthStore, isAdmin, isPastor } from "@/stores/auth-store";
-import { getStatusColor, getDayOfWeek } from "@/lib/utils";
+import { getDayOfWeek } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -102,6 +104,17 @@ interface IgrejaListResponse {
 interface DistritoListResponse {
   items: Distrito[];
   total: number;
+}
+
+function statusClass(status: string): string {
+  return status === "INATIVO" || status === "RECUSADO" ? "bg-destructive/10 text-destructive" : "";
+}
+
+function statusVariant(status: string): "success" | "warning" | "destructive" | "secondary" {
+  if (status === "ATIVO") return "success";
+  if (status === "PENDENTE") return "warning";
+  if (status === "INATIVO") return "destructive";
+  return "secondary";
 }
 
 export default function IgrejasPage() {
@@ -329,6 +342,40 @@ export default function IgrejasPage() {
     return `${parts[0]}:${parts[1]}`;
   };
 
+  const renderIgrejaActions = (igreja: Igreja) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Ações" className="shrink-0">
+          <MoreHorizontal className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => handleViewDetails(igreja)}>
+          <Eye className="h-4 w-4 mr-2" />
+          Ver Detalhes
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleEdit(igreja)}>
+          <Edit className="h-4 w-4 mr-2" />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleManageHorarios(igreja)}>
+          <Clock className="h-4 w-4 mr-2" />
+          Gerenciar Horários
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive"
+          onClick={() => handleDeleteClick(igreja)}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Excluir
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   if (!canManage) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -342,23 +389,17 @@ export default function IgrejasPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Church className="h-8 w-8" />
-            Igrejas
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie as igrejas e seus horários de culto
-          </p>
-        </div>
-
+      <PageHeader
+        title="Igrejas"
+        description="Gerencie as igrejas e seus horários de culto"
+        icon={<Church className="h-5 w-5" />}
+        actions={
         <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
           setIsCreateDialogOpen(open);
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Nova Igreja
             </Button>
@@ -435,17 +476,18 @@ export default function IgrejasPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+        }
+      />
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col gap-3 md:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar igreja..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="pl-10 shadow-soft"
           />
         </div>
         <Select value={selectedDistrito} onValueChange={setSelectedDistrito}>
@@ -476,7 +518,7 @@ export default function IgrejasPage() {
 
       {/* Error State */}
       {error && !loading && (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 px-6 py-12 text-center">
           <AlertCircle className="h-12 w-12 text-destructive mb-4" />
           <p className="text-lg font-medium text-destructive">{error}</p>
           <Button variant="outline" className="mt-4" onClick={fetchIgrejas}>
@@ -485,40 +527,81 @@ export default function IgrejasPage() {
         </div>
       )}
 
-      {/* Table */}
-      {!loading && !error && (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Endereço</TableHead>
-                  <TableHead>Distrito</TableHead>
-                  <TableHead>Horários de Culto</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredIgrejas.length === 0 ? (
+      {!loading && !error && filteredIgrejas.length === 0 && (
+        <EmptyState
+          icon={<Church className="h-6 w-6" />}
+          title={searchTerm ? "Nenhuma igreja encontrada com esse termo" : "Nenhuma igreja cadastrada"}
+        />
+      )}
+
+      {!loading && !error && filteredIgrejas.length > 0 && (
+        <>
+          {/* Lista (celular) */}
+          <div className="space-y-3 md:hidden">
+            {filteredIgrejas.map((igreja) => (
+              <Card key={igreja.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                      <Church className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{igreja.nome}</p>
+                      <div className="mt-1 flex items-start gap-1 text-sm text-muted-foreground">
+                        <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span className="break-words">{igreja.endereco_completo || "Não informado"}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <Badge variant={statusVariant(igreja.status)} className={statusClass(igreja.status)}>{igreja.status}</Badge>
+                        <Badge variant="outline">{igreja.distrito?.nome || "N/A"}</Badge>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {igreja.horarios_culto.length > 0 ? (
+                          igreja.horarios_culto.map((horario) => (
+                            <Badge key={horario.id} variant="secondary" className="text-xs">
+                              {getDayOfWeek(horario.dia_semana)} {formatHorario(horario.horario)}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Sem horários</span>
+                        )}
+                      </div>
+                    </div>
+                    {renderIgrejaActions(igreja)}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Tabela (desktop) */}
+          <Card className="hidden overflow-hidden md:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {searchTerm ? "Nenhuma igreja encontrada com esse termo" : "Nenhuma igreja cadastrada"}
-                    </TableCell>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Endereço</TableHead>
+                    <TableHead>Distrito</TableHead>
+                    <TableHead>Horários de Culto</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ) : (
-                  filteredIgrejas.map((igreja) => (
+                </TableHeader>
+                <TableBody>
+                  {filteredIgrejas.map((igreja) => (
                     <TableRow key={igreja.id}>
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Church className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                            <Church className="h-4 w-4" />
+                          </div>
                           {igreja.nome}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
+                          <MapPin className="h-3 w-3 shrink-0" />
                           {igreja.endereco_completo || "Não informado"}
                         </div>
                       </TableCell>
@@ -539,50 +622,20 @@ export default function IgrejasPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(igreja.status)}>
+                        <Badge variant={statusVariant(igreja.status)} className={statusClass(igreja.status)}>
                           {igreja.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleViewDetails(igreja)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver Detalhes
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(igreja)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleManageHorarios(igreja)}>
-                              <Clock className="h-4 w-4 mr-2" />
-                              Gerenciar Horários
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteClick(igreja)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {renderIgrejaActions(igreja)}
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Edit Dialog */}
@@ -655,29 +708,29 @@ export default function IgrejasPage() {
           </DialogHeader>
           {selectedIgreja && (
             <div className="space-y-4">
-              <div className="grid gap-2">
+              <div className="grid gap-1 rounded-xl bg-muted/50 p-3">
                 <Label className="text-muted-foreground">Distrito</Label>
                 <p>{selectedIgreja.distrito?.nome || "N/A"}</p>
               </div>
-              <div className="grid gap-2">
+              <div className="grid gap-1 rounded-xl bg-muted/50 p-3">
                 <Label className="text-muted-foreground">Endereço</Label>
                 <p>{selectedIgreja.endereco_completo || "Não informado"}</p>
               </div>
-              <div className="grid gap-2">
+              <div className="grid gap-1 rounded-xl bg-muted/50 p-3">
                 <Label className="text-muted-foreground">Telefone</Label>
                 <p>{selectedIgreja.telefone || "Não informado"}</p>
               </div>
-              <div className="grid gap-2">
+              <div className="grid gap-1 rounded-xl bg-muted/50 p-3">
                 <Label className="text-muted-foreground">E-mail</Label>
                 <p>{selectedIgreja.email || "Não informado"}</p>
               </div>
-              <div className="grid gap-2">
+              <div className="grid gap-1 rounded-xl bg-muted/50 p-3">
                 <Label className="text-muted-foreground">Status</Label>
-                <Badge className={getStatusColor(selectedIgreja.status)}>
+                <Badge variant={statusVariant(selectedIgreja.status)} className={statusClass(selectedIgreja.status)}>
                   {selectedIgreja.status}
                 </Badge>
               </div>
-              <div className="grid gap-2">
+              <div className="grid gap-1 rounded-xl bg-muted/50 p-3">
                 <Label className="text-muted-foreground">Horários de Culto</Label>
                 {selectedIgreja.horarios_culto.length > 0 ? (
                   <div className="space-y-1">
@@ -728,7 +781,7 @@ export default function IgrejasPage() {
                 {selectedIgreja.horarios_culto.length > 0 ? (
                   <div className="space-y-2">
                     {selectedIgreja.horarios_culto.map((horario) => (
-                      <div key={horario.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                      <div key={horario.id} className="flex items-center justify-between rounded-xl bg-muted/60 py-1 pl-3 pr-1">
                         <span>
                           {getDayOfWeek(horario.dia_semana)} - {formatHorario(horario.horario)}
                         </span>
@@ -761,7 +814,7 @@ export default function IgrejasPage() {
               </div>
               <div className="border-t pt-4 space-y-4">
                 <Label className="text-base font-semibold">Adicionar Novo Horário</Label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="dia-semana">Dia da Semana</Label>
                     <Select value={selectedDia} onValueChange={setSelectedDia}>

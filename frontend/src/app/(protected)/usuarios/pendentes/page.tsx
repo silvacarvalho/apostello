@@ -25,6 +25,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
@@ -180,65 +182,56 @@ export default function UsuariosPendentesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <Button variant="ghost" onClick={() => router.back()} className="-ml-3">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Users className="h-8 w-8" />
-          Cadastros Pendentes de Aprovação
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Gerencie as solicitações de cadastro de novos membros
-        </p>
-      </div>
+      <PageHeader
+        title="Cadastros Pendentes"
+        description="Gerencie as solicitações de cadastro de novos membros"
+        icon={<Users className="h-5 w-5" />}
+      />
 
       {pendentes.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg text-muted-foreground">
-              Nenhum cadastro pendente de aprovação
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Users className="h-6 w-6" />}
+          title="Nenhum cadastro pendente de aprovação"
+          description="Novas solicitações aparecerão aqui."
+        />
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:gap-4">
           {pendentes.map((usuario) => (
-            <Card key={usuario.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="py-6">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <Card key={usuario.id}>
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center">
                   {/* Avatar e Info */}
-                  <div className="flex items-center gap-4 flex-1">
-                    <Avatar className="h-16 w-16">
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <Avatar className="h-14 w-14 shrink-0">
                       <AvatarImage src={usuario.foto_url || undefined} alt={usuario.nome_completo} />
                       <AvatarFallback>{getInitials(usuario.nome_completo)}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{usuario.nome_completo}</h3>
-                      <p className="text-sm text-muted-foreground">{usuario.email}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline">{usuario.tipo}</Badge>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-base font-semibold sm:text-lg">{usuario.nome_completo}</h3>
+                      <p className="truncate text-sm text-muted-foreground">{usuario.email}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge variant="warning">{usuario.tipo}</Badge>
                         {usuario.igreja && (
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Building2 className="h-3 w-3" />
+                            <Building2 className="h-3.5 w-3.5" />
                             <span>{usuario.igreja.nome}</span>
                           </div>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Solicitado em:{" "}
                         {new Date(usuario.data_solicitacao_cadastro).toLocaleDateString("pt-BR")}
                       </p>
@@ -246,7 +239,7 @@ export default function UsuariosPendentesPage() {
                   </div>
 
                   {/* Ações */}
-                  <div className="flex gap-2 md:flex-col w-full md:w-auto">
+                  <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:flex-col">
                     <Button
                       onClick={() => handleApprove(usuario.id)}
                       disabled={processing === usuario.id}

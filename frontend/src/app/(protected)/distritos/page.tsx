@@ -41,6 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useAuthStore, isAdmin, isAssociacao } from "@/stores/auth-store";
 import { getInitials } from "@/lib/utils";
 
@@ -124,117 +126,82 @@ export default function DistritosPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Building2 className="h-8 w-8" />
-            Distritos
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie os distritos da organização
-          </p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Distrito
-        </Button>
-      </div>
+      <PageHeader
+        title="Distritos"
+        description="Gerencie os distritos da organização"
+        icon={<Building2 className="h-5 w-5" />}
+        actions={
+          <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Distrito
+          </Button>
+        }
+      />
 
       {/* Search */}
-      <div className="relative w-full md:w-80">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative w-full md:max-w-md">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar distritos..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
+          className="pl-10 shadow-soft"
         />
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Building2 className="h-5 w-5 text-primary" />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        {[
+          { label: "Distritos Ativos", value: mockDistritos.filter((d) => d.ativo).length, icon: Building2 },
+          { label: "Total de Igrejas", value: mockDistritos.reduce((acc, d) => acc + d.igrejas, 0), icon: Church },
+          { label: "Pregadores", value: mockDistritos.reduce((acc, d) => acc + d.pregadores, 0), icon: Users },
+          { label: "Cantores", value: mockDistritos.reduce((acc, d) => acc + d.cantores, 0), icon: Users },
+        ].map((item) => (
+          <Card key={item.label}>
+            <CardContent className="flex items-center gap-3 p-4 sm:p-5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                <item.icon className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {mockDistritos.filter((d) => d.ativo).length}
-                </p>
-                <p className="text-sm text-muted-foreground">Distritos Ativos</p>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold leading-none">{item.value}</p>
+                <p className="mt-1 text-xs leading-tight text-muted-foreground">{item.label}</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Church className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {mockDistritos.reduce((acc, d) => acc + d.igrejas, 0)}
-                </p>
-                <p className="text-sm text-muted-foreground">Total de Igrejas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <Users className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {mockDistritos.reduce((acc, d) => acc + d.pregadores, 0)}
-                </p>
-                <p className="text-sm text-muted-foreground">Pregadores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-500/10 rounded-lg">
-                <Users className="h-5 w-5 text-purple-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {mockDistritos.reduce((acc, d) => acc + d.cantores, 0)}
-                </p>
-                <p className="text-sm text-muted-foreground">Cantores</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {filteredDistritos.length === 0 ? (
+        <EmptyState
+          icon={<Building2 className="h-6 w-6" />}
+          title="Nenhum distrito encontrado"
+          description="Ajuste a busca para ver outros resultados."
+        />
+      ) : (
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredDistritos.map((distrito) => (
           <Card key={distrito.id}>
             <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">{distrito.nome}</CardTitle>
-                  <Badge
-                    variant={distrito.ativo ? "default" : "secondary"}
-                    className="mt-2"
-                  >
-                    {distrito.ativo ? "Ativo" : "Inativo"}
-                  </Badge>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <CardTitle className="truncate text-lg">{distrito.nome}</CardTitle>
+                    <Badge
+                      variant={distrito.ativo ? "success" : "secondary"}
+                      className="mt-1.5"
+                    >
+                      {distrito.ativo ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </div>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" aria-label="Ações" className="shrink-0">
+                      <MoreHorizontal className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -256,15 +223,15 @@ export default function DistritosPage() {
             <CardContent className="space-y-4">
               {/* Pastor */}
               <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-9 w-9">
                   <AvatarImage src={distrito.pastor?.foto_url || undefined} />
                   <AvatarFallback className="text-xs">
                     {distrito.pastor ? getInitials(distrito.pastor.nome) : "?"}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Pastor</p>
-                  <p className="text-sm font-medium">
+                  <p className="truncate text-sm font-medium">
                     {distrito.pastor?.nome || "Não definido"}
                   </p>
                 </div>
@@ -272,27 +239,27 @@ export default function DistritosPage() {
 
               {/* Líder */}
               <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-9 w-9">
                   <AvatarImage src={distrito.lider?.foto_url || undefined} />
                   <AvatarFallback className="text-xs">
                     {distrito.lider ? getInitials(distrito.lider.nome) : "?"}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Líder</p>
-                  <p className="text-sm font-medium">
+                  <p className="truncate text-sm font-medium">
                     {distrito.lider?.nome || "Não definido"}
                   </p>
                 </div>
               </div>
 
               {/* Stats */}
-              <div className="flex items-center gap-4 pt-2 border-t text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5">
                   <Church className="h-4 w-4" />
                   {distrito.igrejas} igrejas
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Users className="h-4 w-4" />
                   {distrito.pregadores + distrito.cantores} pessoas
                 </div>
@@ -301,6 +268,7 @@ export default function DistritosPage() {
           </Card>
         ))}
       </div>
+      )}
 
       {/* Create/Edit Dialog */}
       <Dialog
