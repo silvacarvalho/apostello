@@ -20,6 +20,8 @@ import {
   BookOpen,
 } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +51,42 @@ interface Notificacao {
   created_at: string;
 }
 
+const TIPO_LABELS: Record<string, string> = {
+  ESCALA_PUBLICADA: "Escala",
+  CONFIRMACAO: "Confirmação",
+  AVALIACAO: "Avaliação",
+  AUTO_CADASTRO_APROVADO: "Cadastro",
+  AUTO_CADASTRO_RECUSADO: "Cadastro",
+  TROCA: "Troca",
+  PENALIDADE: "Penalidade",
+  LEMBRETE_7D: "Lembrete",
+  LEMBRETE_3D: "Lembrete",
+  LEMBRETE_24H: "Lembrete",
+};
+
+const getTipoLabel = (tipo: string) => TIPO_LABELS[tipo] || "Aviso";
+
+const getTipoChipClass = (tipo: string) => {
+  switch (tipo) {
+    case "AVALIACAO":
+    case "TROCA":
+      return "bg-warning/15 text-warning";
+    case "AUTO_CADASTRO_APROVADO":
+    case "AUTO_CADASTRO_RECUSADO":
+      return "bg-success/15 text-success";
+    case "PENALIDADE":
+      return "bg-destructive/10 text-destructive";
+    case "ESCALA_PUBLICADA":
+    case "CONFIRMACAO":
+    case "LEMBRETE_7D":
+    case "LEMBRETE_3D":
+    case "LEMBRETE_24H":
+      return "bg-accent text-accent-foreground";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+};
+
 const getIconByType = (tipo: string, mensagem?: string) => {
   // Para notificações de troca, identificar se é pregador ou cantor
   if (tipo === "TROCA" && mensagem) {
@@ -56,42 +94,42 @@ const getIconByType = (tipo: string, mensagem?: string) => {
     if (mensagemLower.includes("pregador") || mensagemLower.includes("pregação")) {
       return (
         <div className="relative">
-          <RefreshCw className="h-5 w-5 text-orange-500" />
-          <BookOpen className="h-3 w-3 text-orange-600 absolute -bottom-1 -right-1 bg-background rounded-full" />
+          <RefreshCw className="h-5 w-5" />
+          <BookOpen className="h-3 w-3 absolute -bottom-1 -right-1 rounded-full bg-card" />
         </div>
       );
     }
     if (mensagemLower.includes("cantor") || mensagemLower.includes("louvor")) {
       return (
         <div className="relative">
-          <RefreshCw className="h-5 w-5 text-orange-500" />
-          <Music className="h-3 w-3 text-orange-600 absolute -bottom-1 -right-1 bg-background rounded-full" />
+          <RefreshCw className="h-5 w-5" />
+          <Music className="h-3 w-3 absolute -bottom-1 -right-1 rounded-full bg-card" />
         </div>
       );
     }
     // Fallback para troca genérica
-    return <RefreshCw className="h-5 w-5 text-orange-500" />;
+    return <RefreshCw className="h-5 w-5" />;
   }
-  
+
   switch (tipo) {
     case "ESCALA_PUBLICADA":
     case "CONFIRMACAO":
-      return <Calendar className="h-5 w-5 text-blue-500" />;
+      return <Calendar className="h-5 w-5" />;
     case "AVALIACAO":
-      return <Star className="h-5 w-5 text-yellow-500" />;
+      return <Star className="h-5 w-5" />;
     case "AUTO_CADASTRO_APROVADO":
     case "AUTO_CADASTRO_RECUSADO":
-      return <Users className="h-5 w-5 text-green-500" />;
+      return <Users className="h-5 w-5" />;
     case "TROCA":
-      return <RefreshCw className="h-5 w-5 text-orange-500" />;
+      return <RefreshCw className="h-5 w-5" />;
     case "PENALIDADE":
-      return <AlertCircle className="h-5 w-5 text-red-500" />;
+      return <AlertCircle className="h-5 w-5" />;
     case "LEMBRETE_7D":
     case "LEMBRETE_3D":
     case "LEMBRETE_24H":
-      return <Bell className="h-5 w-5 text-purple-500" />;
+      return <Bell className="h-5 w-5" />;
     default:
-      return <Info className="h-5 w-5 text-gray-500" />;
+      return <Info className="h-5 w-5" />;
   }
 };
 
@@ -122,6 +160,7 @@ export default function NotificacoesPage() {
     acao: "aceitar" | "recusar";
   } | null>(null);
   const [solicitacoesPendentes, setSolicitacoesPendentes] = useState<Set<number>>(new Set());
+  const [detalheId, setDetalheId] = useState<number | null>(null);
   const [notificacoesExpandidas, setNotificacoesExpandidas] = useState<Set<number>>(new Set());
   const [statusSolicitacoes, setStatusSolicitacoes] = useState<Map<number, string>>(new Map());
   const [solicitacoesPendentesPastor, setSolicitacoesPendentesPastor] = useState<Set<number>>(new Set());
@@ -158,6 +197,7 @@ export default function NotificacoesPage() {
       novoSet.add(id);
       return novoSet;
     });
+    setDetalheId(id);
     // Scroll até a notificação, se possível
     setTimeout(() => {
       const el = document.getElementById(`notificacao-${id}`);
@@ -636,6 +676,149 @@ export default function NotificacoesPage() {
     return true;
   });
 
+  const getSolicitacaoIdDoLink = (notificacao: Notificacao, param: string): string | null => {
+    if (!notificacao.link) return null;
+    const urlParams = new URLSearchParams(notificacao.link.split('?')[1]);
+    return urlParams.get(param);
+  };
+
+  const getStatusSolicitacao = (notificacao: Notificacao) => {
+    if (notificacao.tipo !== "TROCA" || notificacao.titulo !== "Solicitação de Troca Recebida") {
+      return null;
+    }
+    const solicitacaoId = getSolicitacaoIdDoLink(notificacao, "solicitacao_id");
+    if (!solicitacaoId) return null;
+    return statusSolicitacoes.get(parseInt(solicitacaoId));
+  };
+
+  const renderStatusBadge = (statusSolicitacao: string | null | undefined) => {
+    if (!statusSolicitacao || statusSolicitacao === "PENDENTE_SUBSTITUTO") return null;
+    return (
+      <Badge
+        variant={
+          statusSolicitacao === "RECUSADA" ? "destructive" :
+          statusSolicitacao === "PENDENTE_PASTOR" ? "warning" :
+          statusSolicitacao === "APROVADA" ? "success" :
+          "secondary"
+        }
+      >
+        {statusSolicitacao === "RECUSADA" ? "Recusada" :
+         statusSolicitacao === "PENDENTE_PASTOR" ? "Aceita - Aguardando Pastor" :
+         statusSolicitacao === "APROVADA" ? "Aprovada" :
+         statusSolicitacao}
+      </Badge>
+    );
+  };
+
+  const renderAcoes = (notificacao: Notificacao) => {
+    const solId = getSolicitacaoIdDoLink(notificacao, "solicitacao_id");
+    const mostrarTroca =
+      notificacao.tipo === "TROCA" &&
+      notificacao.titulo === "Solicitação de Troca Recebida" &&
+      !!solId &&
+      solicitacoesPendentes.has(parseInt(solId));
+    const mostrarPastor =
+      notificacao.tipo === "TROCA" &&
+      notificacao.titulo === "Troca Aceita - Aguardando Aprovação" &&
+      !!solId &&
+      solicitacoesPendentesPastor.has(parseInt(solId));
+    const mostrarEmergencial =
+      notificacao.tipo === "TROCA" &&
+      notificacao.titulo === "🚨 Solicitação de Substituição Emergencial" &&
+      !!getSolicitacaoIdDoLink(notificacao, "solicitacao_emergencial_id");
+
+    const spinner = <Loader2 className="h-4 w-4 animate-spin mr-2" />;
+
+    return (
+      <>
+        {mostrarTroca && (
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              className="bg-success text-success-foreground hover:bg-success/90"
+              onClick={() => responderSolicitacaoTroca(notificacao.id, true)}
+              disabled={processandoTroca?.notificacaoId === notificacao.id}
+            >
+              {processandoTroca?.notificacaoId === notificacao.id &&
+              processandoTroca?.acao === "aceitar" ? spinner : <ThumbsUp className="h-4 w-4 mr-2" />}
+              Aceitar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => responderSolicitacaoTroca(notificacao.id, false)}
+              disabled={processandoTroca?.notificacaoId === notificacao.id}
+            >
+              {processandoTroca?.notificacaoId === notificacao.id &&
+              processandoTroca?.acao === "recusar" ? spinner : <X className="h-4 w-4 mr-2" />}
+              Recusar
+            </Button>
+          </div>
+        )}
+
+        {mostrarPastor && (
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              className="bg-success text-success-foreground hover:bg-success/90"
+              onClick={() => {
+                const solicitacaoId = parseInt(solId!);
+                responderSolicitacaoPastor(solicitacaoId, true, notificacao.id);
+              }}
+              disabled={processandoPastor?.notificacaoId === notificacao.id}
+            >
+              {processandoPastor?.notificacaoId === notificacao.id &&
+              processandoPastor?.acao === "aprovar" ? spinner : <ThumbsUp className="h-4 w-4 mr-2" />}
+              Aprovar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const solicitacaoId = parseInt(solId!);
+                responderSolicitacaoPastor(solicitacaoId, false, notificacao.id);
+              }}
+              disabled={processandoPastor?.notificacaoId === notificacao.id}
+            >
+              {processandoPastor?.notificacaoId === notificacao.id &&
+              processandoPastor?.acao === "recusar" ? spinner : <X className="h-4 w-4 mr-2" />}
+              Recusar
+            </Button>
+          </div>
+        )}
+
+        {mostrarEmergencial && (
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              className="bg-success text-success-foreground hover:bg-success/90"
+              onClick={() => responderSolicitacaoEmergencial(notificacao.id, true)}
+              disabled={processandoEmergencial?.notificacaoId === notificacao.id}
+            >
+              {processandoEmergencial?.notificacaoId === notificacao.id &&
+              processandoEmergencial?.acao === "aceitar" ? spinner : <ThumbsUp className="h-4 w-4 mr-2" />}
+              Aceitar (+5 pontos)
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => responderSolicitacaoEmergencial(notificacao.id, false)}
+              disabled={processandoEmergencial?.notificacaoId === notificacao.id}
+            >
+              {processandoEmergencial?.notificacaoId === notificacao.id &&
+              processandoEmergencial?.acao === "recusar" ? spinner : <X className="h-4 w-4 mr-2" />}
+              Recusar
+            </Button>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const notificacaoDetalhe = notificacoes.find((n) => n.id === detalheId) || null;
+
+  const abrirDetalhe = (notificacao: Notificacao) => {
+    toggleExpandir(notificacao.id);
+    setDetalheId(notificacao.id);
+    if (!notificacao.lida) {
+      marcarComoLida(notificacao.id);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -650,347 +833,182 @@ export default function NotificacoesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Bell className="h-8 w-8" />
-            Notificações
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Acompanhe todas as atualizações e avisos do sistema
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {naoLidas.length > 0 && (
-            <Button variant="outline" onClick={marcarTodasComoLidas}>
-              <CheckCheck className="h-4 w-4 mr-2" />
-              Marcar todas como lidas
+    <div className="space-y-5 md:space-y-6">
+      <PageHeader
+        title="Notificações"
+        description="Acompanhe todas as atualizações e avisos do sistema"
+        icon={<Bell className="h-5 w-5" />}
+        actions={
+          <>
+            {naoLidas.length > 0 && (
+              <Button variant="outline" onClick={marcarTodasComoLidas} className="flex-1 sm:flex-none">
+                <CheckCheck className="h-4 w-4 mr-2" />
+                Marcar todas como lidas
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={fetchNotificacoes}
+              className={naoLidas.length > 0 ? "shrink-0 px-3 sm:px-4" : "flex-1 sm:flex-none"}
+              aria-label="Atualizar"
+            >
+              <RefreshCw className={`h-4 w-4 ${naoLidas.length > 0 ? "sm:mr-2" : "mr-2"}`} />
+              <span className={naoLidas.length > 0 ? "hidden sm:inline" : ""}>Atualizar</span>
             </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={fetchNotificacoes}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Atualizar
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList>
           <TabsTrigger value="todas">Todas</TabsTrigger>
           <TabsTrigger value="nao-lidas" className="relative">
             Não lidas
             {naoLidas.length > 0 && (
-              <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
+              <Badge className="ml-2 h-5 min-w-5 px-1.5 flex items-center justify-center">
                 {naoLidas.length}
               </Badge>
             )}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={selectedTab} className="mt-6">
-          <Card>
-            <CardContent className="p-0">
-              {filteredNotificacoes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Bell className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">
-                    {selectedTab === "nao-lidas"
-                      ? "Você não tem notificações não lidas"
-                      : "Você não tem notificações"}
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y">
+        <TabsContent value={selectedTab} className="mt-4 md:mt-6">
+          {filteredNotificacoes.length === 0 ? (
+            <EmptyState
+              icon={<Bell className="h-6 w-6" />}
+              title={
+                selectedTab === "nao-lidas"
+                  ? "Você não tem notificações não lidas"
+                  : "Você não tem notificações"
+              }
+              description="Quando houver novidades, elas aparecem aqui."
+            />
+          ) : (
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <ul className="divide-y divide-border">
                   {filteredNotificacoes.map((notificacao) => {
-                    const expandida = notificacoesExpandidas.has(notificacao.id);
-                    
-                    // Verificar status da solicitação para mostrar badge apropriado
-                    const statusSolicitacao = (() => {
-                      if (notificacao.tipo !== "TROCA" || 
-                          notificacao.titulo !== "Solicitação de Troca Recebida") {
-                        return null;
-                      }
-                      if (!notificacao.link) {
-                        console.log('Notificação sem link:', notificacao.id);
-                        return null;
-                      }
-                      const urlParams = new URLSearchParams(notificacao.link.split('?')[1]);
-                      const solicitacaoId = urlParams.get('solicitacao_id');
-                      if (!solicitacaoId) {
-                        console.log('Link sem solicitacao_id:', notificacao.link);
-                        return null;
-                      }
-                      const idNum = parseInt(solicitacaoId);
-                      const status = statusSolicitacoes.get(idNum);
-                      console.log(`Verificando notificação ${notificacao.id} - Solicitação ${idNum} - Status: ${status}`);
-                      return status;
-                    })();
-
+                    const statusSolicitacao = getStatusSolicitacao(notificacao);
                     return (
-                      <div
+                      <li
                         key={notificacao.id}
                         id={`notificacao-${notificacao.id}`}
-                        className={`flex items-start gap-4 p-4 hover:bg-accent/50 transition-colors ${
+                        className={`flex items-stretch transition-colors hover:bg-accent/50 ${
                           !notificacao.lida ? "bg-primary/5" : ""
                         }`}
                       >
-                        <div className="shrink-0 mt-1">
-                          {getIconByType(notificacao.tipo, notificacao.mensagem)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div 
-                            className="cursor-pointer"
-                            onClick={() => toggleExpandir(notificacao.id)}
+                        <button
+                          type="button"
+                          onClick={() => abrirDetalhe(notificacao)}
+                          className="flex min-w-0 flex-1 items-start gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        >
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${getTipoChipClass(
+                              notificacao.tipo
+                            )}`}
                           >
+                            {getIconByType(notificacao.tipo, notificacao.mensagem)}
+                          </div>
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <p
-                                  className={`font-medium ${
-                                    !notificacao.lida ? "text-foreground" : "text-muted-foreground"
-                                  }`}
-                                >
-                                  {notificacao.titulo}
-                                  {/* Badge de status da solicitação */}
-                                  {statusSolicitacao && statusSolicitacao !== "PENDENTE_SUBSTITUTO" && (
-                                    <Badge 
-                                      variant={
-                                        statusSolicitacao === "RECUSADA" ? "destructive" :
-                                        statusSolicitacao === "PENDENTE_PASTOR" ? "default" :
-                                        statusSolicitacao === "APROVADA" ? "default" :
-                                        "secondary"
-                                      }
-                                      className={
-                                        statusSolicitacao === "PENDENTE_PASTOR" ? "ml-2 bg-yellow-500 hover:bg-yellow-600" :
-                                        statusSolicitacao === "APROVADA" ? "ml-2 bg-green-600 hover:bg-green-700" :
-                                        "ml-2"
-                                      }
-                                    >
-                                      {statusSolicitacao === "RECUSADA" ? "Recusada" :
-                                       statusSolicitacao === "PENDENTE_PASTOR" ? "Aceita - Aguardando Pastor" :
-                                       statusSolicitacao === "APROVADA" ? "Aprovada" :
-                                       statusSolicitacao}
-                                    </Badge>
-                                  )}
-                                </p>
-                                {expandida && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {notificacao.mensagem}
-                                  </p>
+                              <p
+                                className={`line-clamp-2 leading-snug ${
+                                  !notificacao.lida
+                                    ? "font-semibold text-foreground"
+                                    : "font-medium text-muted-foreground"
+                                }`}
+                              >
+                                {notificacao.titulo}
+                              </p>
+                              <span className="flex shrink-0 items-center gap-1.5 pt-0.5 text-xs text-muted-foreground whitespace-nowrap">
+                                {!notificacao.lida && (
+                                  <span className="h-2 w-2 rounded-full bg-primary" aria-label="Não lida" />
                                 )}
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {formatTimeAgo(notificacao.created_at)}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    alternarLida(notificacao.id, notificacao.lida);
-                                  }}
-                                  disabled={marcandoLida === notificacao.id}
-                                  title={notificacao.lida ? "Marcar como não lida" : "Marcar como lida"}
-                                >
-                                  {marcandoLida === notificacao.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : notificacao.lida ? (
-                                    <CheckCheck className="h-4 w-4" />
-                                  ) : (
-                                    <Check className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
+                                {formatTimeAgo(notificacao.created_at)}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                              {notificacao.mensagem}
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <Badge variant="outline" className="font-normal">
+                                {getTipoLabel(notificacao.tipo)}
+                              </Badge>
+                              {renderStatusBadge(statusSolicitacao)}
                             </div>
                           </div>
-                            
-                            {/* Botões de aceitar/recusar para notificações de troca (apenas quando expandida) */}
-                            {expandida &&
-                              notificacao.tipo === "TROCA" &&
-                              notificacao.titulo === "Solicitação de Troca Recebida" &&
-                              (() => {
-                                // Extrair ID da solicitação do link
-                                if (!notificacao.link) return false;
-                                const urlParams = new URLSearchParams(notificacao.link.split('?')[1]);
-                                const solicitacaoId = urlParams.get('solicitacao_id');
-                                if (!solicitacaoId) return false;
-                                // Verificar se a solicitação ainda está pendente
-                                return solicitacoesPendentes.has(parseInt(solicitacaoId));
-                              })() && (
-                                <div className="flex gap-2 mt-3">
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      responderSolicitacaoTroca(notificacao.id, true);
-                                    }}
-                                    disabled={
-                                      processandoTroca?.notificacaoId === notificacao.id
-                                    }
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    {processandoTroca?.notificacaoId === notificacao.id &&
-                                    processandoTroca?.acao === "aceitar" ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <ThumbsUp className="h-4 w-4 mr-2" />
-                                    )}
-                                    Aceitar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      responderSolicitacaoTroca(notificacao.id, false);
-                                    }}
-                                    disabled={
-                                      processandoTroca?.notificacaoId === notificacao.id
-                                    }
-                                  >
-                                    {processandoTroca?.notificacaoId === notificacao.id &&
-                                    processandoTroca?.acao === "recusar" ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <X className="h-4 w-4 mr-2" />
-                                    )}
-                                    Recusar
-                                  </Button>
-                                </div>
-                              )}
-
-                            {/* Botões de aprovar/recusar para pastor (apenas quando expandida) */}
-                            {expandida &&
-                              notificacao.tipo === "TROCA" &&
-                              notificacao.titulo === "Troca Aceita - Aguardando Aprovação" &&
-                              (() => {
-                                // Extrair ID da solicitação do link
-                                if (!notificacao.link) return false;
-                                const urlParams = new URLSearchParams(notificacao.link.split('?')[1]);
-                                const solicitacaoId = urlParams.get('solicitacao_id');
-                                if (!solicitacaoId) return false;
-                                // Verificar se a solicitação ainda está pendente do pastor
-                                return solicitacoesPendentesPastor.has(parseInt(solicitacaoId));
-                              })() && (
-                                <div className="flex gap-2 mt-3">
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const urlParams = new URLSearchParams(notificacao.link!.split('?')[1]);
-                                      const solicitacaoId = parseInt(urlParams.get('solicitacao_id')!);
-                                      responderSolicitacaoPastor(solicitacaoId, true, notificacao.id);
-                                    }}
-                                    disabled={
-                                      processandoPastor?.notificacaoId === notificacao.id
-                                    }
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    {processandoPastor?.notificacaoId === notificacao.id &&
-                                    processandoPastor?.acao === "aprovar" ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <ThumbsUp className="h-4 w-4 mr-2" />
-                                    )}
-                                    Aprovar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const urlParams = new URLSearchParams(notificacao.link!.split('?')[1]);
-                                      const solicitacaoId = parseInt(urlParams.get('solicitacao_id')!);
-                                      responderSolicitacaoPastor(solicitacaoId, false, notificacao.id);
-                                    }}
-                                    disabled={
-                                      processandoPastor?.notificacaoId === notificacao.id
-                                    }
-                                  >
-                                    {processandoPastor?.notificacaoId === notificacao.id &&
-                                    processandoPastor?.acao === "recusar" ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <X className="h-4 w-4 mr-2" />
-                                    )}
-                                    Recusar
-                                  </Button>
-                                </div>
-                              )}
-
-                            {/* Botões de aceitar/recusar para substituição emergencial (apenas quando expandida) */}
-                            {expandida &&
-                              notificacao.tipo === "TROCA" &&
-                              notificacao.titulo === "🚨 Solicitação de Substituição Emergencial" &&
-                              (() => {
-                                // Verificar se tem solicitacao_emergencial_id no link
-                                if (!notificacao.link) return false;
-                                const urlParams = new URLSearchParams(notificacao.link.split('?')[1]);
-                                const solicitacaoEmergencialId = urlParams.get('solicitacao_emergencial_id');
-                                return !!solicitacaoEmergencialId; // Retorna true se existir o parâmetro
-                              })() && (
-                                <div className="flex gap-2 mt-3">
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      responderSolicitacaoEmergencial(notificacao.id, true);
-                                    }}
-                                    disabled={
-                                      processandoEmergencial?.notificacaoId === notificacao.id
-                                    }
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    {processandoEmergencial?.notificacaoId === notificacao.id &&
-                                    processandoEmergencial?.acao === "aceitar" ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <ThumbsUp className="h-4 w-4 mr-2" />
-                                    )}
-                                    Aceitar (+5 pontos)
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      responderSolicitacaoEmergencial(notificacao.id, false);
-                                    }}
-                                    disabled={
-                                      processandoEmergencial?.notificacaoId === notificacao.id
-                                    }
-                                  >
-                                    {processandoEmergencial?.notificacaoId === notificacao.id &&
-                                    processandoEmergencial?.acao === "recusar" ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <X className="h-4 w-4 mr-2" />
-                                    )}
-                                    Recusar
-                                  </Button>
-                                </div>
-                              )}
-                        </div>
-                      </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => alternarLida(notificacao.id, notificacao.lida)}
+                          disabled={marcandoLida === notificacao.id}
+                          title={notificacao.lida ? "Marcar como não lida" : "Marcar como lida"}
+                          aria-label={notificacao.lida ? "Marcar como não lida" : "Marcar como lida"}
+                          className="flex w-12 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        >
+                          {marcandoLida === notificacao.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : notificacao.lida ? (
+                            <CheckCheck className="h-4 w-4" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </button>
+                      </li>
                     );
                   })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </ul>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
+      {/* Detalhes da notificação (bottom sheet no celular) */}
+      <Dialog
+        open={!!notificacaoDetalhe}
+        onOpenChange={(open) => {
+          if (!open) setDetalheId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          {notificacaoDetalhe && (
+            <>
+              <DialogHeader>
+                <div className="flex items-start gap-3 pr-6">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${getTipoChipClass(
+                      notificacaoDetalhe.tipo
+                    )}`}
+                  >
+                    {getIconByType(notificacaoDetalhe.tipo, notificacaoDetalhe.mensagem)}
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <DialogTitle className="text-left leading-snug">
+                      {notificacaoDetalhe.titulo}
+                    </DialogTitle>
+                    <DialogDescription className="mt-1 text-left">
+                      {getTipoLabel(notificacaoDetalhe.tipo)} •{" "}
+                      {formatTimeAgo(notificacaoDetalhe.created_at)}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4">
+                {renderStatusBadge(getStatusSolicitacao(notificacaoDetalhe))}
+                <p className="whitespace-pre-line break-words text-sm leading-relaxed">
+                  {notificacaoDetalhe.mensagem}
+                </p>
+                {renderAcoes(notificacaoDetalhe)}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog de Substituição Emergencial */}
       <Dialog open={showSubstituicaoEmergencialDialog} onOpenChange={setShowSubstituicaoEmergencialDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
@@ -1019,7 +1037,7 @@ export default function NotificacoesPage() {
                       {substitutosDisponiveis.map((substituto) => (
                         <div
                           key={substituto.id}
-                          className="flex items-center space-x-2 p-3 rounded-lg border hover:bg-accent cursor-pointer"
+                          className="flex items-center space-x-3 p-3 rounded-xl border hover:bg-accent cursor-pointer"
                           onClick={() => setSubstitutoEmergencialId(substituto.id)}
                         >
                           <RadioGroupItem value={substituto.id.toString()} id={`sub-${substituto.id}`} />

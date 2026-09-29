@@ -19,6 +19,8 @@ import {
   X,
 } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -432,54 +434,72 @@ export default function TemasPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <BookOpen className="h-8 w-8" />
-            Temas
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie os temas de pregação e suas recorrências
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Importar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => {
-                fetchTemplates();
-                setIsTemplateDialogOpen(true);
-              }}>
-                <Package className="h-4 w-4 mr-2" />
-                Templates Pré-definidos
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
-                <FileJson className="h-4 w-4 mr-2" />
-                Importar Arquivo JSON
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          
-          <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Tema
-          </Button>
-        </div>
+      <PageHeader
+        title="Temas"
+        description="Gerencie os temas de pregação e suas recorrências"
+        icon={<BookOpen className="h-5 w-5" />}
+        actions={
+          <>
+            <Button onClick={handleCreate} className="order-first w-full sm:order-none sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Tema
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex-1 sm:flex-none">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  fetchTemplates();
+                  setIsTemplateDialogOpen(true);
+                }}>
+                  <Package className="h-4 w-4 mr-2" />
+                  Templates Pré-definidos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
+                  <FileJson className="h-4 w-4 mr-2" />
+                  Importar Arquivo JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="outline" onClick={handleExport} className="flex-1 sm:flex-none">
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+          </>
+        }
+      />
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
+        {[
+          { icon: BookOpen, value: total, label: "Total de Temas", label2: "Total", tone: "bg-accent text-accent-foreground" },
+          { icon: Check, value: temasAtivos, label: "Temas Ativos", label2: "Ativos", tone: "bg-success/15 text-success" },
+          { icon: BookOpen, value: totalUsos, label: "Total de Usos", label2: "Usos", tone: "bg-warning/15 text-warning" },
+        ].map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${stat.tone}`}>
+                <stat.icon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold leading-none">{stat.value}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
+                  <span className="sm:hidden">{stat.label2}</span>
+                  <span className="hidden sm:inline">{stat.label}</span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col gap-3 md:flex-row">
         <div className="relative w-full md:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -489,96 +509,127 @@ export default function TemasPage() {
             className="pl-9"
           />
         </div>
-        
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="TODOS">Todos</SelectItem>
-            <SelectItem value="ATIVO">Ativos</SelectItem>
-            <SelectItem value="INATIVO">Inativos</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        <Button variant="outline" onClick={fetchTemas}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Atualizar
-        </Button>
+
+        <div className="flex gap-3">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TODOS">Todos</SelectItem>
+              <SelectItem value="ATIVO">Ativos</SelectItem>
+              <SelectItem value="INATIVO">Inativos</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" onClick={fetchTemas} className="shrink-0">
+            <RefreshCw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Atualizar</span>
+            <span className="sr-only sm:hidden">Atualizar</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <BookOpen className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{total}</p>
-                <p className="text-sm text-muted-foreground">Total de Temas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <Check className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{temasAtivos}</p>
-                <p className="text-sm text-muted-foreground">Temas Ativos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <BookOpen className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalUsos}</p>
-                <p className="text-sm text-muted-foreground">Total de Usos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Lista */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : temas.length === 0 ? (
+        <EmptyState
+          icon={<BookOpen className="h-6 w-6" />}
+          title="Nenhum tema encontrado"
+          description="Crie um novo tema ou importe um template pré-definido."
+        />
+      ) : (
+        <>
+          {/* Cards no celular */}
+          <div className="space-y-3 md:hidden">
+            {temas.map((tema) => (
+              <Card key={tema.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => handleView(tema)}
+                    >
+                      <p className="font-semibold leading-snug">{tema.titulo}</p>
+                      {tema.descricao && (
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {tema.descricao}
+                        </p>
+                      )}
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="-mr-2 -mt-1 h-10 w-10 shrink-0">
+                          <MoreHorizontal className="h-5 w-5" />
+                          <span className="sr-only">Ações</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleView(tema)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Visualizar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(tema)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleStatus(tema)}>
+                          {tema.status === "ATIVO" ? (
+                            <>
+                              <X className="h-4 w-4 mr-2" />
+                              Desativar
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Ativar
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => setTemaToDelete(tema)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge variant={tema.status === "ATIVO" ? "success" : "secondary"}>
+                      {tema.status === "ATIVO" ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <Badge variant="outline" className="max-w-full truncate font-normal">
+                      {formatRecorrencia(tema)}
+                    </Badge>
+                    <Badge variant="secondary">{tema.vezes_usado}x</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Título</TableHead>
-                  <TableHead className="hidden md:table-cell">Recorrência</TableHead>
-                  <TableHead className="text-center">Usado</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[70px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {temas.length === 0 ? (
+          {/* Tabela no desktop */}
+          <Card className="hidden md:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
-                      <p className="text-muted-foreground">
-                        Nenhum tema encontrado
-                      </p>
-                    </TableCell>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Recorrência</TableHead>
+                    <TableHead className="text-center">Usado</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[70px]"></TableHead>
                   </TableRow>
-                ) : (
-                  temas.map((tema) => (
+                </TableHeader>
+                <TableBody>
+                  {temas.map((tema) => (
                     <TableRow key={tema.id}>
                       <TableCell>
                         <div>
@@ -590,7 +641,7 @@ export default function TemasPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell>
                         <Badge variant="outline" className="font-normal">
                           {formatRecorrencia(tema)}
                         </Badge>
@@ -599,7 +650,7 @@ export default function TemasPage() {
                         <Badge variant="secondary">{tema.vezes_usado}x</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={tema.status === "ATIVO" ? "default" : "secondary"}>
+                        <Badge variant={tema.status === "ATIVO" ? "success" : "secondary"}>
                           {tema.status === "ATIVO" ? "Ativo" : "Inativo"}
                         </Badge>
                       </TableCell>
@@ -633,7 +684,7 @@ export default function TemasPage() {
                               )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => setTemaToDelete(tema)}
                             >
@@ -644,13 +695,13 @@ export default function TemasPage() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
@@ -940,7 +991,7 @@ export default function TemasPage() {
           
           {importResult ? (
             <div className="space-y-4 py-4">
-              <div className="flex items-center gap-2 text-green-600">
+              <div className="flex items-center gap-2 text-success">
                 <Check className="h-5 w-5" />
                 <span className="font-medium">Importação concluída!</span>
               </div>
@@ -948,7 +999,7 @@ export default function TemasPage() {
                 <p>✅ {importResult.total_importados} tema(s) importado(s)</p>
                 <p>⏭️ {importResult.total_ignorados} tema(s) ignorado(s) (já existentes)</p>
                 {importResult.erros.length > 0 && (
-                  <div className="text-red-600">
+                  <div className="text-destructive">
                     <p>❌ {importResult.erros.length} erro(s):</p>
                     <ul className="list-disc list-inside text-sm">
                       {importResult.erros.map((erro, i) => (
@@ -1016,7 +1067,7 @@ export default function TemasPage() {
           
           {importResult ? (
             <div className="space-y-4 py-4">
-              <div className="flex items-center gap-2 text-green-600">
+              <div className="flex items-center gap-2 text-success">
                 <Check className="h-5 w-5" />
                 <span className="font-medium">Importação concluída!</span>
               </div>

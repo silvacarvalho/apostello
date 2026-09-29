@@ -13,6 +13,7 @@ import {
   Loader2,
   Printer
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -384,26 +385,25 @@ export default function RelatoriosPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
-        <p className="text-muted-foreground">
-          Exporte escalas, participações e avaliações em PDF ou Excel
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Relatórios"
+        description="Exporte escalas, participações e avaliações em PDF ou Excel"
+        icon={<FileText className="h-5 w-5" />}
+      />
 
-      <Tabs defaultValue="escalas" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="escalas" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
+      <Tabs defaultValue="escalas" className="space-y-5">
+        <TabsList className="flex w-full">
+          <TabsTrigger value="escalas" className="flex flex-1 items-center gap-1.5 px-2 text-[13px] sm:gap-2 sm:px-3 sm:text-sm">
+            <Calendar className="hidden h-4 w-4 sm:block" />
             Escalas
           </TabsTrigger>
-          <TabsTrigger value="participacoes" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+          <TabsTrigger value="participacoes" className="flex flex-1 items-center gap-1.5 px-2 text-[13px] sm:gap-2 sm:px-3 sm:text-sm">
+            <Users className="hidden h-4 w-4 sm:block" />
             Participações
           </TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="flex items-center gap-2">
-            <Star className="h-4 w-4" />
+          <TabsTrigger value="avaliacoes" className="flex flex-1 items-center gap-1.5 px-2 text-[13px] sm:gap-2 sm:px-3 sm:text-sm">
+            <Star className="hidden h-4 w-4 sm:block" />
             Avaliações
           </TabsTrigger>
         </TabsList>
@@ -412,8 +412,10 @@ export default function RelatoriosPage() {
         <TabsContent value="escalas">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                  <Calendar className="h-5 w-5" />
+                </span>
                 Exportar Escala
               </CardTitle>
               <CardDescription>
@@ -489,11 +491,11 @@ export default function RelatoriosPage() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-4 pt-4">
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap">
                 <Button
                   onClick={handleDownloadEscalaPDF}
                   disabled={!selectedEscala || loading === "escala-pdf"}
-                  className="flex items-center gap-2"
+                  className="flex w-full items-center gap-2 sm:w-auto"
                 >
                   {loading === "escala-pdf" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -506,7 +508,7 @@ export default function RelatoriosPage() {
                   onClick={handlePrintEscalaPDF}
                   disabled={!selectedEscala || loading === "escala-print"}
                   variant="secondary"
-                  className="flex items-center gap-2"
+                  className="flex w-full items-center gap-2 sm:w-auto"
                 >
                   {loading === "escala-print" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -519,7 +521,7 @@ export default function RelatoriosPage() {
                   onClick={handleDownloadEscalaExcel}
                   disabled={!selectedEscala || loading === "escala-excel"}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex w-full items-center gap-2 sm:w-auto"
                 >
                   {loading === "escala-excel" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -537,8 +539,10 @@ export default function RelatoriosPage() {
         <TabsContent value="participacoes">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                  <Users className="h-5 w-5" />
+                </span>
                 Relatório de Participações
               </CardTitle>
               <CardDescription>
@@ -616,11 +620,11 @@ export default function RelatoriosPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 pt-4">
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap">
                 <Button
                   onClick={handleDownloadParticipacoesPDF}
                   disabled={loading === "participacoes-pdf"}
-                  className="flex items-center gap-2"
+                  className="flex w-full items-center gap-2 sm:w-auto"
                 >
                   {loading === "participacoes-pdf" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -633,7 +637,7 @@ export default function RelatoriosPage() {
                   onClick={handleDownloadParticipacoesExcel}
                   disabled={loading === "participacoes-excel"}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex w-full items-center gap-2 sm:w-auto"
                 >
                   {loading === "participacoes-excel" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -651,8 +655,10 @@ export default function RelatoriosPage() {
         <TabsContent value="avaliacoes">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                  <Star className="h-5 w-5" />
+                </span>
                 Relatório de Avaliações
               </CardTitle>
               <CardDescription>
@@ -730,11 +736,11 @@ export default function RelatoriosPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 pt-4">
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap">
                 <Button
                   onClick={handleDownloadAvaliacoesPDF}
                   disabled={loading === "avaliacoes-pdf"}
-                  className="flex items-center gap-2"
+                  className="flex w-full items-center gap-2 sm:w-auto"
                 >
                   {loading === "avaliacoes-pdf" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -747,7 +753,7 @@ export default function RelatoriosPage() {
                   onClick={handleDownloadAvaliacoesExcel}
                   disabled={loading === "avaliacoes-excel"}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  className="flex w-full items-center gap-2 sm:w-auto"
                 >
                   {loading === "avaliacoes-excel" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
