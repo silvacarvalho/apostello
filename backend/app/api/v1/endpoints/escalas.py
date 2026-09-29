@@ -417,6 +417,8 @@ def listar_escalas(
             ).order_by(ItemEscala.data_culto, ItemEscala.horario).all()
             
             # Serializar itens manualmente
+            from app.services.itinerario_helper import mapa_itinerario
+            itinerario_igreja = mapa_itinerario(db, mes, ano, igreja_id=igreja_id)
             itens_serialized = []
             for item in itens:
                 item_dict = {
@@ -427,6 +429,7 @@ def listar_escalas(
                     "cantor_id": item.cantor_id,
                     "pregador_confirmou": item.status_confirmacao_pregador.value == "CONFIRMADO" if item.status_confirmacao_pregador else False,
                     "cantor_confirmou": item.status_confirmacao_cantor.value == "CONFIRMADO" if item.status_confirmacao_cantor else False,
+                    "pastor_presente": (item.igreja_id, item.data_culto) in itinerario_igreja,
                 }
                 
                 # Adicionar dados do pregador
@@ -498,6 +501,8 @@ def listar_escalas(
             ).order_by(ItemEscala.data_culto, ItemEscala.horario).all()
             
             # Serializar itens manualmente
+            from app.services.itinerario_helper import mapa_itinerario
+            itinerario_igreja = mapa_itinerario(db, escala.mes, escala.ano, igreja_id=igreja_id)
             itens_serialized = []
             for item in itens:
                 item_dict = {
@@ -508,6 +513,7 @@ def listar_escalas(
                     "cantor_id": item.cantor_id,
                     "pregador_confirmou": item.status_confirmacao_pregador.value == "CONFIRMADO" if item.status_confirmacao_pregador else False,
                     "cantor_confirmou": item.status_confirmacao_cantor.value == "CONFIRMADO" if item.status_confirmacao_cantor else False,
+                    "pastor_presente": (item.igreja_id, item.data_culto) in itinerario_igreja,
                 }
                 
                 # Adicionar dados do pregador

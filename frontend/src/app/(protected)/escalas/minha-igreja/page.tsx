@@ -19,6 +19,7 @@ interface ItemEscala {
   pregador_id: number;
   cantor_id: number;
   pregador_confirmou: boolean;
+  pastor_presente?: boolean;
   cantor_confirmou: boolean;
   pregador: {
     id: number;
@@ -362,10 +363,17 @@ export default function MinhaIgrejaEscalasPage() {
                             </div>
                           </>
                         ) : (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <User className="w-4 h-4" />
-                            <span className="text-xs">Sem pregador</span>
-                          </div>
+                          item.pastor_presente ? (
+                            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                              <User className="w-4 h-4" />
+                              <span className="text-xs font-medium">Pastor presente</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <User className="w-4 h-4" />
+                              <span className="text-xs">Sem pregador</span>
+                            </div>
+                          )
                         )}
                       </div>
 

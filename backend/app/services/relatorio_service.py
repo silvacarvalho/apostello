@@ -25,6 +25,7 @@ from app.models.usuario import Usuario
 from app.models.igreja import Igreja
 from app.models.avaliacao import Avaliacao
 from app.models.distrito import Distrito
+from app.services.itinerario_helper import mapa_itinerario, TEXTO_PASTOR_PRESENTE
 
 logger = logging.getLogger(__name__)
 
@@ -165,9 +166,14 @@ class RelatorioService:
             6: "Dom"
         }
         
+        itinerario = mapa_itinerario(self.db, escala.mes, escala.ano, distrito_id=escala.distrito_id)
+        
         for item in itens:
             pregador = self.db.query(Usuario).filter(Usuario.id == item.pregador_id).first() if item.pregador_id else None
             cantor = self.db.query(Usuario).filter(Usuario.id == item.cantor_id).first() if item.cantor_id else None
+            texto_pregador = pregador.nome_completo if pregador else (
+                TEXTO_PASTOR_PRESENTE if (item.igreja_id, item.data_culto) in itinerario else "A definir"
+            )
             
             dia_semana = dias_semana_pt.get(item.data_culto.weekday(), "") if item.data_culto else ""
             
@@ -176,7 +182,7 @@ class RelatorioService:
                     item.data_culto.strftime("%d/%m") if item.data_culto else "",
                     dia_semana,
                     item.horario.strftime("%H:%M") if item.horario else "",
-                    pregador.nome_completo if pregador else "A definir",
+                    texto_pregador,
                     cantor.nome_completo if cantor else "-",
                     item.tema_customizado or (item.tema.titulo if item.tema else "-")
                 ])
@@ -187,7 +193,7 @@ class RelatorioService:
                     dia_semana,
                     item.horario.strftime("%H:%M") if item.horario else "",
                     igreja.nome if igreja else "",
-                    pregador.nome_completo if pregador else "A definir",
+                    texto_pregador,
                     cantor.nome_completo if cantor else "-",
                     item.tema_customizado or (item.tema.titulo if item.tema else "-")
                 ])
@@ -339,10 +345,15 @@ class RelatorioService:
             6: "Dom"
         }
 
+        itinerario = mapa_itinerario(self.db, escala.mes, escala.ano, distrito_id=escala.distrito_id)
+
         # Dados
         for row_num, item in enumerate(itens, 5):
             pregador = self.db.query(Usuario).filter(Usuario.id == item.pregador_id).first() if item.pregador_id else None
             cantor = self.db.query(Usuario).filter(Usuario.id == item.cantor_id).first() if item.cantor_id else None
+            texto_pregador = pregador.nome_completo if pregador else (
+                TEXTO_PASTOR_PRESENTE if (item.igreja_id, item.data_culto) in itinerario else "A definir"
+            )
             
             dia_semana = dias_semana_pt.get(item.data_culto.weekday(), "") if item.data_culto else ""
 
@@ -352,7 +363,7 @@ class RelatorioService:
                     item.data_culto.strftime("%d/%m/%Y") if item.data_culto else "",
                     dia_semana,
                     item.horario.strftime("%H:%M") if item.horario else "",
-                    pregador.nome_completo if pregador else "A definir",
+                    texto_pregador,
                     cantor.nome_completo if cantor else "-",
                     item.tema_customizado or (item.tema.titulo if item.tema else "-")
                 ]
@@ -363,7 +374,7 @@ class RelatorioService:
                     dia_semana,
                     item.horario.strftime("%H:%M") if item.horario else "",
                     igreja.nome if igreja else "",
-                    pregador.nome_completo if pregador else "A definir",
+                    texto_pregador,
                     cantor.nome_completo if cantor else "-",
                     item.tema_customizado or (item.tema.titulo if item.tema else "-")
                 ]
