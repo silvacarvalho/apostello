@@ -18,6 +18,7 @@ import {
   BookOpen,
   CalendarOff,
   Shield,
+  MapPinned,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -83,6 +84,12 @@ const navItems: NavItem[] = [
     href: "/temas",
     icon: <BookOpen className="h-5 w-5" />,
     roles: ["ADMIN", "ASSOCIACAO"],
+  },
+  {
+    title: "Itinerário",
+    href: "/itinerario",
+    icon: <MapPinned className="h-5 w-5" />,
+    roles: ["ADMIN", "PASTOR_DISTRITAL", "LIDER_DISTRITAL"],
   },
   {
     title: "Bloqueios",
