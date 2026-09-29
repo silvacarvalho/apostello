@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Star, Calendar, MapPin, User, Music, ArrowRight, ClipboardList } from "lucide-react";
@@ -70,14 +72,22 @@ export default function AvaliacoesPage() {
     router.push(`/avaliacoes/${itemId}`);
   }
 
+  const headerBadge =
+    pendentes.length > 0 ? (
+      <Badge variant="secondary" className="px-3 py-1.5 text-sm">
+        {pendentes.length} {pendentes.length === 1 ? "culto" : "cultos"}
+      </Badge>
+    ) : undefined;
+
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Avaliações Pendentes</h1>
-          <p className="text-muted-foreground">Avalie os cultos que você participou</p>
-        </div>
-        <div className="flex items-center justify-center h-64">
+      <div className="space-y-6">
+        <PageHeader
+          title="Avaliações Pendentes"
+          description="Avalie os cultos que você participou"
+          icon={<ClipboardList className="h-5 w-5" />}
+        />
+        <div className="flex h-64 items-center justify-center">
           <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
@@ -85,48 +95,28 @@ export default function AvaliacoesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <ClipboardList className="h-5 w-5 text-primary" />
-            </div>
-            Avaliações Pendentes
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Avalie os cultos que você participou
-          </p>
-        </div>
-        {pendentes.length > 0 && (
-          <Badge variant="secondary" className="text-lg py-2 px-4">
-            {pendentes.length} {pendentes.length === 1 ? "culto" : "cultos"}
-          </Badge>
-        )}
-      </div>
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader
+        title="Avaliações Pendentes"
+        description="Avalie os cultos que você participou"
+        icon={<ClipboardList className="h-5 w-5" />}
+        actions={headerBadge}
+      />
 
       {/* Lista de Cultos Pendentes */}
       {pendentes.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Star className="h-10 w-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Nenhuma avaliação pendente</h3>
-            <p className="text-muted-foreground text-center max-w-md">
-              Você não tem cultos para avaliar no momento. Assim que participar de um culto,
-              ele aparecerá aqui para avaliação.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Star className="h-7 w-7" />}
+          title="Nenhuma avaliação pendente"
+          description="Você não tem cultos para avaliar no momento. Assim que participar de um culto, ele aparecerá aqui para avaliação."
+        />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {pendentes.map((item) => (
-            <Card key={item.item_id} className="hover:shadow-lg transition-shadow">
+            <Card key={item.item_id} className="transition-shadow hover:shadow-float">
               <CardHeader>
-                <div className="flex items-start justify-between mb-2">
-                  <Badge variant="outline" className="mb-2">
+                <div className="mb-1 flex items-start justify-between">
+                  <Badge variant="secondary">
                     <Calendar className="w-3 h-3 mr-1" />
                     {new Date(item.data_culto).toLocaleDateString("pt-BR", {
                       day: "2-digit",
@@ -135,9 +125,9 @@ export default function AvaliacoesPage() {
                     })}
                   </Badge>
                 </div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  {item.igreja_nome}
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0">{item.igreja_nome}</span>
                 </CardTitle>
                 <CardDescription>
                   {new Date(item.data_culto).toLocaleTimeString("pt-BR", {
@@ -149,7 +139,7 @@ export default function AvaliacoesPage() {
               <CardContent className="space-y-4">
                 {/* Pregador */}
                 {item.pregador && (
-                  <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3 p-2.5 bg-muted/50 rounded-xl">
                     <Avatar className="h-10 w-10">
                       <AvatarImage 
                         src={item.pregador.foto_perfil || undefined} 
@@ -173,7 +163,7 @@ export default function AvaliacoesPage() {
 
                 {/* Cantor */}
                 {item.cantor && (
-                  <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3 p-2.5 bg-muted/50 rounded-xl">
                     <Avatar className="h-10 w-10">
                       <AvatarImage 
                         src={item.cantor.foto_perfil || undefined} 

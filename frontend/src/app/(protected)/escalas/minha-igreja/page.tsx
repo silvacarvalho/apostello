@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Church, User, Music, Clock, CheckCircle, XCircle, AlertCircle, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Church, User, Music, CheckCircle, AlertCircle, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,9 +56,9 @@ const mesesNomes = [
 
 const statusBadge: Record<string, { label: string; variant: any }> = {
   RASCUNHO: { label: "Rascunho", variant: "outline" },
-  PUBLICADA: { label: "Publicada", variant: "default" },
+  PUBLICADA: { label: "Publicada", variant: "success" },
   EM_ANDAMENTO: { label: "Em Andamento", variant: "secondary" },
-  CONCLUIDA: { label: "Concluída", variant: "success" },
+  CONCLUIDA: { label: "Concluída", variant: "secondary" },
 };
 
 export default function MinhaIgrejaEscalasPage() {
@@ -189,20 +191,6 @@ export default function MinhaIgrejaEscalasPage() {
     setAnoSelecionado(ano);
   }
 
-  function getConfirmacaoStatus(confirmou: boolean) {
-    return confirmou ? (
-      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-        <CheckCircle className="w-3 h-3 mr-1" />
-        Confirmado
-      </Badge>
-    ) : (
-      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-        <AlertCircle className="w-3 h-3 mr-1" />
-        Pendente
-      </Badge>
-    );
-  }
-
   function isCultoPassed(dataCulto: string, horarioCulto: string): boolean {
     // Combinar data e horário para comparação completa
     const [hours, minutes] = horarioCulto.split(':').map(Number);
@@ -218,40 +206,78 @@ export default function MinhaIgrejaEscalasPage() {
     router.push(`/avaliacoes/${itemId}`);
   }
 
+  function renderPessoa(
+    pessoa: { nome_completo: string; foto_url: string | null } | null | undefined,
+    confirmou: boolean,
+    tipo: "pregador" | "cantor",
+    pastor?: { presente?: boolean; nome?: string | null }
+  ) {
+    const Icone = tipo === "pregador" ? User : Music;
+    return (
+      <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/50 p-2.5">
+        {pessoa ? (
+          <>
+            <Avatar className="h-10 w-10 shrink-0">
+              <AvatarImage src={pessoa.foto_url || undefined} alt={pessoa.nome_completo} />
+              <AvatarFallback className="text-xs">
+                {pessoa.nome_completo.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <Icone className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <p className="truncate text-sm font-medium">{pessoa.nome_completo}</p>
+              </div>
+              {confirmou ? (
+                <span className="mt-0.5 flex items-center gap-1 text-xs text-success">
+                  <CheckCircle className="h-3 w-3" /> Confirmado
+                </span>
+              ) : (
+                <span className="mt-0.5 flex items-center gap-1 text-xs text-warning">
+                  <AlertCircle className="h-3 w-3" /> Pendente
+                </span>
+              )}
+            </div>
+          </>
+        ) : pastor?.presente ? (
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+            <User className="h-4 w-4 shrink-0" />
+            <div className="min-w-0">
+              <span className="block text-sm font-medium">Pastor presente</span>
+              {pastor.nome && <span className="block truncate text-xs">{pastor.nome}</span>}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Icone className="h-4 w-4 shrink-0" />
+            <span className="text-sm">{tipo === "pregador" ? "Sem pregador" : "Sem cantor"}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Church className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Escalas da Minha Igreja</h1>
-              <p className="text-muted-foreground">
-                Programação dos cultos
-              </p>
-            </div>
-          </div>
-          
-          {/* Seletor de Mês */}
-          {escalasDisponiveis.length > 0 && (
-            <Select 
-              value={`${mesSelecionado}-${anoSelecionado}`} 
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader
+        title="Escalas da Minha Igreja"
+        description="Programação dos cultos"
+        icon={<Church className="h-5 w-5" />}
+        actions={
+          escalasDisponiveis.length > 0 ? (
+            <Select
+              value={`${mesSelecionado}-${anoSelecionado}`}
               onValueChange={handleMesChange}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Selecione o mês" />
               </SelectTrigger>
               <SelectContent>
@@ -262,47 +288,34 @@ export default function MinhaIgrejaEscalasPage() {
                 ))}
               </SelectContent>
             </Select>
-          )}
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
 
       {/* Escala */}
       {escalasDisponiveis.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Calendar className="h-10 w-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Nenhuma escala disponível</h3>
-            <p className="text-muted-foreground text-center max-w-md">
-              Não há escalas publicadas para sua igreja. Entre em contato com o pastor
-              distrital para mais informações.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Calendar className="h-7 w-7" />}
+          title="Nenhuma escala disponível"
+          description="Não há escalas publicadas para sua igreja. Entre em contato com o pastor distrital para mais informações."
+        />
       ) : !escala ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Calendar className="h-10 w-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Nenhuma escala para este mês</h3>
-            <p className="text-muted-foreground text-center max-w-md">
-              Não há itens de escala para {mesesNomes[mesSelecionado - 1]} de {anoSelecionado}.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Calendar className="h-7 w-7" />}
+          title="Nenhuma escala para este mês"
+          description={`Não há itens de escala para ${mesesNomes[mesSelecionado - 1]} de ${anoSelecionado}.`}
+        />
       ) : (
         <div className="space-y-4">
           {/* Info da Escala */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <CardTitle>Escala de {mesesNomes[escala.mes - 1]}</CardTitle>
                   <CardDescription>Programação dos cultos da sua igreja</CardDescription>
                 </div>
-                <Badge variant={statusBadge[escala.status]?.variant || "outline"}>
+                <Badge className="shrink-0" variant={statusBadge[escala.status]?.variant || "outline"}>
                   {statusBadge[escala.status]?.label || escala.status}
                 </Badge>
               </div>
@@ -310,143 +323,75 @@ export default function MinhaIgrejaEscalasPage() {
           </Card>
 
           {/* Lista de Cultos */}
-          <div className="grid gap-2">
+          <div className="grid gap-3">
             {escala.itens
               .sort((a, b) => new Date(a.data_culto).getTime() - new Date(b.data_culto).getTime())
               .map((item) => {
                 // Corrigir timezone: adicionar T12:00:00 para evitar problemas de fuso horário
                 const dataCulto = new Date(item.data_culto.split('T')[0] + 'T12:00:00');
                 return (
-                <Card key={item.id} className="py-0">
-                  <CardContent className="p-2">
-                    <div className="flex items-center gap-2">
-                      {/* Data compacta */}
-                      <div className="h-10 w-10 rounded-md bg-primary/10 flex flex-col items-center justify-center flex-shrink-0">
-                        <span className="text-[10px] text-muted-foreground leading-none uppercase">
-                          {dataCulto.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
-                        </span>
-                        <span className="text-sm font-bold leading-none">
-                          {dataCulto.getDate()}
-                        </span>
-                      </div>
-
-                      {/* Pregador e Cantor lado a lado */}
-                      <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
-                      {/* Pregador */}
-                      <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                        {item.pregador ? (
-                          <>
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage 
-                                src={item.pregador.foto_url || undefined} 
-                                alt={item.pregador.nome_completo} 
-                              />
-                              <AvatarFallback className="text-xs">
-                                {item.pregador.nome_completo.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1">
-                                <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                <p className="text-xs font-medium truncate">{item.pregador.nome_completo}</p>
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                {item.pregador_confirmou ? (
-                                  <span className="text-[10px] text-green-600 flex items-center gap-0.5">
-                                    <CheckCircle className="w-2.5 h-2.5" /> Confirmado
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] text-yellow-600 flex items-center gap-0.5">
-                                    <AlertCircle className="w-2.5 h-2.5" /> Pendente
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          item.pastor_presente ? (
-                            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                              <User className="w-4 h-4" />
-                              <div className="min-w-0">
-                                <span className="text-xs font-medium block">Pastor presente</span>
-                                {item.pastor_nome && (
-                                  <span className="text-xs block truncate">{item.pastor_nome}</span>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <User className="w-4 h-4" />
-                              <span className="text-xs">Sem pregador</span>
-                            </div>
-                          )
+                  <Card key={item.id} className="p-3 sm:p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                      {/* Data */}
+                      <div className="flex items-center gap-3 md:w-40 md:shrink-0">
+                        <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                          <span className="text-[10px] uppercase leading-none">
+                            {dataCulto.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+                          </span>
+                          <span className="mt-0.5 text-lg font-bold leading-none">
+                            {dataCulto.getDate()}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold capitalize">
+                            {dataCulto.toLocaleDateString("pt-BR", { month: "long" })}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{item.horario_culto?.horario}</p>
+                        </div>
+                        {isCultoPassed(item.data_culto, item.horario_culto.horario) && (
+                          <Button
+                            onClick={() => handleAvaliar(item.id)}
+                            className="shrink-0 md:hidden"
+                            variant="secondary"
+                            size="sm"
+                          >
+                            <Star className="mr-1.5 h-4 w-4" />
+                            Avaliar
+                          </Button>
                         )}
                       </div>
 
-                      {/* Cantor */}
-                      <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                        {item.cantor ? (
-                          <>
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage 
-                                src={item.cantor.foto_url || undefined} 
-                                alt={item.cantor.nome_completo} 
-                              />
-                              <AvatarFallback className="text-xs">
-                                {item.cantor.nome_completo.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1">
-                                <Music className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                                <p className="text-xs font-medium truncate">{item.cantor.nome_completo}</p>
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                {item.cantor_confirmou ? (
-                                  <span className="text-[10px] text-green-600 flex items-center gap-0.5">
-                                    <CheckCircle className="w-2.5 h-2.5" /> Confirmado
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] text-yellow-600 flex items-center gap-0.5">
-                                    <AlertCircle className="w-2.5 h-2.5" /> Pendente
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Music className="w-4 h-4" />
-                            <span className="text-xs">Sem cantor</span>
-                          </div>
-                        )}
-                      </div>
+                      {/* Pregador e Cantor */}
+                      <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+                        {renderPessoa(item.pregador, item.pregador_confirmou, "pregador", {
+                          presente: item.pastor_presente,
+                          nome: item.pastor_nome,
+                        })}
+                        {renderPessoa(item.cantor, item.cantor_confirmou, "cantor")}
                       </div>
 
-                      {/* Botão de Avaliação */}
+                      {/* Botão de Avaliação (desktop) */}
                       {isCultoPassed(item.data_culto, item.horario_culto.horario) && (
-                        <Button 
+                        <Button
                           onClick={() => handleAvaliar(item.id)}
-                          className="h-8 text-xs flex-shrink-0"
+                          className="hidden shrink-0 md:inline-flex"
                           variant="outline"
                           size="sm"
                         >
-                          <Star className="w-3 h-3" />
+                          <Star className="mr-1.5 h-4 w-4" />
+                          Avaliar
                         </Button>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              );
+                  </Card>
+                );
               })}
 
             {escala.itens.length === 0 && (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-8">
-                  <Calendar className="h-12 w-12 text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">Nenhum culto programado ainda</p>
-                </CardContent>
-              </Card>
+              <EmptyState
+                icon={<Calendar className="h-6 w-6" />}
+                title="Nenhum culto programado ainda"
+              />
             )}
           </div>
         </div>

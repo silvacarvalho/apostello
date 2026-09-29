@@ -78,11 +78,13 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuthStore, isAdmin, isPastor, getUserDistritoId } from "@/stores/auth-store";
-import { formatDate, getStatusColor, getDayOfWeek, parseDate } from "@/lib/utils";
+import { formatDate, getDayOfWeek, parseDate } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { DistritoCombobox } from "@/components/ui/distrito-combobox";
 import { UsuarioCombobox } from "@/components/ui/usuario-combobox";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // Types
 interface Distrito {
@@ -769,7 +771,7 @@ export default function EscalasPage() {
       case "RASCUNHO":
         return <Badge variant="outline">Rascunho</Badge>;
       case "PUBLICADA":
-        return <Badge className="bg-green-500 hover:bg-green-600">Publicada</Badge>;
+        return <Badge variant="success">Publicada</Badge>;
       case "ARQUIVADA":
         return <Badge variant="secondary">Arquivada</Badge>;
       default:
@@ -777,37 +779,110 @@ export default function EscalasPage() {
     }
   };
 
+  // Cor do status de confirmação (compromissos do usuário)
+  const getConfirmacaoVariant = (status: string): "success" | "warning" | "destructive" | "secondary" => {
+    switch (status) {
+      case "CONFIRMADO":
+        return "success";
+      case "PENDENTE":
+        return "warning";
+      case "RECUSADO":
+      case "CANCELADO":
+        return "destructive";
+      default:
+        return "secondary";
+    }
+  };
+
   // Total pages
   const totalPages = Math.ceil(totalEscalas / itemsPerPage);
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Calendar className="h-8 w-8" />
-            Escalas
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie e visualize as escalas de pregação e louvor
-          </p>
-        </div>
+  // Escalas filtradas por status
+  const escalasFiltradas = escalas.filter(
+    (e) => filtroStatus === "TODAS" || e.status === filtroStatus
+  );
 
-        {canManage && (
-          <Button onClick={() => setIsGenerateDialogOpen(true)}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Gerar Escala Automática
-          </Button>
+  // Itens filtrados por igreja (modal de detalhes)
+  const itensFiltrados = escalaItens.filter(
+    (item) => !filtroIgrejaId || item.igreja_id === filtroIgrejaId
+  );
+
+  // Menu de ações de uma escala
+  const renderAcoesEscala = (escala: Escala) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Ações da escala">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => handleViewDetails(escala)}>
+          <Eye className="h-4 w-4 mr-2" />
+          Visualizar
+        </DropdownMenuItem>
+        {(escala.status === "RASCUNHO" || escala.status === "PUBLICADA") && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleOpenExportDialog(escala)}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar / Imprimir
+            </DropdownMenuItem>
+          </>
         )}
-      </div>
+        {escala.status === "RASCUNHO" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setEscalaToPublish(escala)}>
+              <Send className="h-4 w-4 mr-2" />
+              Publicar
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => setEscalaToDelete(escala)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
+            </DropdownMenuItem>
+          </>
+        )}
+        {escala.status === "PUBLICADA" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setEscalaToArchive(escala)}>
+              <Archive className="h-4 w-4 mr-2" />
+              Arquivar
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  return (
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader
+        title="Escalas"
+        description="Gerencie e visualize as escalas de pregação e louvor"
+        icon={<Calendar className="h-5 w-5" />}
+        actions={
+          canManage ? (
+            <Button className="w-full sm:w-auto" onClick={() => setIsGenerateDialogOpen(true)}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Gerar Escala Automática
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Conteúdo Principal */}
       {canManage ? (
         /* Gerenciar Escalas - Para Admins/Pastores/Líderes */
         <div className="space-y-4">
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             {/* Mostrar seletor de distrito apenas para admins */}
             {isAdmin(user) && (
               <DistritoCombobox
@@ -817,13 +892,13 @@ export default function EscalasPage() {
                   setPage(0);
                 }}
                 placeholder="Selecione o distrito"
-                className="w-full md:w-[300px]"
+                className="w-full sm:w-[300px]"
               />
             )}
-            
+
             {/* Para não-admins, mostrar distrito atual */}
             {!isAdmin(user) && selectedDistritoId && (
-              <div className="flex items-center gap-2 px-3 py-2 border rounded-md bg-muted/50">
+              <div className="flex min-h-11 items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-soft">
                 <Church className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">
                   {distritos.find(d => d.id === selectedDistritoId)?.nome || `Distrito ${selectedDistritoId}`}
@@ -831,68 +906,101 @@ export default function EscalasPage() {
               </div>
             )}
 
-            {/* Filtro por status */}
-            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filtrar por status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODAS">Todas</SelectItem>
-                <SelectItem value="RASCUNHO">Rascunho</SelectItem>
-                <SelectItem value="PUBLICADA">Publicada</SelectItem>
-                <SelectItem value="ARQUIVADA">Arquivada</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Filtro por status + atualizar */}
+            <div className="flex gap-2">
+              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                <SelectTrigger className="min-w-0 flex-1 sm:w-[180px] sm:flex-none">
+                  <SelectValue placeholder="Filtrar por status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODAS">Todas</SelectItem>
+                  <SelectItem value="RASCUNHO">Rascunho</SelectItem>
+                  <SelectItem value="PUBLICADA">Publicada</SelectItem>
+                  <SelectItem value="ARQUIVADA">Arquivada</SelectItem>
+                </SelectContent>
+              </Select>
 
-              <Button variant="outline" onClick={fetchEscalas}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
+              <Button variant="outline" className="shrink-0" onClick={fetchEscalas}>
+                <RefreshCw className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Atualizar</span>
+                <span className="sr-only sm:hidden">Atualizar</span>
               </Button>
             </div>
+          </div>
 
-            {/* Error state */}
-            {error && (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex flex-col items-center gap-4">
-                  <AlertCircle className="h-8 w-8 text-destructive" />
-                  <p className="text-destructive">{error}</p>
-                  <Button onClick={fetchEscalas}>Tentar novamente</Button>
-                </div>
+          {/* Error state */}
+          {error && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex flex-col items-center gap-4">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-destructive">{error}</p>
+                <Button onClick={fetchEscalas}>Tentar novamente</Button>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Loading state */}
-            {loading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            )}
+          {/* Loading state */}
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
 
-            {/* Table */}
-            {!loading && !error && (
-              <>
-                <Card>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Período</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Data Publicação</TableHead>
-                        <TableHead>Criado em</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {escalas.filter(e => filtroStatus === "TODAS" || e.status === filtroStatus).length === 0 ? (
+          {/* Lista */}
+          {!loading && !error && (
+            <>
+              {escalasFiltradas.length === 0 ? (
+                <EmptyState
+                  icon={<Calendar className="h-6 w-6" />}
+                  title={
+                    filtroStatus === "TODAS"
+                      ? "Nenhuma escala encontrada para este distrito"
+                      : `Nenhuma escala com status "${filtroStatus}" encontrada`
+                  }
+                />
+              ) : (
+                <>
+                  {/* Celular: cards */}
+                  <div className="space-y-3 md:hidden">
+                    {escalasFiltradas.map((escala) => (
+                      <Card key={escala.id} className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                            <Calendar className="h-5 w-5" />
+                          </div>
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left"
+                            onClick={() => handleViewDetails(escala)}
+                          >
+                            <p className="truncate font-semibold">{getEscalaTitulo(escala)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {escala.data_publicacao
+                                ? `Publicada em ${formatDate(escala.data_publicacao)}`
+                                : `Criada em ${formatDate(escala.created_at)}`}
+                            </p>
+                            <div className="mt-1.5">{getStatusBadge(escala.status)}</div>
+                          </button>
+                          {renderAcoesEscala(escala)}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Desktop: tabela */}
+                  <Card className="hidden md:block">
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                            {filtroStatus === "TODAS" 
-                              ? "Nenhuma escala encontrada para este distrito"
-                              : `Nenhuma escala com status "${filtroStatus}" encontrada`}
-                          </TableCell>
+                          <TableHead>Período</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Data Publicação</TableHead>
+                          <TableHead>Criado em</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
-                      ) : (
-                        escalas.filter(e => filtroStatus === "TODAS" || e.status === filtroStatus).map((escala) => (
+                      </TableHeader>
+                      <TableBody>
+                        {escalasFiltradas.map((escala) => (
                           <TableRow key={escala.id}>
                             <TableCell className="font-medium">
                               {getEscalaTitulo(escala)}
@@ -901,7 +1009,7 @@ export default function EscalasPage() {
                               {getStatusBadge(escala.status)}
                             </TableCell>
                             <TableCell>
-                              {escala.data_publicacao 
+                              {escala.data_publicacao
                                 ? formatDate(escala.data_publicacao)
                                 : "-"
                               }
@@ -910,95 +1018,47 @@ export default function EscalasPage() {
                               {formatDate(escala.created_at)}
                             </TableCell>
                             <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleViewDetails(escala)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Visualizar
-                                  </DropdownMenuItem>
-                                  {(escala.status === "RASCUNHO" || escala.status === "PUBLICADA") && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => handleOpenExportDialog(escala)}>
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Exportar / Imprimir
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {escala.status === "RASCUNHO" && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => setEscalaToPublish(escala)}>
-                                        <Send className="h-4 w-4 mr-2" />
-                                        Publicar
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem 
-                                        className="text-destructive"
-                                        onClick={() => setEscalaToDelete(escala)}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Excluir
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {escala.status === "PUBLICADA" && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => setEscalaToArchive(escala)}>
-                                        <Archive className="h-4 w-4 mr-2" />
-                                        Arquivar
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              {renderAcoesEscala(escala)}
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </Card>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                </>
+              )}
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      Mostrando {page * itemsPerPage + 1} a {Math.min((page + 1) * itemsPerPage, totalEscalas)} de {totalEscalas} escalas
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.max(0, p - 1))}
-                        disabled={page === 0}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">
-                        Página {page + 1} de {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                        disabled={page >= totalPages - 1}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {page * itemsPerPage + 1} a {Math.min((page + 1) * itemsPerPage, totalEscalas)} de {totalEscalas} escalas
+                  </p>
+                  <div className="flex items-center justify-between gap-2 sm:justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm">
+                      Página {page + 1} de {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                )}
-              </>
-            )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       ) : (
         /* Minhas Escalas - Para Pregadores/Cantores que não gerenciam */
@@ -1012,57 +1072,55 @@ export default function EscalasPage() {
           <CardContent>
             {loadingMinhas ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : minhasEscalas.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Você não possui escalas agendadas</p>
-              </div>
+              <EmptyState
+                icon={<Calendar className="h-6 w-6" />}
+                title="Você não possui escalas agendadas"
+              />
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {minhasEscalas.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors gap-4"
+                    className="flex flex-col gap-4 rounded-2xl border bg-card p-4 transition-colors hover:bg-accent/40 md:flex-row md:items-center md:justify-between"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-primary/10 shrink-0">
-                        <span className="text-lg font-bold text-primary">
+                      <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                        <span className="text-lg font-bold leading-none">
                           {parseDate(item.data_culto).getDate()}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="mt-0.5 text-xs uppercase">
                           {parseDate(item.data_culto).toLocaleDateString("pt-BR", {
                             month: "short",
                           })}
                         </span>
                       </div>
-                      <div>
-                        <p className="font-medium">{item.igreja_nome}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold">{item.igreja_nome}</p>
                         <p className="text-sm text-muted-foreground">
                           {item.tipo} • {item.horario}
                         </p>
                         {item.tema && (
-                          <p className="text-sm text-primary mt-1">
+                          <p className="mt-1 text-sm text-primary">
                             Tema: {item.tema}
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-auto">
-                      <Badge className={getStatusColor(item.status)}>
+                    <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+                      <Badge variant={getConfirmacaoVariant(item.status)}>
                         {item.status}
                       </Badge>
                       {item.status === "PENDENTE" && (
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
+                        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                          <Button
                             onClick={() => handleConfirmar(item.id, true)}
                           >
                             Confirmar
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
                             variant="outline"
                             onClick={() => handleConfirmar(item.id, false)}
                           >
@@ -1236,7 +1294,7 @@ export default function EscalasPage() {
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="sm:w-[95vw] sm:max-w-[1400px] sm:max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center justify-center gap-2 sm:justify-start">
               <Calendar className="h-5 w-5" />
               {selectedEscala && getEscalaTitulo(selectedEscala)}
             </DialogTitle>
@@ -1253,16 +1311,16 @@ export default function EscalasPage() {
             <div className="space-y-6">
               {/* Estatísticas */}
               {escalaEstatisticas && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card className="p-4">
-                    <div className="flex items-center justify-center gap-2">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+                  <Card className="p-3 sm:p-4">
+                    <div className="flex items-center justify-center gap-1.5 text-center">
                       <Church className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">Total de Cultos</span>
                     </div>
-                    <p className="text-6xl font-bold mt-2 text-center">{escalaEstatisticas.total_itens}</p>
+                    <p className="mt-2 text-center text-4xl font-bold sm:text-6xl">{escalaEstatisticas.total_itens}</p>
                   </Card>
-                  <Card className="p-4">
-                    <div className="flex items-center justify-center gap-2">
+                  <Card className="p-3 sm:p-4">
+                    <div className="flex items-center justify-center gap-1.5 text-center">
                       <Users className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">Mensageiros</span>
                     </div>
@@ -1278,9 +1336,9 @@ export default function EscalasPage() {
                       </div>
                     </div>
                   </Card>
-                  <Card className="p-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                  <Card className="p-3 sm:p-4">
+                    <div className="flex items-center justify-center gap-1.5 text-center">
+                      <CheckCircle className="h-4 w-4 text-success" />
                       <span className="text-sm text-muted-foreground">Confirmados</span>
                     </div>
                     <div className="mt-1 space-y-1">
@@ -1295,9 +1353,9 @@ export default function EscalasPage() {
                       </div>
                     </div>
                   </Card>
-                  <Card className="p-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <Clock className="h-4 w-4 text-yellow-500" />
+                  <Card className="p-3 sm:p-4">
+                    <div className="flex items-center justify-center gap-1.5 text-center">
+                      <Clock className="h-4 w-4 text-warning" />
                       <span className="text-sm text-muted-foreground">Pendentes</span>
                     </div>
                     <div className="mt-1 space-y-1">
@@ -1320,7 +1378,7 @@ export default function EscalasPage() {
               )}
 
               {/* Filtro por Igreja */}
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                 <Label htmlFor="filtro-igreja" className="text-sm font-medium whitespace-nowrap">
                   Filtrar por Igreja:
                 </Label>
@@ -1328,7 +1386,7 @@ export default function EscalasPage() {
                   value={filtroIgrejaId?.toString() || "todos"}
                   onValueChange={(value) => setFiltroIgrejaId(value === "todos" ? null : parseInt(value))}
                 >
-                  <SelectTrigger id="filtro-igreja" className="w-[300px]">
+                  <SelectTrigger id="filtro-igreja" className="w-full sm:w-[300px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1347,103 +1405,186 @@ export default function EscalasPage() {
                 </Select>
               </div>
 
-              {/* Tabela de itens */}
-              <Card>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Horário</TableHead>
-                      <TableHead>Igreja</TableHead>
-                      <TableHead>Mensageiros</TableHead>
-                      <TableHead>Tema</TableHead>
-                      {selectedEscala?.status === "RASCUNHO" && (
-                        <TableHead className="text-right">Ações</TableHead>
-                      )}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {escalaItens.filter(item => !filtroIgrejaId || item.igreja_id === filtroIgrejaId).length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={selectedEscala?.status === "RASCUNHO" ? 6 : 5} className="text-center py-8 text-muted-foreground">
-                          Nenhum item na escala
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      escalaItens.filter(item => !filtroIgrejaId || item.igreja_id === filtroIgrejaId).map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            {formatDate(item.data_culto)}
-                            <span className="text-xs text-muted-foreground ml-1">
-                              ({getDayOfWeek(parseDate(item.data_culto).getDay())})
-                            </span>
-                          </TableCell>
-                          <TableCell>{item.horario}</TableCell>
-                          <TableCell>{item.igreja_nome || "-"}</TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground w-24">Pregação:</span>
-                                {item.pastor_presente && !item.pregador_nome ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-amber-100 dark:bg-amber-900/30 border-amber-500 text-amber-700 dark:text-amber-300"
-                                    title={item.pastor_observacao || undefined}
-                                  >
-                                    Pastor presente{item.pastor_nome ? `: ${item.pastor_nome}` : ""}
-                                  </Badge>
-                                ) : (
-                                  <span>{item.pregador_nome || "-"}</span>
-                                )}
-                                {item.pregador_score !== null && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {item.pregador_score.toFixed(1)}
-                                  </Badge>
-                                )}
-                                {item.status_confirmacao_pregador === "CONFIRMADO" && (
-                                  <CheckCircle className="h-3 w-3 text-green-500" />
-                                )}
-                                {item.status_confirmacao_pregador === "RECUSADO" && (
-                                  <XCircle className="h-3 w-3 text-red-500" />
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground w-24">Louvor Especial:</span>
-                                <span>{item.cantor_nome || "-"}</span>
-                                {item.cantor_score !== null && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {item.cantor_score.toFixed(1)}
-                                  </Badge>
-                                )}
-                                {item.status_confirmacao_cantor === "CONFIRMADO" && (
-                                  <CheckCircle className="h-3 w-3 text-green-500" />
-                                )}
-                                {item.status_confirmacao_cantor === "RECUSADO" && (
-                                  <XCircle className="h-3 w-3 text-red-500" />
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {item.tema_titulo || item.tema_customizado || "-"}
-                          </TableCell>
+              {/* Lista de cultos: cards no celular, tabela no desktop */}
+              {itensFiltrados.length === 0 ? (
+                <EmptyState
+                  icon={<Calendar className="h-6 w-6" />}
+                  title="Nenhum item na escala"
+                />
+              ) : (
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {itensFiltrados.map((item) => (
+                      <div key={item.id} className="rounded-2xl border bg-card p-4 shadow-soft">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold">
+                              {formatDate(item.data_culto)}
+                              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                {getDayOfWeek(parseDate(item.data_culto).getDay())} - {item.horario}
+                              </span>
+                            </p>
+                            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Church className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{item.igreja_nome || "-"}</span>
+                            </p>
+                          </div>
                           {selectedEscala?.status === "RASCUNHO" && (
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditItem(item)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="shrink-0"
+                              aria-label="Editar item"
+                              onClick={() => handleEditItem(item)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="mt-3 space-y-2.5 border-t pt-3 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Pregação</p>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                              {item.pastor_presente && !item.pregador_nome ? (
+                                <Badge
+                                  variant="outline"
+                                  className="whitespace-normal border-amber-500 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                  title={item.pastor_observacao || undefined}
+                                >
+                                  Pastor presente{item.pastor_nome ? `: ${item.pastor_nome}` : ""}
+                                </Badge>
+                              ) : (
+                                <span className="font-medium">{item.pregador_nome || "-"}</span>
+                              )}
+                              {item.pregador_score !== null && (
+                                <Badge variant="outline" className="text-xs">
+                                  {item.pregador_score.toFixed(1)}
+                                </Badge>
+                              )}
+                              {item.status_confirmacao_pregador === "CONFIRMADO" && (
+                                <CheckCircle className="h-4 w-4 text-success" />
+                              )}
+                              {item.status_confirmacao_pregador === "RECUSADO" && (
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Louvor Especial</p>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                              <span className="font-medium">{item.cantor_nome || "-"}</span>
+                              {item.cantor_score !== null && (
+                                <Badge variant="outline" className="text-xs">
+                                  {item.cantor_score.toFixed(1)}
+                                </Badge>
+                              )}
+                              {item.status_confirmacao_cantor === "CONFIRMADO" && (
+                                <CheckCircle className="h-4 w-4 text-success" />
+                              )}
+                              {item.status_confirmacao_cantor === "RECUSADO" && (
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Tema</p>
+                            <p className="mt-0.5">{item.tema_titulo || item.tema_customizado || "-"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Card className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Horário</TableHead>
+                          <TableHead>Igreja</TableHead>
+                          <TableHead>Mensageiros</TableHead>
+                          <TableHead>Tema</TableHead>
+                          {selectedEscala?.status === "RASCUNHO" && (
+                            <TableHead className="text-right">Ações</TableHead>
                           )}
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {itensFiltrados.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              {formatDate(item.data_culto)}
+                              <span className="text-xs text-muted-foreground ml-1">
+                                ({getDayOfWeek(parseDate(item.data_culto).getDay())})
+                              </span>
+                            </TableCell>
+                            <TableCell>{item.horario}</TableCell>
+                            <TableCell>{item.igreja_nome || "-"}</TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground w-24">Pregação:</span>
+                                  {item.pastor_presente && !item.pregador_nome ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-amber-100 dark:bg-amber-900/30 border-amber-500 text-amber-700 dark:text-amber-300"
+                                      title={item.pastor_observacao || undefined}
+                                    >
+                                      Pastor presente{item.pastor_nome ? `: ${item.pastor_nome}` : ""}
+                                    </Badge>
+                                  ) : (
+                                    <span>{item.pregador_nome || "-"}</span>
+                                  )}
+                                  {item.pregador_score !== null && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {item.pregador_score.toFixed(1)}
+                                    </Badge>
+                                  )}
+                                  {item.status_confirmacao_pregador === "CONFIRMADO" && (
+                                    <CheckCircle className="h-3 w-3 text-success" />
+                                  )}
+                                  {item.status_confirmacao_pregador === "RECUSADO" && (
+                                    <XCircle className="h-3 w-3 text-destructive" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground w-24">Louvor Especial:</span>
+                                  <span>{item.cantor_nome || "-"}</span>
+                                  {item.cantor_score !== null && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {item.cantor_score.toFixed(1)}
+                                    </Badge>
+                                  )}
+                                  {item.status_confirmacao_cantor === "CONFIRMADO" && (
+                                    <CheckCircle className="h-3 w-3 text-success" />
+                                  )}
+                                  {item.status_confirmacao_cantor === "RECUSADO" && (
+                                    <XCircle className="h-3 w-3 text-destructive" />
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {item.tema_titulo || item.tema_customizado || "-"}
+                            </TableCell>
+                            {selectedEscala?.status === "RASCUNHO" && (
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditItem(item)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                </>
+              )}
             </div>
           )}
 
@@ -1525,7 +1666,7 @@ export default function EscalasPage() {
       <AlertDialog open={showValidationAlert} onOpenChange={setShowValidationAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+            <AlertDialogTitle className="flex items-center gap-2 text-warning">
               <AlertCircle className="h-5 w-5" />
               Atenção: Igrejas sem horários de culto
             </AlertDialogTitle>
@@ -1533,7 +1674,7 @@ export default function EscalasPage() {
               <div className="space-y-3">
                 <p>{validationData?.mensagem}</p>
                 {validationData && validationData.igrejas_sem_horario.length > 0 && (
-                  <div className="bg-amber-50 dark:bg-amber-950 p-3 rounded-md">
+                  <div className="bg-warning/10 p-3 rounded-md">
                     <p className="font-semibold text-sm mb-2">Igrejas afetadas:</p>
                     <ul className="list-disc list-inside space-y-1 text-sm">
                       {validationData.igrejas_sem_horario.map((igreja) => (
@@ -1552,7 +1693,7 @@ export default function EscalasPage() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmGenerate}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="bg-warning text-warning-foreground hover:bg-warning/90"
             >
               Sim, gerar mesmo assim
             </AlertDialogAction>
@@ -1586,7 +1727,7 @@ export default function EscalasPage() {
               <div className="grid gap-2">
                 <Label htmlFor="pregador">Pregador</Label>
                 {selectedItem?.pastor_presente && (
-                  <div className="rounded-md border border-amber-500 bg-amber-100 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+                  <div className="rounded-xl border border-amber-500 bg-amber-100 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-300">
                     <p className="font-medium">
                       Pastor presente neste culto (itinerário)
                       {selectedItem.pastor_nome ? `: ${selectedItem.pastor_nome}` : ""}
@@ -1721,11 +1862,11 @@ export default function EscalasPage() {
 
             <Separator />
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Button
                 onClick={handleDownloadPDF}
                 disabled={loadingExport !== null}
-                className="flex flex-col items-center gap-2 h-auto py-4"
+                className="h-auto flex-row gap-3 py-4 sm:flex-col sm:gap-2"
               >
                 {loadingExport === "pdf" ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -1739,7 +1880,7 @@ export default function EscalasPage() {
                 onClick={handlePrintPDF}
                 disabled={loadingExport !== null}
                 variant="secondary"
-                className="flex flex-col items-center gap-2 h-auto py-4"
+                className="h-auto flex-row gap-3 py-4 sm:flex-col sm:gap-2"
               >
                 {loadingExport === "print" ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
@@ -1753,7 +1894,7 @@ export default function EscalasPage() {
                 onClick={handleDownloadExcel}
                 disabled={loadingExport !== null}
                 variant="outline"
-                className="flex flex-col items-center gap-2 h-auto py-4"
+                className="h-auto flex-row gap-3 py-4 sm:flex-col sm:gap-2"
               >
                 {loadingExport === "excel" ? (
                   <Loader2 className="h-6 w-6 animate-spin" />

@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, CheckCircle, XCircle, ArrowLeft, Send } from "lucide-react";
+import { Star, CheckCircle, ArrowLeft, Send, User, Music } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -60,24 +61,132 @@ const criteriosCantor = [
 
 function StarRating({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
-    <div className="flex gap-0.5">
+    <div className="flex" role="radiogroup" aria-label="Nota de 1 a 5">
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
           type="button"
+          role="radio"
+          aria-checked={star === value}
+          aria-label={`${star} ${star === 1 ? "estrela" : "estrelas"}`}
           onClick={() => onChange(star)}
-          className="focus:outline-none transition-transform hover:scale-110"
+          className="flex h-11 w-11 items-center justify-center rounded-lg transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-90 sm:h-9 sm:w-9"
         >
           <Star
-            className={`w-5 h-5 ${
+            className={`h-7 w-7 sm:h-6 sm:w-6 ${
               star <= value
-                ? "fill-yellow-400 text-yellow-400"
-                : "fill-transparent text-gray-300"
+                ? "fill-warning text-warning"
+                : "fill-transparent text-muted-foreground/40"
             }`}
           />
         </button>
       ))}
     </div>
+  );
+}
+
+type Avaliado = { id: number; nome_completo: string; foto_perfil: string | null };
+
+function AvaliacaoCard({
+  pessoa,
+  tipo,
+  idPrefixo,
+  criterios,
+  avaliacao,
+  setAvaliacao,
+}: {
+  pessoa: Avaliado;
+  tipo: "Pregador" | "Cantor";
+  idPrefixo: string;
+  criterios: { key: string; label: string; desc: string }[];
+  avaliacao: Partial<AvaliacaoData>;
+  setAvaliacao: (a: Partial<AvaliacaoData>) => void;
+}) {
+  const Icone = tipo === "Pregador" ? User : Music;
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4 pt-4 sm:p-5">
+        {/* Foto e Nome */}
+        <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-3">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={pessoa.foto_perfil || undefined} alt={pessoa.nome_completo} />
+            <AvatarFallback className="text-sm">
+              {pessoa.nome_completo.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate font-semibold">{pessoa.nome_completo}</p>
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Icone className="h-3 w-3" />
+              {tipo}
+            </p>
+          </div>
+        </div>
+
+        {/* Confirmação de Presença */}
+        <div className="rounded-xl border border-primary/20 bg-accent p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Label className="flex items-center gap-2 text-sm font-medium text-accent-foreground">
+              <CheckCircle className="h-4 w-4 shrink-0 text-primary" />
+              O {tipo.toLowerCase()} foi {pessoa.nome_completo.split(" ")[0]}?
+            </Label>
+            <RadioGroup
+              value={avaliacao.confirmou_identidade ? "sim" : "nao"}
+              onValueChange={(value) =>
+                setAvaliacao({ ...avaliacao, confirmou_identidade: value === "sim" })
+              }
+              className="flex gap-3"
+            >
+              <div className="flex min-h-11 items-center space-x-2 rounded-lg bg-card px-3">
+                <RadioGroupItem value="sim" id={`${idPrefixo}-sim`} />
+                <Label htmlFor={`${idPrefixo}-sim`} className="cursor-pointer text-sm">Sim</Label>
+              </div>
+              <div className="flex min-h-11 items-center space-x-2 rounded-lg bg-card px-3">
+                <RadioGroupItem value="nao" id={`${idPrefixo}-nao`} />
+                <Label htmlFor={`${idPrefixo}-nao`} className="cursor-pointer text-sm">Não</Label>
+              </div>
+            </RadioGroup>
+          </div>
+        </div>
+
+        {/* Critérios de Avaliação */}
+        <div>
+          {criterios.map((criterio, index) => (
+            <div
+              key={criterio.key}
+              className="flex flex-col gap-1 border-b py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+            >
+              <div className="min-w-0 flex-1">
+                <Label className="text-sm font-medium">{criterio.label}</Label>
+                <p className="text-xs text-muted-foreground">{criterio.desc}</p>
+              </div>
+              <div className="-ml-2 sm:ml-0">
+                <StarRating
+                  value={avaliacao[`criterio_${index + 1}` as keyof typeof avaliacao] as number}
+                  onChange={(value) =>
+                    setAvaliacao({
+                      ...avaliacao,
+                      [`criterio_${index + 1}`]: value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Comentário */}
+        <div className="space-y-1.5">
+          <Label className="text-sm">Comentário (opcional)</Label>
+          <Textarea
+            placeholder="Deixe um comentário..."
+            value={avaliacao.comentario}
+            onChange={(e) => setAvaliacao({ ...avaliacao, comentario: e.target.value })}
+            rows={3}
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -221,10 +330,8 @@ export default function AvaliarCultoPage({ params }: { params: { id: string } })
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
       </div>
     );
   }
@@ -234,226 +341,68 @@ export default function AvaliarCultoPage({ params }: { params: { id: string } })
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-3xl">
-      {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-            className="h-8 px-2"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Voltar
-          </Button>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-4 sm:space-y-5">
+      <div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="-ml-2 mb-2 h-10 px-3"
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Voltar
+        </Button>
 
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-            <Star className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">Avaliar Culto</h1>
-            <p className="text-sm text-muted-foreground">
-              {new Date(item.data_culto).toLocaleDateString("pt-BR", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })} - {item.igreja_nome}
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Avaliar Culto"
+          description={`${new Date(item.data_culto).toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })} - ${item.igreja_nome}`}
+          icon={<Star className="h-5 w-5" />}
+        />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Avaliação do Pregador */}
+      <form onSubmit={handleSubmit} className="space-y-4 pb-2">
         {item.pregador && (
-          <Card className="py-0">
-            <CardContent className="p-3 space-y-3">
-              {/* Foto e Nome */}
-              <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-md">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={item.pregador.foto_perfil || undefined} 
-                    alt={item.pregador.nome_completo} 
-                  />
-                  <AvatarFallback className="text-xs">
-                    {item.pregador.nome_completo.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-semibold text-sm">{item.pregador.nome_completo}</p>
-                  <p className="text-xs text-muted-foreground">Pregador</p>
-                </div>
-              </div>
-
-              {/* Confirmação de Presença */}
-              <div className="p-2 border border-primary/20 rounded-md bg-primary/5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-primary" />
-                    O pregador foi {item.pregador.nome_completo.split(" ")[0]}?
-                  </Label>
-                  <RadioGroup
-                    value={avaliacaoPregador.confirmou_identidade ? "sim" : "nao"}
-                    onValueChange={(value) =>
-                      setAvaliacaoPregador({ ...avaliacaoPregador, confirmou_identidade: value === "sim" })
-                    }
-                    className="flex gap-3"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <RadioGroupItem value="sim" id="pregador-sim" className="h-3 w-3" />
-                      <Label htmlFor="pregador-sim" className="cursor-pointer text-xs">Sim</Label>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <RadioGroupItem value="nao" id="pregador-nao" className="h-3 w-3" />
-                      <Label htmlFor="pregador-nao" className="cursor-pointer text-xs">Não</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
-
-              {/* Critérios de Avaliação */}
-              <div className="space-y-2">
-                {criteriosPregador.map((criterio, index) => (
-                  <div key={criterio.key} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <Label className="text-xs font-medium">{criterio.label}</Label>
-                      <p className="text-[10px] text-muted-foreground truncate">{criterio.desc}</p>
-                    </div>
-                    <StarRating
-                      value={avaliacaoPregador[`criterio_${index + 1}` as keyof typeof avaliacaoPregador] as number}
-                      onChange={(value) =>
-                        setAvaliacaoPregador({
-                          ...avaliacaoPregador,
-                          [`criterio_${index + 1}`]: value,
-                        })
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Comentário */}
-              <div>
-                <Label className="text-xs">Comentário (opcional)</Label>
-                <Textarea
-                  placeholder="Deixe um comentário..."
-                  value={avaliacaoPregador.comentario}
-                  onChange={(e) =>
-                    setAvaliacaoPregador({ ...avaliacaoPregador, comentario: e.target.value })
-                  }
-                  rows={2}
-                  className="mt-1 text-sm"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <AvaliacaoCard
+            pessoa={item.pregador}
+            tipo="Pregador"
+            idPrefixo="pregador"
+            criterios={criteriosPregador}
+            avaliacao={avaliacaoPregador}
+            setAvaliacao={setAvaliacaoPregador}
+          />
         )}
 
-        {/* Avaliação do Cantor */}
         {item.cantor && (
-          <Card className="py-0">
-            <CardContent className="p-3 space-y-3">
-              {/* Foto e Nome */}
-              <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-md">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={item.cantor.foto_perfil || undefined} 
-                    alt={item.cantor.nome_completo} 
-                  />
-                  <AvatarFallback className="text-xs">
-                    {item.cantor.nome_completo.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-semibold text-sm">{item.cantor.nome_completo}</p>
-                  <p className="text-xs text-muted-foreground">Cantor</p>
-                </div>
-              </div>
-
-              {/* Confirmação de Presença */}
-              <div className="p-2 border border-primary/20 rounded-md bg-primary/5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3 text-primary" />
-                    O cantor foi {item.cantor.nome_completo.split(" ")[0]}?
-                  </Label>
-                  <RadioGroup
-                    value={avaliacaoCantor.confirmou_identidade ? "sim" : "nao"}
-                    onValueChange={(value) =>
-                      setAvaliacaoCantor({ ...avaliacaoCantor, confirmou_identidade: value === "sim" })
-                    }
-                    className="flex gap-3"
-                  >
-                    <div className="flex items-center space-x-1">
-                      <RadioGroupItem value="sim" id="cantor-sim" className="h-3 w-3" />
-                      <Label htmlFor="cantor-sim" className="cursor-pointer text-xs">Sim</Label>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <RadioGroupItem value="nao" id="cantor-nao" className="h-3 w-3" />
-                      <Label htmlFor="cantor-nao" className="cursor-pointer text-xs">Não</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
-
-              {/* Critérios de Avaliação */}
-              <div className="space-y-2">
-                {criteriosCantor.map((criterio, index) => (
-                  <div key={criterio.key} className="flex items-center justify-between py-1 border-b border-muted last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <Label className="text-xs font-medium">{criterio.label}</Label>
-                      <p className="text-[10px] text-muted-foreground truncate">{criterio.desc}</p>
-                    </div>
-                    <StarRating
-                      value={avaliacaoCantor[`criterio_${index + 1}` as keyof typeof avaliacaoCantor] as number}
-                      onChange={(value) =>
-                        setAvaliacaoCantor({
-                          ...avaliacaoCantor,
-                          [`criterio_${index + 1}`]: value,
-                        })
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Comentário */}
-              <div>
-                <Label className="text-xs">Comentário (opcional)</Label>
-                <Textarea
-                  placeholder="Deixe um comentário..."
-                  value={avaliacaoCantor.comentario}
-                  onChange={(e) =>
-                    setAvaliacaoCantor({ ...avaliacaoCantor, comentario: e.target.value })
-                  }
-                  rows={2}
-                  className="mt-1 text-sm"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <AvaliacaoCard
+            pessoa={item.cantor}
+            tipo="Cantor"
+            idPrefixo="cantor"
+            criterios={criteriosCantor}
+            avaliacao={avaliacaoCantor}
+            setAvaliacao={setAvaliacaoCantor}
+          />
         )}
 
         {/* Botões */}
-        <div className="flex gap-2 justify-end">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => router.back()}
             disabled={submitting}
           >
             Cancelar
           </Button>
-          <Button type="submit" size="sm" disabled={submitting}>
+          <Button type="submit" disabled={submitting}>
             {submitting ? (
               "Enviando..."
             ) : (
               <>
-                <Send className="w-3 h-3 mr-1" />
+                <Send className="mr-2 h-4 w-4" />
                 Enviar
               </>
             )}

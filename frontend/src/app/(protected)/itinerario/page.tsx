@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Church,
+  Check,
   GripVertical,
   Info,
   Loader2,
@@ -26,17 +27,12 @@ import {
 import { ptBR } from "date-fns/locale";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -78,16 +74,16 @@ interface Igreja {
 
 // Mesma paleta de cores por igreja usada na tela do Calendário
 const CORES_IGREJAS = [
-  { bg: "bg-blue-100 dark:bg-blue-900/30", border: "border-blue-500", text: "text-blue-700 dark:text-blue-300" },
-  { bg: "bg-green-100 dark:bg-green-900/30", border: "border-green-500", text: "text-green-700 dark:text-green-300" },
-  { bg: "bg-purple-100 dark:bg-purple-900/30", border: "border-purple-500", text: "text-purple-700 dark:text-purple-300" },
-  { bg: "bg-orange-100 dark:bg-orange-900/30", border: "border-orange-500", text: "text-orange-700 dark:text-orange-300" },
-  { bg: "bg-pink-100 dark:bg-pink-900/30", border: "border-pink-500", text: "text-pink-700 dark:text-pink-300" },
-  { bg: "bg-teal-100 dark:bg-teal-900/30", border: "border-teal-500", text: "text-teal-700 dark:text-teal-300" },
-  { bg: "bg-yellow-100 dark:bg-yellow-900/30", border: "border-yellow-500", text: "text-yellow-700 dark:text-yellow-300" },
-  { bg: "bg-red-100 dark:bg-red-900/30", border: "border-red-500", text: "text-red-700 dark:text-red-300" },
-  { bg: "bg-indigo-100 dark:bg-indigo-900/30", border: "border-indigo-500", text: "text-indigo-700 dark:text-indigo-300" },
-  { bg: "bg-cyan-100 dark:bg-cyan-900/30", border: "border-cyan-500", text: "text-cyan-700 dark:text-cyan-300" },
+  { bg: "bg-blue-500/10 dark:bg-blue-400/15", border: "border-blue-500", text: "text-blue-700 dark:text-blue-300", dot: "bg-blue-500" },
+  { bg: "bg-green-500/10 dark:bg-green-400/15", border: "border-green-500", text: "text-green-700 dark:text-green-300", dot: "bg-green-500" },
+  { bg: "bg-purple-500/10 dark:bg-purple-400/15", border: "border-purple-500", text: "text-purple-700 dark:text-purple-300", dot: "bg-purple-500" },
+  { bg: "bg-orange-500/10 dark:bg-orange-400/15", border: "border-orange-500", text: "text-orange-700 dark:text-orange-300", dot: "bg-orange-500" },
+  { bg: "bg-pink-500/10 dark:bg-pink-400/15", border: "border-pink-500", text: "text-pink-700 dark:text-pink-300", dot: "bg-pink-500" },
+  { bg: "bg-teal-500/10 dark:bg-teal-400/15", border: "border-teal-500", text: "text-teal-700 dark:text-teal-300", dot: "bg-teal-500" },
+  { bg: "bg-yellow-500/10 dark:bg-yellow-400/15", border: "border-yellow-500", text: "text-yellow-700 dark:text-yellow-300", dot: "bg-yellow-500" },
+  { bg: "bg-red-500/10 dark:bg-red-400/15", border: "border-red-500", text: "text-red-700 dark:text-red-300", dot: "bg-red-500" },
+  { bg: "bg-indigo-500/10 dark:bg-indigo-400/15", border: "border-indigo-500", text: "text-indigo-700 dark:text-indigo-300", dot: "bg-indigo-500" },
+  { bg: "bg-cyan-500/10 dark:bg-cyan-400/15", border: "border-cyan-500", text: "text-cyan-700 dark:text-cyan-300", dot: "bg-cyan-500" },
 ];
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -274,22 +270,17 @@ export default function ItinerarioPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <CalendarIcon className="h-8 w-8" />
-          Itinerário do Pastor
-        </h1>
-        <p className="text-muted-foreground">
-          Arraste uma igreja até o dia em que você estará presente
-        </p>
-      </div>
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader
+        title="Itinerário do Pastor"
+        description="Toque em um dia para escolher a igreja onde você estará presente"
+        icon={<CalendarIcon className="h-5 w-5" />}
+      />
 
       {/* Aviso */}
-      <div className="flex items-start gap-3 p-4 rounded-lg border bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-        <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-        <div className="text-sm text-blue-800 dark:text-blue-200">
+      <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-accent p-3 sm:p-4">
+        <Info className="mt-0.5 h-5 w-5 shrink-0 text-accent-foreground" />
+        <div className="text-xs text-accent-foreground sm:text-sm">
           <strong>Como funciona:</strong> nas datas registradas aqui, a escala gerada{" "}
           <strong>não sorteia pregador</strong> para aquela igreja, pois o pastor já estará
           presente. Cadastre o itinerário <strong>antes</strong> de gerar a escala do mês.
@@ -298,9 +289,9 @@ export default function ItinerarioPage() {
 
       {/* Calendário */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-2 sm:flex-none sm:justify-start sm:gap-3">
               <Button
                 variant="outline"
                 size="icon"
@@ -309,7 +300,7 @@ export default function ItinerarioPage() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="text-xl min-w-[200px] text-center">
+              <CardTitle className="min-w-0 flex-1 truncate text-center text-lg capitalize sm:min-w-[200px] sm:flex-none sm:text-xl">
                 {format(currentDate, "MMMM yyyy", { locale: ptBR })}
               </CardTitle>
               <Button
@@ -321,17 +312,20 @@ export default function ItinerarioPage() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" onClick={() => setCurrentDate(new Date())}>
+            <Button variant="secondary" className="shrink-0" onClick={() => setCurrentDate(new Date())}>
               Hoje
             </Button>
           </div>
           <CardDescription>{itens.length} dia(s) no itinerário deste mês</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Igrejas para arrastar */}
-          <div className="mb-4 pb-4 border-b">
-            <p className="text-xs text-muted-foreground mb-2">
-              Arraste uma igreja para um dia do calendário (ou clique no dia):
+          {/* Legenda das igrejas (arrastáveis no desktop) */}
+          <div className="mb-4 border-b pb-4">
+            <p className="mb-2 text-xs text-muted-foreground">
+              <span className="hidden sm:inline">Arraste uma igreja para um dia do calendário ou </span>
+              <span className="sm:hidden">Legenda de cores. </span>
+              <span className="hidden sm:inline">clique no dia.</span>
+              <span className="sm:hidden">Toque no dia para escolher a igreja.</span>
             </p>
             <div className="flex flex-wrap gap-2">
               {igrejas.map((igreja) => {
@@ -351,16 +345,17 @@ export default function ItinerarioPage() {
                       setDiaAlvo(null);
                     }}
                     className={cn(
-                      "cursor-grab active:cursor-grabbing select-none py-1 px-2 transition-all hover:scale-105 hover:shadow-sm",
+                      "max-w-full select-none px-2.5 py-1 transition-all sm:cursor-grab sm:active:cursor-grabbing sm:hover:shadow-sm",
                       cores?.bg,
                       cores?.border,
                       cores?.text,
                       igrejaArrastada === igreja.id && "opacity-50"
                     )}
                   >
-                    <GripVertical className="h-3 w-3 mr-1" />
-                    <Church className="h-3 w-3 mr-1" />
-                    {igreja.nome}
+                    <GripVertical className="mr-1 hidden h-3 w-3 sm:block" />
+                    <span className={cn("mr-1.5 h-2 w-2 shrink-0 rounded-full sm:hidden", cores?.dot)} />
+                    <Church className="mr-1 hidden h-3 w-3 shrink-0 sm:block" />
+                    <span className="truncate">{igreja.nome}</span>
                   </Badge>
                 );
               })}
@@ -375,18 +370,18 @@ export default function ItinerarioPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
               {DIAS_SEMANA.map((dia) => (
                 <div
                   key={dia}
-                  className="text-center font-semibold py-2 text-sm text-muted-foreground"
+                  className="py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-xs"
                 >
                   {dia}
                 </div>
               ))}
 
               {Array.from({ length: offsetInicio }).map((_, i) => (
-                <div key={`empty-${i}`} className="min-h-[100px] bg-muted/20 rounded" />
+                <div key={`empty-${i}`} className="min-h-[56px] rounded-lg bg-muted/20 sm:min-h-[100px]" />
               ))}
 
               {diasMes.map((dia) => {
@@ -395,11 +390,16 @@ export default function ItinerarioPage() {
                 const cores = registro ? coresIgrejas[registro.igreja_id] : undefined;
                 const isHoje = isSameDay(dia, new Date());
                 const isAlvo = diaAlvo === iso;
+                const nomeIgreja = registro
+                  ? registro.igreja_nome || `Igreja #${registro.igreja_id}`
+                  : "";
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={iso}
                     onClick={() => abrirModalDia(dia)}
+                    aria-label={`${format(dia, "d 'de' MMMM", { locale: ptBR })}${nomeIgreja ? ` - ${nomeIgreja}` : ""}`}
                     onDragOver={(e) => {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = "move";
@@ -408,44 +408,52 @@ export default function ItinerarioPage() {
                     onDragLeave={() => setDiaAlvo((atual) => (atual === iso ? null : atual))}
                     onDrop={(e) => handleDrop(e, dia)}
                     className={cn(
-                      "min-h-[100px] p-1 border rounded cursor-pointer transition-colors hover:bg-accent",
+                      "flex min-h-[56px] min-w-0 flex-col items-stretch overflow-hidden rounded-lg border bg-card p-1 text-left transition-colors hover:bg-accent active:bg-accent sm:min-h-[100px] sm:p-1.5",
                       isHoje && "ring-2 ring-primary",
                       !registro && "bg-muted/20",
-                      isAlvo && "bg-primary/10 border-primary border-dashed border-2"
+                      isAlvo && "border-2 border-dashed border-primary bg-primary/10"
                     )}
                   >
                     <div
                       className={cn(
-                        "text-sm font-medium mb-1",
-                        isHoje && "text-primary font-bold"
+                        "mb-0.5 text-xs font-medium sm:mb-1 sm:text-sm",
+                        isHoje && "font-bold text-primary"
                       )}
                     >
                       {format(dia, "d")}
                     </div>
 
                     {registro && (
-                      <div
-                        className={cn(
-                          "text-xs px-1 py-0.5 rounded border-l-2",
-                          cores?.bg,
-                          cores?.border,
-                          cores?.text
-                        )}
-                      >
-                        <div className="flex items-center gap-1 font-medium truncate">
-                          <Church className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">
-                            {registro.igreja_nome || `Igreja #${registro.igreja_id}`}
+                      <>
+                        {/* Celular: ponto colorido + nome abreviado */}
+                        <div className="flex min-w-0 flex-col items-start gap-0.5 sm:hidden">
+                          <span className={cn("h-2 w-2 rounded-full", cores?.dot)} />
+                          <span className={cn("w-full truncate text-[10px] font-medium leading-tight", cores?.text)}>
+                            {nomeIgreja.replace(/^Igreja\s+/i, "")}
                           </span>
                         </div>
-                        {registro.observacoes && (
-                          <div className="mt-0.5 opacity-80 line-clamp-2 break-words">
-                            {registro.observacoes}
+                        {/* Desktop: etiqueta completa */}
+                        <div
+                          className={cn(
+                            "hidden rounded border-l-2 px-1 py-0.5 text-xs sm:block",
+                            cores?.bg,
+                            cores?.border,
+                            cores?.text
+                          )}
+                        >
+                          <div className="flex items-center gap-1 truncate font-medium">
+                            <Church className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{nomeIgreja}</span>
                           </div>
-                        )}
-                      </div>
+                          {registro.observacoes && (
+                            <div className="mt-0.5 line-clamp-2 break-words opacity-80">
+                              {registro.observacoes}
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -458,7 +466,7 @@ export default function ItinerarioPage() {
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle>{selecionado ? "Editar itinerário" : "Novo itinerário"}</DialogTitle>
-            <DialogDescription className="capitalize">
+            <DialogDescription className="first-letter:uppercase">
               {dataCulto &&
                 format(parseISO(dataCulto), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </DialogDescription>
@@ -466,19 +474,44 @@ export default function ItinerarioPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Igreja</Label>
-              <Select value={igrejaId} onValueChange={setIgrejaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a igreja" />
-                </SelectTrigger>
-                <SelectContent>
-                  {igrejas.map((i) => (
-                    <SelectItem key={i.id} value={i.id.toString()}>
-                      {i.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Em qual igreja você estará?</Label>
+              {igrejas.length === 0 ? (
+                <EmptyState
+                  icon={<Church className="h-6 w-6" />}
+                  title="Nenhuma igreja encontrada"
+                  className="py-6"
+                />
+              ) : (
+                <div
+                  role="radiogroup"
+                  aria-label="Igreja"
+                  className="grid max-h-[40vh] gap-2 overflow-y-auto pr-1 sm:max-h-64"
+                >
+                  {igrejas.map((i) => {
+                    const cores = coresIgrejas[i.id];
+                    const ativo = igrejaId === i.id.toString();
+                    return (
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={ativo}
+                        key={i.id}
+                        onClick={() => setIgrejaId(i.id.toString())}
+                        className={cn(
+                          "flex min-h-[48px] items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm font-medium transition-colors",
+                          ativo
+                            ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary"
+                            : "bg-card hover:bg-accent"
+                        )}
+                      >
+                        <span className={cn("h-3 w-3 shrink-0 rounded-full", cores?.dot)} />
+                        <span className="min-w-0 flex-1 truncate">{i.nome}</span>
+                        {ativo && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -496,7 +529,7 @@ export default function ItinerarioPage() {
             {selecionado && (
               <Button
                 variant="outline"
-                className="sm:mr-auto text-destructive"
+                className="text-destructive sm:mr-auto"
                 onClick={() => setShowDeleteDialog(true)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />

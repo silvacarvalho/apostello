@@ -19,6 +19,8 @@ import { ptBR } from "date-fns/locale";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -84,16 +86,16 @@ interface Distrito {
 
 // Cores para igrejas (paleta de cores distintas)
 const CORES_IGREJAS = [
-  { bg: "bg-blue-100 dark:bg-blue-900/30", border: "border-blue-500", text: "text-blue-700 dark:text-blue-300" },
-  { bg: "bg-green-100 dark:bg-green-900/30", border: "border-green-500", text: "text-green-700 dark:text-green-300" },
-  { bg: "bg-purple-100 dark:bg-purple-900/30", border: "border-purple-500", text: "text-purple-700 dark:text-purple-300" },
-  { bg: "bg-orange-100 dark:bg-orange-900/30", border: "border-orange-500", text: "text-orange-700 dark:text-orange-300" },
-  { bg: "bg-pink-100 dark:bg-pink-900/30", border: "border-pink-500", text: "text-pink-700 dark:text-pink-300" },
-  { bg: "bg-teal-100 dark:bg-teal-900/30", border: "border-teal-500", text: "text-teal-700 dark:text-teal-300" },
-  { bg: "bg-yellow-100 dark:bg-yellow-900/30", border: "border-yellow-500", text: "text-yellow-700 dark:text-yellow-300" },
-  { bg: "bg-red-100 dark:bg-red-900/30", border: "border-red-500", text: "text-red-700 dark:text-red-300" },
-  { bg: "bg-indigo-100 dark:bg-indigo-900/30", border: "border-indigo-500", text: "text-indigo-700 dark:text-indigo-300" },
-  { bg: "bg-cyan-100 dark:bg-cyan-900/30", border: "border-cyan-500", text: "text-cyan-700 dark:text-cyan-300" },
+  { bg: "bg-blue-500/10 dark:bg-blue-400/15", border: "border-blue-500", text: "text-blue-700 dark:text-blue-300", dot: "bg-blue-500" },
+  { bg: "bg-green-500/10 dark:bg-green-400/15", border: "border-green-500", text: "text-green-700 dark:text-green-300", dot: "bg-green-500" },
+  { bg: "bg-purple-500/10 dark:bg-purple-400/15", border: "border-purple-500", text: "text-purple-700 dark:text-purple-300", dot: "bg-purple-500" },
+  { bg: "bg-orange-500/10 dark:bg-orange-400/15", border: "border-orange-500", text: "text-orange-700 dark:text-orange-300", dot: "bg-orange-500" },
+  { bg: "bg-pink-500/10 dark:bg-pink-400/15", border: "border-pink-500", text: "text-pink-700 dark:text-pink-300", dot: "bg-pink-500" },
+  { bg: "bg-teal-500/10 dark:bg-teal-400/15", border: "border-teal-500", text: "text-teal-700 dark:text-teal-300", dot: "bg-teal-500" },
+  { bg: "bg-yellow-500/10 dark:bg-yellow-400/15", border: "border-yellow-500", text: "text-yellow-700 dark:text-yellow-300", dot: "bg-yellow-500" },
+  { bg: "bg-red-500/10 dark:bg-red-400/15", border: "border-red-500", text: "text-red-700 dark:text-red-300", dot: "bg-red-500" },
+  { bg: "bg-indigo-500/10 dark:bg-indigo-400/15", border: "border-indigo-500", text: "text-indigo-700 dark:text-indigo-300", dot: "bg-indigo-500" },
+  { bg: "bg-cyan-500/10 dark:bg-cyan-400/15", border: "border-cyan-500", text: "text-cyan-700 dark:text-cyan-300", dot: "bg-cyan-500" },
 ];
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -257,73 +259,67 @@ export default function CalendarioPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <CalendarIcon className="h-8 w-8" />
-            Calendário de Escalas
-          </h1>
-          <p className="text-muted-foreground">
-            Visualização mensal dos cultos e escalas
-          </p>
-        </div>
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader
+        title="Calendário de Escalas"
+        description="Visualização mensal dos cultos e escalas"
+        icon={<CalendarIcon className="h-5 w-5" />}
+      />
 
-        {/* Filtros */}
-        <div className="flex flex-wrap items-center gap-2">
-          {podeAlterarDistrito ? (
-            <Select value={selectedDistrito} onValueChange={setSelectedDistrito}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Selecione o distrito" />
-              </SelectTrigger>
-              <SelectContent>
-                {distritos.map((distrito) => (
-                  <SelectItem key={distrito.id} value={String(distrito.id)}>
-                    {distrito.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="px-3 py-2 border rounded-md bg-muted/50 text-sm font-medium">
-              {distritos.find(d => String(d.id) === selectedDistrito)?.nome || "Carregando..."}
-            </div>
-          )}
-
-          <Select value={selectedIgreja} onValueChange={setSelectedIgreja}>
-            <SelectTrigger className="w-[200px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Selecione uma igreja" />
+      {/* Filtros */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        {podeAlterarDistrito ? (
+          <Select value={selectedDistrito} onValueChange={setSelectedDistrito}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Selecione o distrito" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Todas as igrejas</SelectItem>
-              {igrejas.map((igreja) => (
-                <SelectItem key={igreja.id} value={String(igreja.id)}>
-                  {igreja.nome}
+              {distritos.map((distrito) => (
+                <SelectItem key={distrito.id} value={String(distrito.id)}>
+                  {distrito.nome}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
+        ) : (
+          <div className="flex min-h-11 items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm font-medium shadow-soft">
+            <Church className="h-4 w-4 text-muted-foreground" />
+            {distritos.find(d => String(d.id) === selectedDistrito)?.nome || "Carregando..."}
+          </div>
+        )}
+
+        <Select value={selectedIgreja} onValueChange={setSelectedIgreja}>
+          <SelectTrigger className="w-full sm:w-[240px]">
+            <Filter className="mr-2 h-4 w-4 shrink-0" />
+            <SelectValue placeholder="Selecione uma igreja" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as igrejas</SelectItem>
+            {igrejas.map((igreja) => (
+              <SelectItem key={igreja.id} value={String(igreja.id)}>
+                {igreja.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Calendário */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="icon" onClick={irMesAnterior}>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-2 sm:flex-none sm:justify-start sm:gap-3">
+              <Button variant="outline" size="icon" onClick={irMesAnterior} aria-label="Mês anterior">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="text-xl min-w-[200px] text-center">
+              <CardTitle className="min-w-0 flex-1 truncate text-center text-lg capitalize sm:min-w-[200px] sm:flex-none sm:text-xl">
                 {format(currentDate, "MMMM yyyy", { locale: ptBR })}
               </CardTitle>
-              <Button variant="outline" size="icon" onClick={irProximoMes}>
+              <Button variant="outline" size="icon" onClick={irProximoMes} aria-label="Próximo mês">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <Button variant="outline" onClick={irHoje}>
+            <Button variant="secondary" className="shrink-0" onClick={irHoje}>
               Hoje
             </Button>
           </div>
@@ -335,7 +331,7 @@ export default function CalendarioPage() {
         </CardHeader>
         <CardContent>
           {/* Legenda de Igrejas */}
-          <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b">
+          <div className="mb-4 flex flex-wrap gap-2 border-b pb-4">
             {igrejas.map((igreja) => {
               const cores = coresIgrejas[igreja.id];
               const isSelected = selectedIgreja === String(igreja.id);
@@ -344,17 +340,18 @@ export default function CalendarioPage() {
                   key={igreja.id}
                   variant="outline"
                   className={cn(
-                    "cursor-pointer transition-all duration-200",
-                    cores?.bg, 
-                    cores?.border, 
+                    "max-w-full cursor-pointer px-2.5 py-1 transition-all duration-200",
+                    cores?.bg,
+                    cores?.border,
                     cores?.text,
-                    isSelected && "ring-2 ring-offset-2 ring-primary scale-105 shadow-md font-bold",
-                    !isSelected && "hover:scale-105 hover:shadow-sm opacity-70 hover:opacity-100"
+                    isSelected && "font-bold shadow-md ring-2 ring-primary ring-offset-2 ring-offset-card",
+                    !isSelected && "opacity-70 hover:opacity-100 hover:shadow-sm"
                   )}
                   onClick={() => setSelectedIgreja(isSelected ? "todas" : String(igreja.id))}
                 >
-                  <Church className="h-3 w-3 mr-1" />
-                  {igreja.nome}
+                  <span className={cn("mr-1.5 h-2 w-2 shrink-0 rounded-full sm:hidden", cores?.dot)} />
+                  <Church className="mr-1 hidden h-3 w-3 shrink-0 sm:block" />
+                  <span className="truncate">{igreja.nome}</span>
                   {isSelected && <span className="ml-1">✓</span>}
                 </Badge>
               );
@@ -362,12 +359,12 @@ export default function CalendarioPage() {
           </div>
 
           {/* Grid do Calendário */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
             {/* Cabeçalho dias da semana */}
             {DIAS_SEMANA.map((dia) => (
               <div
                 key={dia}
-                className="text-center font-semibold py-2 text-sm text-muted-foreground"
+                className="py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-xs"
               >
                 {dia}
               </div>
@@ -375,7 +372,7 @@ export default function CalendarioPage() {
 
             {/* Células vazias para offset */}
             {Array.from({ length: offsetInicio }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-[100px] bg-muted/20 rounded" />
+              <div key={`empty-${i}`} className="min-h-[56px] rounded-lg bg-muted/20 sm:min-h-[100px]" />
             ))}
 
             {/* Dias do mês */}
@@ -389,24 +386,40 @@ export default function CalendarioPage() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
+                        role={temCultos ? "button" : undefined}
                         className={cn(
-                          "min-h-[100px] p-1 border rounded cursor-pointer transition-colors",
+                          "min-h-[56px] min-w-0 overflow-hidden rounded-lg border bg-card p-1 transition-colors sm:min-h-[100px] sm:p-1.5",
                           isHoje && "ring-2 ring-primary",
-                          temCultos && "hover:bg-accent",
+                          temCultos && "cursor-pointer hover:bg-accent active:bg-accent",
                           !temCultos && "bg-muted/20"
                         )}
                         onClick={() => handleDayClick(dia)}
                       >
                         {/* Número do dia */}
                         <div className={cn(
-                          "text-sm font-medium mb-1",
-                          isHoje && "text-primary font-bold"
+                          "mb-0.5 text-xs font-medium sm:mb-1 sm:text-sm",
+                          isHoje && "font-bold text-primary"
                         )}>
                           {format(dia, "d")}
                         </div>
 
-                        {/* Indicadores de cultos */}
-                        <div className="space-y-1">
+                        {/* Celular: pontos coloridos por igreja */}
+                        {temCultos && (
+                          <div className="flex flex-wrap items-center gap-0.5 sm:hidden">
+                            {itensDia.slice(0, 4).map((item) => (
+                              <span
+                                key={item.id}
+                                className={cn("h-2 w-2 rounded-full", coresIgrejas[item.igreja_id]?.dot || "bg-primary")}
+                              />
+                            ))}
+                            {itensDia.length > 4 && (
+                              <span className="text-[9px] leading-none text-muted-foreground">+{itensDia.length - 4}</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Desktop: indicadores de cultos */}
+                        <div className="hidden space-y-1 sm:block">
                           {itensDia.slice(0, 3).map((item) => {
                             const cores = coresIgrejas[item.igreja_id];
                             const mostrarDetalhes = selectedIgreja !== "todas";
@@ -414,7 +427,7 @@ export default function CalendarioPage() {
                               <div
                                 key={item.id}
                                 className={cn(
-                                  "text-xs px-1 py-0.5 rounded truncate border-l-2",
+                                  "truncate rounded border-l-2 px-1 py-0.5 text-xs",
                                   cores?.bg,
                                   cores?.border,
                                   cores?.text
@@ -443,7 +456,7 @@ export default function CalendarioPage() {
                             );
                           })}
                           {itensDia.length > 3 && (
-                            <div className="text-xs text-muted-foreground text-center">
+                            <div className="text-center text-xs text-muted-foreground">
                               +{itensDia.length - 3} mais
                             </div>
                           )}
@@ -451,7 +464,7 @@ export default function CalendarioPage() {
                       </div>
                     </TooltipTrigger>
                     {temCultos && (
-                      <TooltipContent side="right" className="max-w-[300px]">
+                      <TooltipContent side="right" className="hidden max-w-[300px] sm:block">
                         <div className="space-y-2">
                           <p className="font-semibold">
                             {format(dia, "EEEE, dd 'de' MMMM", { locale: ptBR })}
@@ -474,11 +487,12 @@ export default function CalendarioPage() {
           </div>
 
           {!escala && (
-            <div className="text-center py-8 text-muted-foreground">
-              <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma escala encontrada para este mês</p>
-              <p className="text-sm">Selecione outro mês ou distrito</p>
-            </div>
+            <EmptyState
+              className="mt-4"
+              icon={<CalendarIcon className="h-6 w-6" />}
+              title="Nenhuma escala encontrada para este mês"
+              description="Selecione outro mês ou distrito"
+            />
           )}
         </CardContent>
       </Card>
@@ -487,8 +501,8 @@ export default function CalendarioPage() {
       <Dialog open={showDayModal} onOpenChange={setShowDayModal}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
+            <DialogTitle className="flex items-center justify-center gap-2 pr-6 sm:justify-start first-letter:uppercase">
+              <CalendarIcon className="h-5 w-5 shrink-0" />
               {selectedDay && format(selectedDay, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </DialogTitle>
             <DialogDescription>
@@ -496,58 +510,58 @@ export default function CalendarioPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+          <div className="space-y-3 sm:max-h-[400px] sm:overflow-y-auto">
             {itensDiaSelecionado.map((item) => {
               const cores = coresIgrejas[item.igreja_id];
               return (
                 <Card key={item.id} className={cn("border-l-4", cores?.border)}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Church className="h-4 w-4" />
-                        <span className="font-semibold">{item.igreja_nome}</span>
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Church className="h-4 w-4 shrink-0" />
+                        <span className="truncate font-semibold">{item.igreja_nome}</span>
                       </div>
-                      <Badge variant="outline">
-                        <Clock className="h-3 w-3 mr-1" />
+                      <Badge variant="outline" className="shrink-0">
+                        <Clock className="mr-1 h-3 w-3" />
                         {item.horario?.substring(0, 5)}
                       </Badge>
                     </div>
 
                     <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <User className="h-4 w-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Pregador:</span>
                         {item.pastor_presente && !item.pregador_nome ? (
-                          <span className="text-amber-600 dark:text-amber-400 font-medium">
+                          <span className="font-medium text-amber-600 dark:text-amber-400">
                             Pastor presente{item.pastor_nome ? `: ${item.pastor_nome}` : ""}
                           </span>
                         ) : (
-                          <span className={cn(!item.pregador_nome && "text-red-500")}>
+                          <span className={cn(!item.pregador_nome && "text-destructive")}>
                             {item.pregador_nome || "Não definido"}
                           </span>
                         )}
                         {item.status_confirmacao_pregador && (
-                          <Badge variant={item.status_confirmacao_pregador === "CONFIRMADO" ? "default" : "secondary"} className="text-xs">
+                          <Badge variant={item.status_confirmacao_pregador === "CONFIRMADO" ? "success" : "secondary"} className="text-xs">
                             {item.status_confirmacao_pregador === "CONFIRMADO" ? "✓" : "?"}
                           </Badge>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <Music className="h-4 w-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Cantor:</span>
                         <span className={cn(!item.cantor_nome && "text-muted-foreground")}>
                           {item.cantor_nome || "Não definido"}
                         </span>
                         {item.status_confirmacao_cantor && (
-                          <Badge variant={item.status_confirmacao_cantor === "CONFIRMADO" ? "default" : "secondary"} className="text-xs">
+                          <Badge variant={item.status_confirmacao_cantor === "CONFIRMADO" ? "success" : "secondary"} className="text-xs">
                             {item.status_confirmacao_cantor === "CONFIRMADO" ? "✓" : "?"}
                           </Badge>
                         )}
                       </div>
 
                       {(item.tema_nome || item.tema_customizado) && (
-                        <div className="flex items-center gap-2 pt-2 border-t">
+                        <div className="flex flex-wrap items-center gap-2 border-t pt-2">
                           <span className="text-muted-foreground">Tema:</span>
                           <span>{item.tema_nome || item.tema_customizado}</span>
                         </div>
@@ -559,8 +573,8 @@ export default function CalendarioPage() {
             })}
           </div>
 
-          <div className="flex justify-end pt-4">
-            <Button variant="outline" onClick={() => setShowDayModal(false)}>
+          <div className="flex justify-end">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowDayModal(false)}>
               Fechar
             </Button>
           </div>
