@@ -1234,7 +1234,7 @@ export default function EscalasPage() {
 
       {/* Dialog: Detalhes da Escala */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-[1400px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -1562,7 +1562,7 @@ export default function EscalasPage() {
 
       {/* Dialog: Editar Item da Escala */}
       <Dialog open={isEditItemDialogOpen} onOpenChange={setIsEditItemDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-[850px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5" />
