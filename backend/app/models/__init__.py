@@ -10,6 +10,7 @@ from app.models.preferencia_igreja import PreferenciaIgreja
 from app.models.preferencia_notificacao import PreferenciaNotificacao
 from app.models.indisponibilidade import Indisponibilidade
 from app.models.bloqueio_temporario import BloqueioTemporario
+from app.models.itinerario_pastor import ItinerarioPastor
 from app.models.tema import Tema
 from app.models.escala import Escala
 from app.models.item_escala import ItemEscala
@@ -39,6 +40,7 @@ __all__ = [
     "Tema",
     "Escala",
     "ItemEscala",
+    "ItinerarioPastor",
     "HistoricoItemEscala",
     "SolicitacaoTroca",
     "Avaliacao",
