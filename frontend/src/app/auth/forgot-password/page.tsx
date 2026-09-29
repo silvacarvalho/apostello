@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 const forgotPasswordSchema = z.object({
   email: z.string().email("Email inválido"),
 });
@@ -39,23 +41,34 @@ export default function ForgotPasswordPage() {
     resolver: zodResolver(forgotPasswordSchema),
   });
 
-  const onSubmit = async (data: ForgotPasswordFormData) => {
+  const onSubmit = async (formData: ForgotPasswordFormData) => {
     setIsLoading(true);
     try {
-      // TODO: Implementar chamada API para recuperação de senha
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch(`${API_URL}/api/v1/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: formData.email }),
+      });
 
+      const data = await response.json();
+
+      if (data.success) {
+        setIsSuccess(true);
+        toast({
+          title: "Solicitação enviada!",
+          description: data.message,
+          variant: "default",
+        });
+      }
+    } catch (error: any) {
+      // Por segurança, mesmo em caso de erro mostramos sucesso
       setIsSuccess(true);
       toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        title: "Solicitação enviada!",
+        description: "Se o email estiver cadastrado, você receberá instruções.",
         variant: "default",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível enviar o email",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);

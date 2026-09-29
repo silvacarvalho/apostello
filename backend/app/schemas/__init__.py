@@ -11,6 +11,15 @@ from app.schemas.horario_culto import HorarioCultoBase, HorarioCultoCreate, Hora
 from app.schemas.escala import EscalaBase, EscalaCreate, EscalaUpdate, EscalaResponse
 from app.schemas.item_escala import ItemEscalaBase, ItemEscalaCreate, ItemEscalaUpdate, ItemEscalaResponse
 from app.schemas.avaliacao import AvaliacaoBase, AvaliacaoCreate, AvaliacaoResponse
+from app.schemas.indisponibilidade import (
+    IndisponibilidadeCreate, IndisponibilidadeUpdate, 
+    IndisponibilidadeResponse, IndisponibilidadeListResponse,
+    MotivoIndisponibilidade
+)
+from app.schemas.bloqueio_temporario import (
+    BloqueioTemporarioCreate, BloqueioTemporarioUpdate,
+    BloqueioTemporarioResponse, BloqueioTemporarioListResponse
+)
 
 __all__ = [
     # Usuario
@@ -32,4 +41,11 @@ __all__ = [
     "ItemEscalaBase", "ItemEscalaCreate", "ItemEscalaUpdate", "ItemEscalaResponse",
     # Avaliacao
     "AvaliacaoBase", "AvaliacaoCreate", "AvaliacaoResponse",
+    # Indisponibilidade
+    "IndisponibilidadeCreate", "IndisponibilidadeUpdate",
+    "IndisponibilidadeResponse", "IndisponibilidadeListResponse",
+    "MotivoIndisponibilidade",
+    # BloqueioTemporario
+    "BloqueioTemporarioCreate", "BloqueioTemporarioUpdate",
+    "BloqueioTemporarioResponse", "BloqueioTemporarioListResponse",
 ]

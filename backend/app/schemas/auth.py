@@ -1,7 +1,7 @@
 """
 Schemas de Autenticação
 """
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 
@@ -31,3 +31,26 @@ class LoginRequest(BaseModel):
 class RefreshTokenRequest(BaseModel):
     """Request de refresh token"""
     refresh_token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Request para solicitar reset de senha"""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request para resetar senha com token"""
+    token: str
+    nova_senha: str = Field(..., min_length=6, max_length=100)
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Resposta do pedido de reset de senha"""
+    message: str
+    success: bool = True
+
+
+class ResetPasswordResponse(BaseModel):
+    """Resposta do reset de senha"""
+    message: str
+    success: bool = True

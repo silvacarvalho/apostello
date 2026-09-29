@@ -49,6 +49,10 @@ class Usuario(Base):
     aprovado_por_id = Column(Integer, ForeignKey("usuario.id", ondelete="SET NULL"))
     motivo_recusa = Column(Text)
     
+    # Recuperação de senha
+    reset_token = Column(String(255), nullable=True, index=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+    
     # Auditoria
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

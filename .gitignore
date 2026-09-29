@@ -6,3 +6,5 @@ backend/venv/
 backend/uploads/
 __pycache__/
 
+frontend/.env.local
+backend/.env

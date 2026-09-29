@@ -62,6 +62,15 @@ def require_admin(
     return current_user
 
 
+def require_admin_ou_associacao(
+    current_user: Usuario = Depends(get_current_user)
+) -> Usuario:
+    """Requer que usuário seja administrador ou associação"""
+    if current_user.tipo not in [TipoUsuario.ADMIN, TipoUsuario.ASSOCIACAO]:
+        raise ForbiddenException("Acesso restrito a administradores e associação")
+    return current_user
+
+
 def require_pastor(
     current_user: Usuario = Depends(get_current_user)
 ) -> Usuario:

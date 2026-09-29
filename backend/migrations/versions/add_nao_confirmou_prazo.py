@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'add_nao_confirmou_prazo'
-down_revision = None  # Ajustar para a última migration
+down_revision = 'bdcd53f6bfdb'  # Após preferencia_notificacao
 branch_labels = None
 depends_on = None
 
