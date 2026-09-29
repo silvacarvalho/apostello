@@ -5,6 +5,7 @@ Exportação de escalas, participações e avaliações
 from typing import List, Optional
 from datetime import date, datetime
 from io import BytesIO
+from xml.sax.saxutils import escape as xml_escape
 from sqlalchemy.orm import Session
 import logging
 
@@ -167,6 +168,14 @@ class RelatorioService:
         }
         
         itinerario = mapa_itinerario(self.db, escala.mes, escala.ano, distrito_id=escala.distrito_id)
+        linhas_pastor = []  # índices das linhas da tabela com o pastor presente
+        cell_style = ParagraphStyle(
+            'CelulaTabela', parent=styles['Normal'], fontSize=9, leading=11
+        )
+        cell_pastor_style = ParagraphStyle(
+            'CelulaPastor', parent=cell_style,
+            fontName='Helvetica-Bold', textColor=colors.HexColor('#92400e')
+        )
         
         for item in itens:
             pregador = self.db.query(Usuario).filter(Usuario.id == item.pregador_id).first() if item.pregador_id else None
@@ -178,12 +187,21 @@ class RelatorioService:
             
             dia_semana = dias_semana_pt.get(item.data_culto.weekday(), "") if item.data_culto else ""
             
+            # Pregador: quebra de linha na célula e destaque quando o pastor estará presente
+            pastor_presente = not pregador and (item.igreja_id, item.data_culto) in itinerario
+            if pastor_presente:
+                linhas_pastor.append(len(data))
+            celula_pregador = Paragraph(
+                xml_escape(texto_pregador),
+                cell_pastor_style if pastor_presente else cell_style
+            )
+            
             if igreja_id:
                 data.append([
                     item.data_culto.strftime("%d/%m") if item.data_culto else "",
                     dia_semana,
                     item.horario.strftime("%H:%M") if item.horario else "",
-                    texto_pregador,
+                    celula_pregador,
                     cantor.nome_completo if cantor else "-",
                     item.tema_customizado or (item.tema.titulo if item.tema else "-")
                 ])
@@ -194,13 +212,27 @@ class RelatorioService:
                     dia_semana,
                     item.horario.strftime("%H:%M") if item.horario else "",
                     igreja.nome if igreja else "",
-                    texto_pregador,
+                    celula_pregador,
                     cantor.nome_completo if cantor else "-",
                     item.tema_customizado or (item.tema.titulo if item.tema else "-")
                 ])
         
         # Criar tabela
-        table = Table(data, repeatRows=1)
+        # Colunas de texto com quebra de linha (Igreja, Cantor, Tema) e larguras proporcionais
+        primeira_col_texto = 3
+        for linha in data[1:]:
+            for c in range(primeira_col_texto, len(linha)):
+                if isinstance(linha[c], str):
+                    linha[c] = Paragraph(xml_escape(linha[c]), cell_style)
+        if igreja_id:
+            proporcoes = [0.09, 0.07, 0.09, 0.30, 0.25, 0.20]
+        else:
+            proporcoes = [0.08, 0.06, 0.08, 0.18, 0.24, 0.20, 0.16]
+        table = Table(data, colWidths=[doc.width * f for f in proporcoes], repeatRows=1)
+        estilo_extra = [
+            ('BACKGROUND', (0, linha), (-1, linha), colors.HexColor('#fef3c7'))
+            for linha in linhas_pastor
+        ]
         table.setStyle(TableStyle([
             # Cabeçalho
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e40af')),
@@ -225,9 +257,25 @@ class RelatorioService:
             
             # Alternância de cores
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f9ff')]),
-        ]))
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ] + estilo_extra))
         
         elements.append(table)
+        
+        # Legenda do itinerário do pastor
+        if linhas_pastor:
+            legenda_style = ParagraphStyle(
+                'LegendaPastor',
+                parent=styles['Normal'],
+                fontSize=8,
+                textColor=colors.HexColor('#92400e'),
+                spaceBefore=8
+            )
+            elements.append(Paragraph(
+                "Linhas destacadas: cultos em que o Pastor estará presente (itinerário) - "
+                "não há pregador escalado.",
+                legenda_style
+            ))
         
         # Rodapé
         elements.append(Spacer(1, 20))
