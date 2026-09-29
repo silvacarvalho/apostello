@@ -16,6 +16,8 @@ import { format, parseISO, differenceInDays, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -57,6 +59,14 @@ import { cn } from "@/lib/utils";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 
+// Cores do DayPicker seguindo o tema
+const RDP_STYLE = {
+  "--rdp-accent-color": "hsl(var(--primary))",
+  "--rdp-background-color": "hsl(var(--accent))",
+  "--rdp-cell-size": "40px",
+  margin: "0.5rem",
+} as React.CSSProperties;
+
 // Tipos
 interface Indisponibilidade {
   id: number;
@@ -86,6 +96,16 @@ export default function IndisponibilidadesPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuthStore();
+
+  // Calendário com 1 mês no celular e 2 no desktop
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -331,25 +351,26 @@ export default function IndisponibilidadesPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Minhas Indisponibilidades</h1>
-          <p className="text-muted-foreground">
-            Gerencie os períodos em que você não estará disponível para escalas
-          </p>
-        </div>
-        <Button onClick={handleOpenAddModal}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Indisponibilidade
-        </Button>
-      </div>
+      <PageHeader
+        icon={<CalendarOff className="h-5 w-5" />}
+        title="Minhas Indisponibilidades"
+        description="Gerencie os períodos em que você não estará disponível para escalas"
+        actions={
+          <Button onClick={handleOpenAddModal} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Indisponibilidade
+          </Button>
+        }
+      />
 
       {/* Info Alert */}
-      <div className="flex items-start gap-3 p-4 rounded-lg border bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-        <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-        <div className="text-sm text-blue-800 dark:text-blue-200">
+      <div className="flex items-start gap-3 rounded-2xl bg-accent p-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/70 text-accent-foreground">
+          <Info className="h-5 w-5" />
+        </div>
+        <div className="text-sm text-accent-foreground">
           <strong>Importante:</strong> Se você registrar uma indisponibilidade com menos de 7 dias 
           de antecedência, seu pastor será automaticamente notificado.
         </div>
@@ -357,8 +378,8 @@ export default function IndisponibilidadesPage() {
 
       {/* Lista de indisponibilidades */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <CalendarOff className="h-5 w-5" />
             Períodos Registrados
           </CardTitle>
@@ -368,32 +389,30 @@ export default function IndisponibilidadesPage() {
               : `${indisponibilidades.length} período(s) registrado(s)`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
           {indisponibilidades.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CalendarOff className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma indisponibilidade registrada</p>
-              <p className="text-sm">
-                Clique em &quot;Nova Indisponibilidade&quot; para adicionar um período
-              </p>
-            </div>
+            <EmptyState
+              icon={<CalendarOff className="h-6 w-6" />}
+              title="Nenhuma indisponibilidade registrada"
+              description='Clique em "Nova Indisponibilidade" para adicionar um período'
+            />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {indisponibilidades.map((item) => (
                 <div
                   key={item.id}
                   className={cn(
-                    "flex items-center justify-between p-4 rounded-lg border",
+                    "flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-start sm:justify-between",
                     !isAtiva(item) && "bg-muted/50 opacity-60"
                   )}
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Calendar className="h-5 w-5 text-primary" />
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                      <Calendar className="h-5 w-5" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-semibold">
                           {format(parseISO(item.data_inicio), "dd/MM/yyyy", { locale: ptBR })}
                           {" - "}
                           {format(parseISO(item.data_fim), "dd/MM/yyyy", { locale: ptBR })}
@@ -418,10 +437,12 @@ export default function IndisponibilidadesPage() {
                   </div>
                   
                   {isAtiva(item) && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center justify-end gap-2 border-t pt-3 sm:border-0 sm:pt-0">
                       <Button
                         variant="outline"
                         size="icon"
+                        aria-label="Editar"
+                        className="h-11 w-11 sm:h-10 sm:w-10"
                         onClick={() => handleOpenEditModal(item)}
                       >
                         <Edit className="h-4 w-4" />
@@ -429,7 +450,8 @@ export default function IndisponibilidadesPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="text-destructive hover:text-destructive"
+                        aria-label="Excluir"
+                        className="h-11 w-11 text-destructive hover:text-destructive sm:h-10 sm:w-10"
                         onClick={() => handleOpenDeleteDialog(item)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -453,7 +475,7 @@ export default function IndisponibilidadesPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Período de Indisponibilidade *</Label>
               <Popover>
@@ -480,14 +502,15 @@ export default function IndisponibilidadesPage() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] overflow-x-auto p-0" align="start">
                   <DayPicker
+                      style={RDP_STYLE}
                     mode="range"
                     selected={dateRange}
                     onSelect={setDateRange}
                     disabled={(date: Date) => isBefore(date, new Date())}
                     locale={ptBR}
-                    numberOfMonths={2}
+                    numberOfMonths={isDesktop ? 2 : 1}
                     showOutsideDays={false}
                   />
                 </PopoverContent>
@@ -526,9 +549,9 @@ export default function IndisponibilidadesPage() {
             </div>
 
             {dataInicio && isDataProxima(format(dataInicio, "yyyy-MM-dd")) && (
-              <div className="flex items-start gap-3 p-3 rounded-lg border bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800">
-                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
-                <div className="text-sm text-red-800 dark:text-red-200">
+              <div className="flex items-start gap-3 rounded-xl bg-destructive/10 p-3">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <div className="text-sm text-destructive">
                   Esta data está a menos de 7 dias. Seu pastor será notificado automaticamente.
                 </div>
               </div>
@@ -557,7 +580,7 @@ export default function IndisponibilidadesPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Período de Indisponibilidade *</Label>
               <Popover>
@@ -584,13 +607,14 @@ export default function IndisponibilidadesPage() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] overflow-x-auto p-0" align="start">
                   <DayPicker
+                      style={RDP_STYLE}
                     mode="range"
                     selected={dateRange}
                     onSelect={setDateRange}
                     locale={ptBR}
-                    numberOfMonths={2}
+                    numberOfMonths={isDesktop ? 2 : 1}
                     showOutsideDays={false}
                   />
                 </PopoverContent>

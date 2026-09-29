@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, UserPlus, Loader2 } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Loader2, User, Church, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -245,19 +245,35 @@ export default function RegisterPage() {
     }
   };
 
+  const inputCls = (err: unknown, extra = "") =>
+    `h-12 ${err ? "border-destructive" : ""} ${extra}`.trim();
+  const eyeBtn =
+    "absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground";
+
+  const SectionTitle = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
+    <div className="flex items-center gap-3 pt-1">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+        {icon}
+      </div>
+      <h2 className="text-base font-semibold">{title}</h2>
+    </div>
+  );
+
   return (
-    <Card className="shadow-lg animate-in">
+    <Card className="animate-in rounded-3xl border-border/60 shadow-float">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Cadastre-se</CardTitle>
+        <CardTitle className="text-center text-2xl">Cadastre-se</CardTitle>
         <CardDescription className="text-center">
           Preencha seus dados para solicitar acesso ao sistema
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-            <Label htmlFor="perfil" className="pt-2">Tipo de Cadastro</Label>
-            <div className="space-y-1">
+        <CardContent className="space-y-6 px-6">
+          {/* Etapa 1: perfil */}
+          <section className="space-y-4">
+            <SectionTitle icon={<Church className="h-5 w-5" />} title="Como você participa?" />
+            <div className="space-y-2">
+              <Label htmlFor="perfil">Tipo de Cadastro</Label>
               <Select
                 onValueChange={(value) => {
                   setValue("perfil", value as "MINISTERIO" | "MEMBRO", {
@@ -267,9 +283,7 @@ export default function RegisterPage() {
                 }}
                 disabled={isLoading}
               >
-                <SelectTrigger
-                  className={errors.perfil ? "border-destructive" : ""}
-                >
+                <SelectTrigger className={inputCls(errors.perfil)}>
                   <SelectValue placeholder="Selecione o tipo de cadastro" />
                 </SelectTrigger>
                 <SelectContent>
@@ -281,139 +295,41 @@ export default function RegisterPage() {
                 <p className="text-sm text-destructive">{errors.perfil.message}</p>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-            <Label htmlFor="nome_completo" className="pt-2">Nome Completo</Label>
-            <div className="space-y-1">
-              <Input
-                id="nome_completo"
-                placeholder="Seu nome completo"
-                {...register("nome_completo")}
-                disabled={isLoading}
-                className={errors.nome_completo ? "border-destructive" : ""}
-              />
-              {errors.nome_completo && (
-                <p className="text-sm text-destructive">
-                  {errors.nome_completo.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-            <Label htmlFor="email" className="pt-2">Email</Label>
-            <div className="space-y-1">
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                {...register("email")}
-                disabled={isLoading}
-                className={errors.email ? "border-destructive" : ""}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[140px_1fr_1fr] gap-3 items-start">
-            <Label className="pt-2">CPF / Telefone</Label>
-            <div className="space-y-1">
-              <Input
-                id="cpf"
-                placeholder="000.000.000-00"
-                {...register("cpf")}
-                disabled={isLoading}
-                onChange={(e) =>
-                  setValue("cpf", formatCPF(e.target.value), {
-                    shouldValidate: true,
-                  })
-                }
-                className={errors.cpf ? "border-destructive" : ""}
-              />
-              {errors.cpf && (
-                <p className="text-sm text-destructive">{errors.cpf.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <Input
-                id="telefone"
-                placeholder="(00) 00000-0000"
-                {...register("telefone")}
-                disabled={isLoading}
-                onChange={(e) =>
-                  setValue("telefone", formatPhone(e.target.value), {
-                    shouldValidate: true,
-                  })
-                }
-                className={errors.telefone ? "border-destructive" : ""}
-              />
-              {errors.telefone && (
-                <p className="text-sm text-destructive">
-                  {errors.telefone.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-            <Label htmlFor="data_nascimento" className="pt-2">Data de Nascimento</Label>
-            <div className="space-y-1">
-              <Input
-                id="data_nascimento"
-                type="date"
-                {...register("data_nascimento")}
-                disabled={isLoading}
-                className={errors.data_nascimento ? "border-destructive" : ""}
-              />
-              {errors.data_nascimento && (
-                <p className="text-sm text-destructive">
-                  {errors.data_nascimento.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {perfil === "MINISTERIO" && (
-            <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-              <Label className="pt-2">Tipo de Ministério</Label>
+            {perfil === "MINISTERIO" && (
               <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="pode_pregar"
-                    checked={watch("pode_pregar") || false}
-                    onCheckedChange={(checked) =>
-                      setValue("pode_pregar", checked as boolean, {
-                        shouldValidate: true,
-                      })
-                    }
-                    disabled={isLoading}
-                  />
+                <Label>Tipo de Ministério</Label>
+                <div className="grid grid-cols-2 gap-3">
                   <label
                     htmlFor="pode_pregar"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="flex h-12 cursor-pointer items-center gap-3 rounded-xl border border-input bg-background px-3 text-sm font-medium"
                   >
+                    <Checkbox
+                      id="pode_pregar"
+                      checked={watch("pode_pregar") || false}
+                      onCheckedChange={(checked) =>
+                        setValue("pode_pregar", checked as boolean, {
+                          shouldValidate: true,
+                        })
+                      }
+                      disabled={isLoading}
+                    />
                     Pregador
                   </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="pode_cantar"
-                    checked={watch("pode_cantar") || false}
-                    onCheckedChange={(checked) =>
-                      setValue("pode_cantar", checked as boolean, {
-                        shouldValidate: true,
-                      })
-                    }
-                    disabled={isLoading}
-                  />
                   <label
                     htmlFor="pode_cantar"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="flex h-12 cursor-pointer items-center gap-3 rounded-xl border border-input bg-background px-3 text-sm font-medium"
                   >
+                    <Checkbox
+                      id="pode_cantar"
+                      checked={watch("pode_cantar") || false}
+                      onCheckedChange={(checked) =>
+                        setValue("pode_cantar", checked as boolean, {
+                          shouldValidate: true,
+                        })
+                      }
+                      disabled={isLoading}
+                    />
                     Cantor
                   </label>
                 </div>
@@ -421,12 +337,10 @@ export default function RegisterPage() {
                   <p className="text-sm text-destructive">{errors.pode_pregar.message}</p>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-            <Label htmlFor="distrito_id" className="pt-2">Distrito</Label>
-            <div className="space-y-1">
+            <div className="space-y-2">
+              <Label htmlFor="distrito_id">Distrito</Label>
               <Select
                 onValueChange={(value) =>
                   setValue("distrito_id", parseInt(value), {
@@ -435,29 +349,25 @@ export default function RegisterPage() {
                 }
                 disabled={isLoading || loadingDistritos}
               >
-                <SelectTrigger
-                  className={errors.distrito_id ? "border-destructive" : ""}
-                >
-                <SelectValue placeholder={loadingDistritos ? "Carregando..." : "Selecione o distrito"} />
-              </SelectTrigger>
-              <SelectContent>
-                {distritos.map((distrito) => (
-                  <SelectItem key={distrito.id} value={distrito.id.toString()}>
-                    {distrito.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.distrito_id && (
-              <p className="text-sm text-destructive">{errors.distrito_id.message}</p>
-            )}
+                <SelectTrigger className={inputCls(errors.distrito_id)}>
+                  <SelectValue placeholder={loadingDistritos ? "Carregando..." : "Selecione o distrito"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {distritos.map((distrito) => (
+                    <SelectItem key={distrito.id} value={distrito.id.toString()}>
+                      {distrito.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.distrito_id && (
+                <p className="text-sm text-destructive">{errors.distrito_id.message}</p>
+              )}
             </div>
-          </div>
 
-          {perfil === "MEMBRO" && distrito_id && (
-            <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-              <Label htmlFor="igreja_id" className="pt-2">Igreja</Label>
-              <div className="space-y-1">
+            {perfil === "MEMBRO" && distrito_id && (
+              <div className="space-y-2">
+                <Label htmlFor="igreja_id">Igreja</Label>
                 <Select
                   onValueChange={(value) =>
                     setValue("igreja_id", parseInt(value), {
@@ -466,9 +376,7 @@ export default function RegisterPage() {
                   }
                   disabled={isLoading || loadingIgrejas}
                 >
-                  <SelectTrigger
-                    className={errors.igreja_id ? "border-destructive" : ""}
-                  >
+                  <SelectTrigger className={inputCls(errors.igreja_id)}>
                     <SelectValue placeholder={loadingIgrejas ? "Carregando..." : "Selecione a igreja"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -483,12 +391,106 @@ export default function RegisterPage() {
                   <p className="text-sm text-destructive">{errors.igreja_id.message}</p>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </section>
 
-          <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-            <Label htmlFor="senha" className="pt-2">Senha</Label>
-            <div className="space-y-1">
+          <div className="h-px bg-border" />
+
+          {/* Etapa 2: dados pessoais */}
+          <section className="space-y-4">
+            <SectionTitle icon={<User className="h-5 w-5" />} title="Seus dados" />
+            <div className="space-y-2">
+              <Label htmlFor="nome_completo">Nome Completo</Label>
+              <Input
+                id="nome_completo"
+                placeholder="Seu nome completo"
+                {...register("nome_completo")}
+                disabled={isLoading}
+                className={inputCls(errors.nome_completo)}
+              />
+              {errors.nome_completo && (
+                <p className="text-sm text-destructive">{errors.nome_completo.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                {...register("email")}
+                disabled={isLoading}
+                className={inputCls(errors.email)}
+              />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cpf">CPF</Label>
+              <Input
+                id="cpf"
+                inputMode="numeric"
+                placeholder="000.000.000-00"
+                {...register("cpf")}
+                disabled={isLoading}
+                onChange={(e) =>
+                  setValue("cpf", formatCPF(e.target.value), {
+                    shouldValidate: true,
+                  })
+                }
+                className={inputCls(errors.cpf)}
+              />
+              {errors.cpf && (
+                <p className="text-sm text-destructive">{errors.cpf.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="telefone">Telefone</Label>
+              <Input
+                id="telefone"
+                type="tel"
+                inputMode="tel"
+                placeholder="(00) 00000-0000"
+                {...register("telefone")}
+                disabled={isLoading}
+                onChange={(e) =>
+                  setValue("telefone", formatPhone(e.target.value), {
+                    shouldValidate: true,
+                  })
+                }
+                className={inputCls(errors.telefone)}
+              />
+              {errors.telefone && (
+                <p className="text-sm text-destructive">{errors.telefone.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="data_nascimento">Data de Nascimento</Label>
+              <Input
+                id="data_nascimento"
+                type="date"
+                {...register("data_nascimento")}
+                disabled={isLoading}
+                className={inputCls(errors.data_nascimento, "min-w-0")}
+              />
+              {errors.data_nascimento && (
+                <p className="text-sm text-destructive">{errors.data_nascimento.message}</p>
+              )}
+            </div>
+          </section>
+
+          <div className="h-px bg-border" />
+
+          {/* Etapa 3: segurança */}
+          <section className="space-y-4">
+            <SectionTitle icon={<Lock className="h-5 w-5" />} title="Crie sua senha" />
+            <div className="space-y-2">
+              <Label htmlFor="senha">Senha</Label>
               <div className="relative">
                 <Input
                   id="senha"
@@ -496,63 +498,51 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   {...register("senha")}
                   disabled={isLoading}
-                  className={errors.senha ? "border-destructive pr-10" : "pr-10"}
+                  className={inputCls(errors.senha, "pr-12")}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  className={eyeBtn}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.senha && (
                 <p className="text-sm text-destructive">{errors.senha.message}</p>
               )}
             </div>
-          </div>
 
-          <div className="grid grid-cols-[140px_1fr] gap-3 items-start">
-            <Label htmlFor="confirmar_senha" className="pt-2">Confirmar Senha</Label>
-            <div className="space-y-1">
+            <div className="space-y-2">
+              <Label htmlFor="confirmar_senha">Confirmar Senha</Label>
               <div className="relative">
                 <Input
-                id="confirmar_senha"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="••••••••"
-                {...register("confirmar_senha")}
-                disabled={isLoading}
-                className={
-                  errors.confirmar_senha ? "border-destructive pr-10" : "pr-10"
-                }
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
+                  id="confirmar_senha"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  {...register("confirmar_senha")}
+                  disabled={isLoading}
+                  className={inputCls(errors.confirmar_senha, "pr-12")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
+                  className={eyeBtn}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.confirmar_senha && (
+                <p className="text-sm text-destructive">{errors.confirmar_senha.message}</p>
+              )}
             </div>
-            {errors.confirmar_senha && (
-              <p className="text-sm text-destructive">
-                {errors.confirmar_senha.message}
-              </p>
-            )}
-            </div>
-          </div>
+          </section>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+        <CardFooter className="flex flex-col gap-4 px-6 pb-6">
+          <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -566,12 +556,9 @@ export default function RegisterPage() {
             )}
           </Button>
 
-          <p className="text-sm text-center text-muted-foreground">
+          <p className="text-center text-sm text-muted-foreground">
             Já tem uma conta?{" "}
-            <Link
-              href="/auth/login"
-              className="text-primary hover:underline font-medium"
-            >
+            <Link href="/auth/login" className="font-medium text-primary hover:underline">
               Entrar
             </Link>
           </p>

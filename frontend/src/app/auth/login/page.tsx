@@ -99,15 +99,15 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="shadow-lg animate-in">
+    <Card className="animate-in rounded-3xl border-border/60 shadow-float">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl text-center">Entrar</CardTitle>
+        <CardTitle className="text-center text-2xl">Entrar</CardTitle>
         <CardDescription className="text-center">
           Digite suas credenciais para acessar o sistema
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 px-6">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -116,7 +116,7 @@ export default function LoginPage() {
               placeholder="seu@email.com"
               {...register("email")}
               disabled={isLoading}
-              className={errors.email ? "border-destructive" : ""}
+              className={errors.email ? "h-12 border-destructive" : "h-12"}
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email.message}</p>
@@ -132,12 +132,13 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 {...register("password")}
                 disabled={isLoading}
-                className={errors.password ? "border-destructive pr-10" : "pr-10"}
+                className={errors.password ? "h-12 border-destructive pr-12" : "h-12 pr-12"}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -154,15 +155,15 @@ export default function LoginPage() {
           <div className="flex items-center justify-end">
             <Link
               href="/auth/forgot-password"
-              className="text-sm text-primary hover:underline"
+              className="py-1 text-sm text-primary hover:underline"
             >
               Esqueceu sua senha?
             </Link>
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+        <CardFooter className="flex flex-col gap-4 px-6 pb-6">
+          <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

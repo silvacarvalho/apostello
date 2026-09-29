@@ -137,7 +137,7 @@ function ResetPasswordContent() {
   // Loading state
   if (isVerifying) {
     return (
-      <Card className="shadow-lg animate-in">
+      <Card className="animate-in rounded-3xl border-border/60 shadow-float">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -154,11 +154,11 @@ function ResetPasswordContent() {
   // Invalid token state
   if (!isValidToken) {
     return (
-      <Card className="shadow-lg animate-in">
+      <Card className="animate-in rounded-3xl border-border/60 shadow-float">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-red-100 dark:bg-red-900">
-              <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+              <XCircle className="h-8 w-8 text-destructive" />
             </div>
           </div>
           <CardTitle className="text-2xl">Link inválido</CardTitle>
@@ -167,14 +167,14 @@ function ResetPasswordContent() {
             Por favor, solicite um novo link.
           </CardDescription>
         </CardHeader>
-        <CardFooter className="flex flex-col gap-4">
+        <CardFooter className="flex flex-col gap-3 px-6 pb-6">
           <Link href="/auth/forgot-password" className="w-full">
-            <Button className="w-full">
+            <Button size="lg" className="h-12 w-full text-base">
               Solicitar novo link
             </Button>
           </Link>
           <Link href="/auth/login" className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button variant="ghost" className="h-12 w-full text-muted-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para o login
             </Button>
@@ -187,11 +187,11 @@ function ResetPasswordContent() {
   // Success state
   if (isSuccess) {
     return (
-      <Card className="shadow-lg animate-in">
+      <Card className="animate-in rounded-3xl border-border/60 shadow-float">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-green-100 dark:bg-green-900">
-              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
+              <CheckCircle className="h-8 w-8 text-success" />
             </div>
           </div>
           <CardTitle className="text-2xl">Senha alterada!</CardTitle>
@@ -199,9 +199,9 @@ function ResetPasswordContent() {
             Sua senha foi alterada com sucesso. Você já pode fazer login com sua nova senha.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
+        <CardFooter className="px-6 pb-6">
           <Link href="/auth/login" className="w-full">
-            <Button className="w-full">
+            <Button size="lg" className="h-12 w-full text-base">
               Fazer login
             </Button>
           </Link>
@@ -212,7 +212,7 @@ function ResetPasswordContent() {
 
   // Reset password form
   return (
-    <Card className="shadow-lg animate-in">
+    <Card className="animate-in rounded-3xl border-border/60 shadow-float">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl text-center">Nova senha</CardTitle>
         <CardDescription className="text-center">
@@ -220,7 +220,7 @@ function ResetPasswordContent() {
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 px-6">
           <div className="space-y-2">
             <Label htmlFor="nova_senha">Nova senha</Label>
             <div className="relative">
@@ -230,12 +230,12 @@ function ResetPasswordContent() {
                 placeholder="••••••••"
                 {...register("nova_senha")}
                 disabled={isLoading}
-                className={errors.nova_senha ? "border-destructive pr-10" : "pr-10"}
+                className={errors.nova_senha ? "h-12 border-destructive pr-12" : "h-12 pr-12"}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -254,12 +254,12 @@ function ResetPasswordContent() {
                 placeholder="••••••••"
                 {...register("confirmar_senha")}
                 disabled={isLoading}
-                className={errors.confirmar_senha ? "border-destructive pr-10" : "pr-10"}
+                className={errors.confirmar_senha ? "h-12 border-destructive pr-12" : "h-12 pr-12"}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -269,13 +269,13 @@ function ResetPasswordContent() {
             )}
           </div>
 
-          <div className="text-xs text-muted-foreground">
+          <div className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
             A senha deve ter no mínimo 6 caracteres, incluindo letras maiúsculas, minúsculas e números.
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+        <CardFooter className="flex flex-col gap-3 px-6 pb-6">
+          <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -290,7 +290,7 @@ function ResetPasswordContent() {
           </Button>
 
           <Link href="/auth/login" className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button variant="ghost" className="h-12 w-full text-muted-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para o login
             </Button>
@@ -304,7 +304,7 @@ function ResetPasswordContent() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <Card className="shadow-lg animate-in">
+      <Card className="animate-in rounded-3xl border-border/60 shadow-float">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

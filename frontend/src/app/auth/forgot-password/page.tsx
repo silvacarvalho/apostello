@@ -77,11 +77,11 @@ export default function ForgotPasswordPage() {
 
   if (isSuccess) {
     return (
-      <Card className="shadow-lg animate-in">
+      <Card className="animate-in rounded-3xl border-border/60 shadow-float">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-green-100 dark:bg-green-900">
-              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
+              <CheckCircle className="h-8 w-8 text-success" />
             </div>
           </div>
           <CardTitle className="text-2xl">Email enviado!</CardTitle>
@@ -90,9 +90,9 @@ export default function ForgotPasswordPage() {
             de entrada e siga as instruções para redefinir sua senha.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
+        <CardFooter className="px-6 pb-6">
           <Link href="/auth/login" className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button variant="ghost" className="h-12 w-full text-muted-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para o login
             </Button>
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <Card className="shadow-lg animate-in">
+    <Card className="animate-in rounded-3xl border-border/60 shadow-float">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl text-center">Esqueceu a senha?</CardTitle>
         <CardDescription className="text-center">
@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 px-6">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -120,7 +120,7 @@ export default function ForgotPasswordPage() {
               placeholder="seu@email.com"
               {...register("email")}
               disabled={isLoading}
-              className={errors.email ? "border-destructive" : ""}
+              className={errors.email ? "h-12 border-destructive" : "h-12"}
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email.message}</p>
@@ -128,8 +128,8 @@ export default function ForgotPasswordPage() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
+        <CardFooter className="flex flex-col gap-3 px-6 pb-6">
+          <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -144,7 +144,7 @@ export default function ForgotPasswordPage() {
           </Button>
 
           <Link href="/auth/login" className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button variant="ghost" className="h-12 w-full text-muted-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para o login
             </Button>

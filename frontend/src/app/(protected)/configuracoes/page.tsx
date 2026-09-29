@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { PageHeader } from "@/components/layout/page-header";
 import { Settings, User, Bell, Lock, Palette, Save, Loader2, Building2, Upload, Trash2, Info } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -339,38 +340,34 @@ export default function ConfiguracoesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Settings className="h-8 w-8" />
-          Configurações
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Gerencie suas preferências e configurações da plataforma
-        </p>
-      </div>
+      <PageHeader
+        icon={<Settings className="h-5 w-5" />}
+        title="Configurações"
+        description="Gerencie suas preferências e configurações da plataforma"
+      />
 
       {/* Tabs de configuração */}
-      <Tabs defaultValue="perfil" className="space-y-6">
-        <TabsList className={`grid w-full ${canSeeDistritoTab ? 'grid-cols-5' : 'grid-cols-4'}`}>
-          <TabsTrigger value="perfil" className="flex items-center gap-2">
+      <Tabs defaultValue="perfil" className="space-y-4 sm:space-y-6">
+        <TabsList className="flex w-full justify-start">
+          <TabsTrigger value="perfil" className="flex shrink-0 items-center gap-2">
             <User className="h-4 w-4" />
             Perfil
           </TabsTrigger>
           {canSeeDistritoTab && (
-            <TabsTrigger value="distrito" className="flex items-center gap-2">
+            <TabsTrigger value="distrito" className="flex shrink-0 items-center gap-2">
               <Building2 className="h-4 w-4" />
               Distrito
             </TabsTrigger>
           )}
-          <TabsTrigger value="notificacoes" className="flex items-center gap-2">
+          <TabsTrigger value="notificacoes" className="flex shrink-0 items-center gap-2">
             <Bell className="h-4 w-4" />
             Notificações
           </TabsTrigger>
-          <TabsTrigger value="seguranca" className="flex items-center gap-2">
+          <TabsTrigger value="seguranca" className="flex shrink-0 items-center gap-2">
             <Lock className="h-4 w-4" />
             Segurança
           </TabsTrigger>
-          <TabsTrigger value="aparencia" className="flex items-center gap-2">
+          <TabsTrigger value="aparencia" className="flex shrink-0 items-center gap-2">
             <Palette className="h-4 w-4" />
             Aparência
           </TabsTrigger>
@@ -387,9 +384,9 @@ export default function ConfiguracoesPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Foto de Perfil */}
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left sm:gap-6">
                 <div className="relative">
-                  <Avatar className="h-24 w-24">
+                  <Avatar className="h-24 w-24 ring-4 ring-accent">
                     <AvatarImage src={fotoPreview} alt={user.nome_completo} />
                     <AvatarFallback className="text-2xl">
                       {getInitials(user.nome_completo)}
@@ -401,7 +398,7 @@ export default function ConfiguracoesPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex w-full flex-col gap-2 sm:w-auto">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -411,7 +408,7 @@ export default function ConfiguracoesPage() {
                   />
                   <Button
                     variant="outline"
-                    size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploadingFoto}
                   >
@@ -421,7 +418,7 @@ export default function ConfiguracoesPage() {
                   {user.foto_url && (
                     <Button
                       variant="outline"
-                      size="sm"
+                      className="w-full sm:w-auto"
                       onClick={handleDeleteFoto}
                       disabled={isUploadingFoto}
                     >
@@ -469,7 +466,7 @@ export default function ConfiguracoesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
                     <Label htmlFor="telefone">Telefone</Label>
                     <Input
@@ -514,8 +511,8 @@ export default function ConfiguracoesPage() {
 
               <Separator />
 
-              <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={isLoading}>
+              <div className="flex sm:justify-end">
+                <Button className="w-full sm:w-auto" onClick={handleSave} disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -550,68 +547,68 @@ export default function ConfiguracoesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="novas_escalas"
                   checked={novasEscalas}
                   onCheckedChange={(checked) => setNovasEscalas(!!checked)}
                 />
-                <Label htmlFor="novas_escalas" className="cursor-pointer">
+                <Label htmlFor="novas_escalas" className="flex-1 cursor-pointer py-3.5">
                   Novas escalas publicadas
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="escalas_atribuidas"
                   checked={escalasAtribuidas}
                   onCheckedChange={(checked) => setEscalasAtribuidas(!!checked)}
                 />
-                <Label htmlFor="escalas_atribuidas" className="cursor-pointer">
+                <Label htmlFor="escalas_atribuidas" className="flex-1 cursor-pointer py-3.5">
                   Quando eu for atribuído a uma escala
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="lembretes"
                   checked={lembretes}
                   onCheckedChange={(checked) => setLembretes(!!checked)}
                 />
-                <Label htmlFor="lembretes" className="cursor-pointer">
+                <Label htmlFor="lembretes" className="flex-1 cursor-pointer py-3.5">
                   Lembretes de escalas próximas
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="avaliacoes"
                   checked={avaliacoes}
                   onCheckedChange={(checked) => setAvaliacoes(!!checked)}
                 />
-                <Label htmlFor="avaliacoes" className="cursor-pointer">
+                <Label htmlFor="avaliacoes" className="flex-1 cursor-pointer py-3.5">
                   Solicitações de avaliação
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="trocas_escalas"
                   checked={trocasEscalas}
                   onCheckedChange={(checked) => setTrocasEscalas(!!checked)}
                 />
-                <Label htmlFor="trocas_escalas" className="cursor-pointer">
+                <Label htmlFor="trocas_escalas" className="flex-1 cursor-pointer py-3.5">
                   Solicitações de troca de escala
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="substituicoes"
                   checked={substituicoes}
                   onCheckedChange={(checked) => setSubstituicoes(!!checked)}
                 />
-                <Label htmlFor="substituicoes" className="cursor-pointer">
+                <Label htmlFor="substituicoes" className="flex-1 cursor-pointer py-3.5">
                   Solicitações de substituição emergencial
                 </Label>
               </div>
@@ -626,54 +623,54 @@ export default function ConfiguracoesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="email"
                   checked={emailNotif}
                   onCheckedChange={(checked) => setEmailNotif(!!checked)}
                 />
-                <Label htmlFor="email" className="cursor-pointer">
+                <Label htmlFor="email" className="flex-1 cursor-pointer py-3.5">
                   E-mail
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="push"
                   checked={pushNotif}
                   onCheckedChange={(checked) => setPushNotif(!!checked)}
                 />
-                <Label htmlFor="push" className="cursor-pointer">
+                <Label htmlFor="push" className="flex-1 cursor-pointer py-3.5">
                   Notificações Push
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="whatsapp_notif"
                   checked={whatsappNotif}
                   onCheckedChange={(checked) => setWhatsappNotif(!!checked)}
                 />
-                <Label htmlFor="whatsapp_notif" className="cursor-pointer">
+                <Label htmlFor="whatsapp_notif" className="flex-1 cursor-pointer py-3.5">
                   WhatsApp
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-3 rounded-xl border bg-background px-4">
                 <Checkbox
                   id="sms_notif"
                   checked={smsNotif}
                   onCheckedChange={(checked) => setSmsNotif(!!checked)}
                 />
-                <Label htmlFor="sms_notif" className="cursor-pointer">
+                <Label htmlFor="sms_notif" className="flex-1 cursor-pointer py-3.5">
                   SMS
                 </Label>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
-            <Button onClick={handleSaveNotificacoes} disabled={isLoadingNotif}>
+          <div className="flex sm:justify-end">
+            <Button className="w-full sm:w-auto" onClick={handleSaveNotificacoes} disabled={isLoadingNotif}>
               {isLoadingNotif ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -700,7 +697,7 @@ export default function ConfiguracoesPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <h3 className="text-lg font-medium mb-4">Alterar Senha</h3>
+                <h3 className="mb-4 text-base font-semibold sm:text-lg">Alterar Senha</h3>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="senha_atual">Senha Atual</Label>
@@ -738,6 +735,7 @@ export default function ConfiguracoesPage() {
                 </div>
                 <Separator className="my-4" />
                 <Button 
+                  className="w-full sm:w-auto"
                   onClick={handleAlterarSenha} 
                   disabled={isLoadingSenha}
                 >
@@ -755,21 +753,21 @@ export default function ConfiguracoesPage() {
               <Separator />
 
               <div>
-                <h3 className="text-lg font-medium mb-2">Autenticação em Dois Fatores</h3>
+                <h3 className="mb-2 text-base font-semibold sm:text-lg">Autenticação em Dois Fatores</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Adicione uma camada extra de segurança à sua conta
                 </p>
-                <Button variant="outline">Configurar 2FA</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Configurar 2FA</Button>
               </div>
 
               <Separator />
 
               <div>
-                <h3 className="text-lg font-medium mb-2">Sessões Ativas</h3>
+                <h3 className="mb-2 text-base font-semibold sm:text-lg">Sessões Ativas</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Gerencie os dispositivos conectados à sua conta
                 </p>
-                <Button variant="outline">Ver Sessões</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Ver Sessões</Button>
               </div>
             </CardContent>
           </Card>
@@ -803,7 +801,7 @@ export default function ConfiguracoesPage() {
                   </Select>
                 )}
                 {!mounted && (
-                  <div className="h-10 bg-muted animate-pulse rounded-md" />
+                  <div className="h-11 bg-muted animate-pulse rounded-xl" />
                 )}
               </div>
 
@@ -824,9 +822,9 @@ export default function ConfiguracoesPage() {
                     <SelectItem value="es">🇪🇸 Español</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="mt-2 flex items-start gap-2 p-2 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
-                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                <div className="mt-2 flex items-start gap-2 rounded-xl bg-accent p-3">
+                  <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent-foreground" />
+                  <p className="text-xs text-accent-foreground">
                     A internacionalização completa será implementada em versões futuras. Por enquanto, apenas Português está disponível.
                   </p>
                 </div>
@@ -835,18 +833,18 @@ export default function ConfiguracoesPage() {
               <Separator />
 
               <div>
-                <h3 className="text-lg font-medium mb-2">Pré-visualização</h3>
+                <h3 className="mb-2 text-base font-semibold sm:text-lg">Pré-visualização</h3>
                 <div className="grid gap-3">
-                  <div className="p-4 border rounded-lg bg-card">
+                  <div className="rounded-xl border bg-card p-4">
                     <p className="text-sm text-muted-foreground mb-3">
                       Visualize como ficará a interface:
                     </p>
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2">
                         <div className="h-3 w-3 rounded-full bg-primary" />
                         <span className="text-sm">Tema atual: <strong>{theme === "light" ? "Claro" : theme === "dark" ? "Escuro" : "Sistema"}</strong></span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2">
                         <div className="h-3 w-3 rounded-full bg-secondary" />
                         <span className="text-sm">Idioma: <strong>{idioma === "pt-BR" ? "Português" : idioma === "en" ? "Inglês" : "Espanhol"}</strong></span>
                       </div>
@@ -869,8 +867,8 @@ export default function ConfiguracoesPage() {
 
               <Separator />
 
-              <div className="flex justify-end">
-                <Button onClick={handleSalvarAparencia}>
+              <div className="flex sm:justify-end">
+                <Button className="w-full sm:w-auto" onClick={handleSalvarAparencia}>
                   <Save className="mr-2 h-4 w-4" />
                   Salvar Preferências
                 </Button>
