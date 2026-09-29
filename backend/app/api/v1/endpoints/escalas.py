@@ -803,9 +803,24 @@ def listar_itens_escala(
         from app.core.exceptions import NotFoundException
         raise NotFoundException("Escala", escala_id)
     
+    # Itinerário do pastor: dias/igrejas em que o pastor estará presente
+    from calendar import monthrange
+    from datetime import date as _date
+    from app.models.itinerario_pastor import ItinerarioPastor
+    _, ultimo_dia_mes = monthrange(escala.ano, escala.mes)
+    itinerario_por_culto = {
+        (i.igreja_id, i.data_culto): i
+        for i in db.query(ItinerarioPastor).filter(
+            ItinerarioPastor.distrito_id == escala.distrito_id,
+            ItinerarioPastor.data_culto >= _date(escala.ano, escala.mes, 1),
+            ItinerarioPastor.data_culto <= _date(escala.ano, escala.mes, ultimo_dia_mes),
+        ).all()
+    }
+    
     # Enriquecer itens com nomes
     result = []
     for item in escala.itens:
+        itinerario = itinerario_por_culto.get((item.igreja_id, item.data_culto))
         item_dict = {
             "id": item.id,
             "escala_id": item.escala_id,
@@ -829,7 +844,10 @@ def listar_itens_escala(
             "cantor_nome": item.cantor.nome_completo if item.cantor else None,
             "tema_titulo": item.tema.titulo if item.tema else None,
             "pregador_score": float(item.pregador.score_atual) if item.pregador and item.pregador.score_atual else None,
-            "cantor_score": float(item.cantor.score_atual) if item.cantor and item.cantor.score_atual else None
+            "cantor_score": float(item.cantor.score_atual) if item.cantor and item.cantor.score_atual else None,
+            "pastor_presente": itinerario is not None,
+            "pastor_nome": itinerario.pastor.nome_completo if itinerario and itinerario.pastor else None,
+            "pastor_observacao": itinerario.observacoes if itinerario else None
         }
         result.append(item_dict)
     

@@ -127,6 +127,9 @@ interface ItemEscala {
   tema_titulo: string | null;
   pregador_score: number | null;
   cantor_score: number | null;
+  pastor_presente?: boolean;
+  pastor_nome?: string | null;
+  pastor_observacao?: string | null;
 }
 
 interface EscalaEstatisticas {
@@ -1381,7 +1384,17 @@ export default function EscalasPage() {
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground w-24">Pregação:</span>
-                                <span>{item.pregador_nome || "-"}</span>
+                                {item.pastor_presente && !item.pregador_nome ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-amber-100 dark:bg-amber-900/30 border-amber-500 text-amber-700 dark:text-amber-300"
+                                    title={item.pastor_observacao || undefined}
+                                  >
+                                    Pastor presente{item.pastor_nome ? `: ${item.pastor_nome}` : ""}
+                                  </Badge>
+                                ) : (
+                                  <span>{item.pregador_nome || "-"}</span>
+                                )}
                                 {item.pregador_score !== null && (
                                   <Badge variant="outline" className="text-xs">
                                     {item.pregador_score.toFixed(1)}

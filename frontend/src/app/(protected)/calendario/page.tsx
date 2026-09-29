@@ -60,6 +60,8 @@ interface ItemEscala {
   tema_customizado: string | null;
   status_confirmacao_pregador: string;
   status_confirmacao_cantor: string;
+  pastor_presente?: boolean;
+  pastor_nome?: string | null;
 }
 
 interface Escala {
@@ -458,7 +460,7 @@ export default function CalendarioPage() {
                             <div key={item.id} className="text-sm">
                               <p className="font-medium">{item.igreja_nome}</p>
                               <p className="text-muted-foreground">
-                                {item.horario?.substring(0, 5)} - {item.pregador_nome || "Sem pregador"}
+                                {item.horario?.substring(0, 5)} - {item.pregador_nome || (item.pastor_presente ? "Pastor presente" : "Sem pregador")}
                               </p>
                             </div>
                           ))}
@@ -515,9 +517,15 @@ export default function CalendarioPage() {
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
                         <span className="text-muted-foreground">Pregador:</span>
-                        <span className={cn(!item.pregador_nome && "text-red-500")}>
-                          {item.pregador_nome || "Não definido"}
-                        </span>
+                        {item.pastor_presente && !item.pregador_nome ? (
+                          <span className="text-amber-600 dark:text-amber-400 font-medium">
+                            Pastor presente{item.pastor_nome ? `: ${item.pastor_nome}` : ""}
+                          </span>
+                        ) : (
+                          <span className={cn(!item.pregador_nome && "text-red-500")}>
+                            {item.pregador_nome || "Não definido"}
+                          </span>
+                        )}
                         {item.status_confirmacao_pregador && (
                           <Badge variant={item.status_confirmacao_pregador === "CONFIRMADO" ? "default" : "secondary"} className="text-xs">
                             {item.status_confirmacao_pregador === "CONFIRMADO" ? "✓" : "?"}
