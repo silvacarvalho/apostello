@@ -23,6 +23,8 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -433,25 +435,25 @@ export default function DashboardPage() {
           title: "Total de Pregadores",
           value: stats.total_pregadores.toString(),
           change: `Score médio: ${stats.media_score_pregadores?.toFixed(1) || "N/A"}`,
-          icon: <Users className="h-5 w-5 text-blue-500" />,
+          icon: <Users className="h-5 w-5" />,
         },
         {
           title: "Igrejas Ativas",
           value: stats.total_igrejas.toString(),
           change: `${stats.total_distritos} distritos`,
-          icon: <Church className="h-5 w-5 text-green-500" />,
+          icon: <Church className="h-5 w-5" />,
         },
         {
           title: "Escalas Publicadas",
           value: stats.total_escalas_publicadas.toString(),
           change: "Total de escalas",
-          icon: <Calendar className="h-5 w-5 text-purple-500" />,
+          icon: <Calendar className="h-5 w-5" />,
         },
         {
           title: "Total de Cantores",
           value: stats.total_cantores.toString(),
           change: `Score médio: ${stats.media_score_cantores?.toFixed(1) || "N/A"}`,
-          icon: <Star className="h-5 w-5 text-yellow-500" />,
+          icon: <Star className="h-5 w-5" />,
         },
       ];
     }
@@ -464,19 +466,19 @@ export default function DashboardPage() {
         title: "Próximas Escalas",
         value: personal_stats.proximas_escalas.toString(),
         change: "Agendadas",
-        icon: <Calendar className="h-5 w-5 text-blue-500" />,
+        icon: <Calendar className="h-5 w-5" />,
       },
       {
         title: "Score Atual",
         value: personal_stats.score_atual?.toFixed(1) || "70.0",
         change: "Baseado em avaliações",
-        icon: <TrendingUp className="h-5 w-5 text-green-500" />,
+        icon: <TrendingUp className="h-5 w-5" />,
       },
       {
         title: "Participações no Mês",
         value: personal_stats.participacoes_mes.toString(),
         change: `${personal_stats.participacoes_total} no total`,
-        icon: <CheckCircle className="h-5 w-5 text-purple-500" />,
+        icon: <CheckCircle className="h-5 w-5" />,
       },
       {
         title: user && isPregador(user) ? "Pregadores no Distrito" : "Cantores no Distrito",
@@ -484,7 +486,7 @@ export default function DashboardPage() {
           ? distrito_stats.total_pregadores.toString()
           : distrito_stats.total_cantores.toString(),
         change: `${distrito_stats.distrito_nome}`,
-        icon: <Users className="h-5 w-5 text-yellow-500" />,
+        icon: <Users className="h-5 w-5" />,
       },
     ];
   };
@@ -493,7 +495,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex h-96 items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Carregando dashboard...</p>
@@ -504,9 +506,11 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="flex flex-col items-center gap-4">
-          <AlertCircle className="h-8 w-8 text-destructive" />
+      <div className="flex h-96 items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+            <AlertCircle className="h-6 w-6" />
+          </div>
           <p className="text-destructive">{error}</p>
           <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
         </div>
@@ -515,31 +519,27 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Olá, {user?.nome_completo?.split(" ")[0] || "Usuário"}! 👋
-        </h1>
-        <div className="text-muted-foreground mt-1 flex items-center gap-2">
-          <span>Bem-vindo ao painel de gerenciamento de escalas.</span>
-          <Badge variant="secondary">{user ? getUserRole(user.tipo) : ""}</Badge>
-        </div>
-      </div>
+      <PageHeader
+        title={`Olá, ${user?.nome_completo?.split(" ")[0] || "Usuário"}! 👋`}
+        description="Bem-vindo ao painel de gerenciamento de escalas."
+        actions={<Badge variant="secondary">{user ? getUserRole(user.tipo) : ""}</Badge>}
+      />
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {statsCards.map((stat, index) => (
-          <Card key={index} className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              {stat.icon}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+          <Card key={index} className="transition-shadow hover:shadow-float">
+            <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                {stat.icon}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-muted-foreground">{stat.title}</p>
+                <div className="text-3xl font-bold leading-tight tracking-tight">{stat.value}</div>
+                <p className="truncate text-xs text-muted-foreground">{stat.change}</p>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -547,38 +547,35 @@ export default function DashboardPage() {
 
       {/* Alerta de Conflitos de Escalas */}
       {user && isPastor(user) && conflitos && conflitos.total_conflitos > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-100">
-              <AlertTriangle className="h-5 w-5" />
-              Conflitos de Escala Detectados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Foram detectados <span className="font-semibold">{conflitos.total_conflitos} conflito(s)</span> nas escalas do seu distrito.
-                Existem pregadores ou cantores escalados em múltiplas igrejas no mesmo dia.
-              </p>
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowConflitosDialog(true)}
-                  className="bg-white dark:bg-gray-950"
-                >
-                  Ver Detalhes dos Conflitos
-                </Button>
-                <Button 
-                  variant="default" 
-                  size="sm"
-                  onClick={() => window.location.href = '/escalas'}
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Ir para Escalas
-                </Button>
+        <Card className="border-warning/30 bg-warning/10">
+          <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/15 text-warning">
+                <AlertTriangle className="h-5 w-5" />
               </div>
+              <div className="min-w-0 space-y-1">
+                <p className="font-semibold">Conflitos de Escala Detectados</p>
+                <p className="text-sm text-muted-foreground">
+                  Foram detectados <span className="font-semibold text-foreground">{conflitos.total_conflitos} conflito(s)</span> nas escalas do seu distrito.
+                  Existem pregadores ou cantores escalados em múltiplas igrejas no mesmo dia.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Button
+                variant="outline"
+                onClick={() => setShowConflitosDialog(true)}
+                className="bg-card"
+              >
+                Ver Detalhes dos Conflitos
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => window.location.href = '/escalas'}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Ir para Escalas
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -586,84 +583,64 @@ export default function DashboardPage() {
 
       {/* Alerta de Usuários Pendentes de Aprovação */}
       {user && isPastor(user) && pendentesCount > 0 && (
-        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
-              <Users className="h-5 w-5" />
-              Cadastros Pendentes de Aprovação
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Existem <span className="font-semibold">{pendentesCount} novo(s) cadastro(s)</span> aguardando sua aprovação.
-                Revise e aprove os membros que solicitaram acesso ao sistema.
-              </p>
-              <div className="flex items-center gap-3">
-                <Link href="/usuarios/pendentes">
-                  <Button 
-                    variant="default" 
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Users className="mr-2 h-4 w-4" />
-                    Gerenciar Aprovações
-                  </Button>
-                </Link>
+        <Card className="border-primary/20 bg-accent/60">
+          <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                <Users className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <p className="font-semibold">Cadastros Pendentes de Aprovação</p>
+                <p className="text-sm text-muted-foreground">
+                  Existem <span className="font-semibold text-foreground">{pendentesCount} novo(s) cadastro(s)</span> aguardando sua aprovação.
+                  Revise e aprove os membros que solicitaram acesso ao sistema.
+                </p>
               </div>
             </div>
+            <Button asChild className="w-full sm:w-fit">
+              <Link href="/usuarios/pendentes">
+                <Users className="mr-2 h-4 w-4" />
+                Gerenciar Aprovações
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       )}
 
       {/* Links para Aprovados e Recusados */}
       {user && isPastor(user) && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20" onClick={() => router.push("/usuarios/aprovados")}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-green-700 dark:text-green-400">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5" />
-                  Cadastros Aprovados
-                </div>
-                {loadingAprovadosRecusados ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <span className="text-3xl font-bold">{aprovadosCount}</span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-green-800 dark:text-green-200 mb-3">
-                Total de cadastros aprovados no sistema
-              </p>
-              <Button variant="outline" size="sm" className="w-full border-green-300 hover:bg-green-100">
-                Ver Todos
-              </Button>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+          <Card className="cursor-pointer transition-shadow hover:shadow-float" onClick={() => router.push("/usuarios/aprovados")}>
+            <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">Cadastros Aprovados</p>
+                <p className="truncate text-sm text-muted-foreground">Total de cadastros aprovados no sistema</p>
+              </div>
+              {loadingAprovadosRecusados ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : (
+                <span className="text-3xl font-bold text-success">{aprovadosCount}</span>
+              )}
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20" onClick={() => router.push("/usuarios/recusados")}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-red-700 dark:text-red-400">
-                <div className="flex items-center gap-2">
-                  <X className="h-5 w-5" />
-                  Cadastros Recusados
-                </div>
-                {loadingAprovadosRecusados ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <span className="text-3xl font-bold">{recusadosCount}</span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-red-800 dark:text-red-200 mb-3">
-                Total de cadastros recusados no sistema
-              </p>
-              <Button variant="outline" size="sm" className="w-full border-red-300 hover:bg-red-100">
-                Ver Todos
-              </Button>
+          <Card className="cursor-pointer transition-shadow hover:shadow-float" onClick={() => router.push("/usuarios/recusados")}>
+            <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <X className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">Cadastros Recusados</p>
+                <p className="truncate text-sm text-muted-foreground">Total de cadastros recusados no sistema</p>
+              </div>
+              {loadingAprovadosRecusados ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : (
+                <span className="text-3xl font-bold text-destructive">{recusadosCount}</span>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -673,8 +650,10 @@ export default function DashboardPage() {
       {(isAdmin(user) || isAssociacao(user)) && dashboardData && !isDashboardPregadorCantor(dashboardData) && dashboardData.distritos && dashboardData.distritos.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                <MapPin className="h-5 w-5" />
+              </span>
               Estatísticas por Distrito
             </CardTitle>
             <CardDescription>
@@ -682,13 +661,11 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {dashboardData.distritos.map((distrito) => (
-                <Card key={distrito.distrito_id} className="bg-muted/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{distrito.distrito_nome}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
+                <div key={distrito.distrito_id} className="rounded-2xl border bg-muted/40 p-4">
+                  <h3 className="mb-3 text-lg font-semibold">{distrito.distrito_nome}</h3>
+                  <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Pregadores:</span>
                       <span className="font-medium">{distrito.total_pregadores}</span>
@@ -706,26 +683,28 @@ export default function DashboardPage() {
                       <span className="font-medium">{distrito.total_igrejas}</span>
                     </div>
                     <Separator className="my-2" />
-                    <div className="flex justify-between text-sm">
+                    <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Escalas Publicadas:</span>
                       <Badge variant="secondary">{distrito.total_escalas_publicadas}</Badge>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
-      
+
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Próximas Escalas - para Pregadores, Cantores, Pastores e Líderes */}
         {!isAdmin(user) && !isAssociacao(user) && !isMembro(user) && (
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                  <Calendar className="h-5 w-5" />
+                </span>
                 Próximas Escalas
               </CardTitle>
               <CardDescription>
@@ -735,61 +714,62 @@ export default function DashboardPage() {
             <CardContent>
               {loadingEscalas ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
                 </div>
               ) : proximasEscalas && proximasEscalas.escalas.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {proximasEscalas.escalas.map((escala) => {
                     const dataObj = new Date(escala.data_culto + 'T00:00:00');
                     const dia = dataObj.getDate().toString().padStart(2, '0');
                     const mes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][dataObj.getMonth()];
-                    
+
                     return (
                       <div
                         key={escala.item_id}
-                        className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                        className="flex flex-col gap-3 rounded-2xl border bg-card p-3 transition-colors hover:bg-accent/40 sm:flex-row sm:items-center sm:justify-between sm:p-4"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="flex flex-col items-center justify-center w-14 h-14 rounded-lg bg-primary/10">
-                            <span className="text-lg font-bold text-primary">
+                        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                          <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-accent">
+                            <span className="text-lg font-bold leading-none text-primary">
                               {dia}
                             </span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="mt-0.5 text-xs text-muted-foreground">
                               {mes}
                             </span>
                           </div>
-                          <div>
-                            <p className="font-medium">{escala.igreja_nome}</p>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold">{escala.igreja_nome}</p>
                             <p className="text-sm text-muted-foreground">
                               {escala.tipo === 'pregador' ? 'Pregação' : 'Louvor'} • {escala.horario}
                             </p>
                             {escala.tema && (
-                              <p className="text-xs text-muted-foreground mt-1">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 Tema: {escala.tema}
                               </p>
                             )}
                           </div>
                         </div>
                         {escala.confirmado === 'CONFIRMADO' ? (
-                          <Badge variant="default">
-                            <CheckCircle className="h-3 w-3 mr-1" />
+                          <Badge variant="success" className="w-fit">
+                            <CheckCircle className="mr-1 h-3 w-3" />
                             Confirmado
                           </Badge>
                         ) : escala.confirmado === 'NAO_CONFIRMADO' ? (
-                          <Badge variant="destructive">
-                            <X className="h-3 w-3 mr-1" />
+                          <Badge variant="destructive" className="w-fit">
+                            <X className="mr-1 h-3 w-3" />
                             Recusado
                           </Badge>
                         ) : (
-                          <div className="flex flex-col gap-2">
-                            <div className="flex gap-2">
+                          <div className="flex flex-col gap-2 sm:items-stretch">
+                            <div className="grid grid-cols-2 gap-2">
                               <Button
                                 size="sm"
                                 variant="default"
                                 onClick={() => handleConfirmarPresenca(escala.item_id, true)}
                                 disabled={processandoConfirmacao}
+                                className="h-11 sm:h-9"
                               >
-                                <CheckCircle className="h-3 w-3 mr-1" />
+                                <CheckCircle className="mr-1 h-4 w-4" />
                                 Confirmar
                               </Button>
                               <Button
@@ -797,14 +777,15 @@ export default function DashboardPage() {
                                 variant="outline"
                                 onClick={() => handleConfirmarPresenca(escala.item_id, false)}
                                 disabled={processandoConfirmacao}
+                                className="h-11 sm:h-9"
                               >
-                                <X className="h-3 w-3 mr-1" />
+                                <X className="mr-1 h-4 w-4" />
                                 Recusar
                               </Button>
                             </div>
                             {escala.tem_troca_pendente ? (
                               <Badge variant="outline" className="justify-center">
-                                <RefreshCw className="h-3 w-3 mr-1" />
+                                <RefreshCw className="mr-1 h-3 w-3" />
                                 Troca Pendente
                               </Badge>
                             ) : escala.trocas_permitidas ? (
@@ -812,9 +793,9 @@ export default function DashboardPage() {
                                 size="sm"
                                 variant="secondary"
                                 onClick={() => handleAbrirTroca(escala)}
-                                className="w-full"
+                                className="h-11 w-full sm:h-9"
                               >
-                                <RefreshCw className="h-3 w-3 mr-1" />
+                                <RefreshCw className="mr-1 h-4 w-4" />
                                 Solicitar Troca
                               </Button>
                             ) : (
@@ -829,10 +810,10 @@ export default function DashboardPage() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  <p>Nenhuma escala futura encontrada</p>
-                </div>
+                <EmptyState
+                  icon={<Calendar className="h-6 w-6" />}
+                  title="Nenhuma escala futura encontrada"
+                />
               )}
 
               <Separator className="my-4" />
@@ -852,8 +833,10 @@ export default function DashboardPage() {
           {(isPregador(user) || isCantor(user)) && dashboardData && isDashboardPregadorCantor(dashboardData) && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                    <TrendingUp className="h-5 w-5" />
+                  </span>
                   Seu Score
                 </CardTitle>
               </CardHeader>
@@ -863,24 +846,24 @@ export default function DashboardPage() {
                 >
                   {dashboardData.personal_stats.score_atual?.toFixed(1) || "70.0"}
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="mt-2 text-sm text-muted-foreground">
                   de 100.0 pontos possíveis
                 </p>
-                <div className="w-full bg-muted rounded-full h-2 mt-4">
+                <div className="mt-4 h-2 w-full rounded-full bg-muted">
                   <div
-                    className="bg-primary h-2 rounded-full transition-all"
+                    className="h-2 rounded-full bg-primary transition-all"
                     style={{ width: `${((dashboardData.personal_stats.score_atual || 70) / 100) * 100}%` }}
                   />
                 </div>
                 <Separator className="my-4" />
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl bg-muted/50 p-3">
                     <p className="text-muted-foreground">Faltas</p>
-                    <p className="text-lg font-bold">{dashboardData.personal_stats.faltas}</p>
+                    <p className="text-xl font-bold">{dashboardData.personal_stats.faltas}</p>
                   </div>
-                  <div>
+                  <div className="rounded-xl bg-muted/50 p-3">
                     <p className="text-muted-foreground">Desmarcações</p>
-                    <p className="text-lg font-bold">{dashboardData.personal_stats.desmarcacoes}</p>
+                    <p className="text-xl font-bold">{dashboardData.personal_stats.desmarcacoes}</p>
                   </div>
                 </div>
               </CardContent>
@@ -891,8 +874,10 @@ export default function DashboardPage() {
           {isPregador(user) && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Star className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                    <Star className="h-5 w-5" />
+                  </span>
                   Última Pregação
                 </CardTitle>
                 <CardDescription>
@@ -902,16 +887,16 @@ export default function DashboardPage() {
               <CardContent>
                 {loadingAvaliacoes ? (
                   <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
                   </div>
                 ) : avaliacoes && avaliacoes.total > 0 ? (
                   <>
-                    <div className="text-center mb-4">
+                    <div className="mb-4 text-center">
                       <div className="text-4xl font-bold text-primary">
                         {typeof avaliacoes.media_geral === 'number' ? avaliacoes.media_geral.toFixed(1) : "N/A"}
                       </div>
                       <p className="text-sm text-muted-foreground">Média Geral</p>
-                      <div className="flex justify-center gap-1 mt-2">
+                      <div className="mt-2 flex justify-center gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <Star
                             key={star}
@@ -932,10 +917,10 @@ export default function DashboardPage() {
                       </div>
                       {avaliacoes.items && avaliacoes.items.length > 0 && (
                         <div className="mt-4">
-                          <p className="text-xs text-muted-foreground mb-2">Últimas avaliações:</p>
+                          <p className="mb-2 text-xs text-muted-foreground">Últimas avaliações:</p>
                           <div className="space-y-2">
                             {avaliacoes.items.slice(0, 3).map((avaliacao: any, idx: number) => (
-                              <div key={idx} className="flex items-center gap-2 text-xs p-2 rounded bg-muted/50">
+                              <div key={idx} className="flex items-center gap-2 rounded-xl bg-muted/50 p-2.5 text-xs">
                                 <div className="flex gap-0.5">
                                   {[1, 2, 3, 4, 5].map((star) => (
                                     <Star
@@ -948,7 +933,7 @@ export default function DashboardPage() {
                                     />
                                   ))}
                                 </div>
-                                <span className="text-muted-foreground flex-1 truncate">
+                                <span className="flex-1 truncate text-muted-foreground">
                                   {avaliacao.comentario || "Sem comentário"}
                                 </span>
                               </div>
@@ -959,10 +944,11 @@ export default function DashboardPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Star className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                    <p className="text-sm">Nenhuma avaliação ainda</p>
-                  </div>
+                  <EmptyState
+                    icon={<Star className="h-6 w-6" />}
+                    title="Nenhuma avaliação ainda"
+                    className="py-8"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -975,15 +961,15 @@ export default function DashboardPage() {
                 <CardTitle>Ações Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start" asChild>
+                <Button variant="outline" className="h-12 w-full justify-start rounded-xl" asChild>
                   <Link href="/escalas">
-                    <Sparkles className="h-4 w-4 mr-2" />
+                    <Sparkles className="mr-2 h-4 w-4 text-primary" />
                     Gerar Nova Escala
                   </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
+                <Button variant="outline" className="h-12 w-full justify-start rounded-xl" asChild>
                   <Link href="/usuarios">
-                    <Users className="h-4 w-4 mr-2" />
+                    <Users className="mr-2 h-4 w-4 text-primary" />
                     Gerenciar Usuários
                   </Link>
                 </Button>
@@ -998,18 +984,18 @@ export default function DashboardPage() {
                 <CardTitle>Ações Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/escalas">
-                      <Star className="h-4 w-4 mr-2" />
-                      Avaliar Pregação
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <Link href="/escalas">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Ver Próximos Cultos
-                    </Link>
-                  </Button>
+                <Button variant="outline" className="h-12 w-full justify-start rounded-xl" asChild>
+                  <Link href="/escalas">
+                    <Star className="mr-2 h-4 w-4 text-primary" />
+                    Avaliar Pregação
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-12 w-full justify-start rounded-xl" asChild>
+                  <Link href="/escalas">
+                    <Calendar className="mr-2 h-4 w-4 text-primary" />
+                    Ver Próximos Cultos
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -1017,16 +1003,16 @@ export default function DashboardPage() {
           {/* Avisos */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-orange-500">
-                <AlertCircle className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning/15 text-warning">
+                  <AlertCircle className="h-5 w-5" />
+                </span>
                 Avisos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground">
-                <p className="mb-2">
-                  • Escala de Fevereiro será publicada em 25/01
-                </p>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>• Escala de Fevereiro será publicada em 25/01</p>
                 <p>• Reunião de pregadores: 28/01 às 15h</p>
               </div>
             </CardContent>
@@ -1036,34 +1022,31 @@ export default function DashboardPage() {
 
       {/* Card de Distrito para Pregadores/Cantores - após as próximas escalas */}
       {(isPregador(user) || isCantor(user)) && dashboardData && isDashboardPregadorCantor(dashboardData) && (
-        <Card className="mt-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Estatísticas do Distrito {dashboardData.distrito_stats.distrito_nome}
+            <CardTitle className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                <MapPin className="h-5 w-5" />
+              </span>
+              <span className="min-w-0">Estatísticas do Distrito {dashboardData.distrito_stats.distrito_nome}</span>
             </CardTitle>
             <CardDescription>
               Visão geral do seu distrito
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Pregadores</p>
-                <p className="text-2xl font-bold">{dashboardData.distrito_stats.total_pregadores}</p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Cantores</p>
-                <p className="text-2xl font-bold">{dashboardData.distrito_stats.total_cantores}</p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Igrejas</p>
-                <p className="text-2xl font-bold">{dashboardData.distrito_stats.total_igrejas}</p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Escalas Publicadas</p>
-                <p className="text-2xl font-bold">{dashboardData.distrito_stats.total_escalas_publicadas}</p>
-              </div>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              {[
+                ["Pregadores", dashboardData.distrito_stats.total_pregadores],
+                ["Cantores", dashboardData.distrito_stats.total_cantores],
+                ["Igrejas", dashboardData.distrito_stats.total_igrejas],
+                ["Escalas Publicadas", dashboardData.distrito_stats.total_escalas_publicadas],
+              ].map(([label, valor]) => (
+                <div key={label} className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className="text-3xl font-bold">{valor}</p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -1071,9 +1054,9 @@ export default function DashboardPage() {
 
       {/* Dialog de Conflitos */}
       <Dialog open={showConflitosDialog} onOpenChange={setShowConflitosDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-100">
+            <DialogTitle className="flex items-center gap-2 text-warning">
               <AlertTriangle className="h-5 w-5" />
               Detalhes dos Conflitos de Escala
             </DialogTitle>
@@ -1090,7 +1073,7 @@ export default function DashboardPage() {
           ) : conflitos && conflitos.conflitos.length > 0 ? (
             <div className="space-y-4">
               {conflitos.conflitos.map((conflito, idx) => (
-                <Card key={idx} className="border-amber-200 dark:border-amber-900">
+                <Card key={idx} className="border-warning/30">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center justify-between">
                       <span>
@@ -1105,14 +1088,14 @@ export default function DashboardPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
+                    <p className="mb-3 text-sm text-muted-foreground">
                       Este usuário está escalado em <span className="font-semibold">{conflito.total_escalas} igrejas</span> no mesmo dia:
                     </p>
                     <div className="space-y-2">
                       {conflito.itens.map((item, itemIdx) => (
                         <div 
                           key={itemIdx} 
-                          className="flex items-center justify-between p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-md border border-amber-100 dark:border-amber-900"
+                          className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-warning/10 p-3"
                         >
                           <div className="flex-1">
                             <p className="font-medium text-sm">{item.igreja_nome}</p>
@@ -1152,7 +1135,6 @@ export default function DashboardPage() {
                 setShowConflitosDialog(false);
                 window.location.href = '/escalas';
               }}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               <ExternalLink className="mr-2 h-4 w-4" />
               Ir para Escalas
