@@ -1585,6 +1585,20 @@ export default function EscalasPage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="pregador">Pregador</Label>
+                {selectedItem?.pastor_presente && (
+                  <div className="rounded-md border border-amber-500 bg-amber-100 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+                    <p className="font-medium">
+                      Pastor presente neste culto (itinerário)
+                      {selectedItem.pastor_nome ? `: ${selectedItem.pastor_nome}` : ""}
+                    </p>
+                    {selectedItem.pastor_observacao && (
+                      <p className="mt-1 text-xs">{selectedItem.pastor_observacao}</p>
+                    )}
+                    <p className="mt-1 text-xs">
+                      Deixe o pregador em branco para manter o pastor, ou selecione outro pregador abaixo.
+                    </p>
+                  </div>
+                )}
                 <UsuarioCombobox
                   value={editForm.escalarMePregador ? user?.id || null : editForm.pregador_id}
                   onValueChange={(val) => setEditForm(prev => ({ 
