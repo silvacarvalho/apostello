@@ -1,24 +1,32 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Trash2, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Church,
+  GripVertical,
+  Info,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import {
   format,
   parseISO,
   startOfMonth,
   endOfMonth,
-  startOfWeek,
-  endOfWeek,
   eachDayOfInterval,
-  isSameMonth,
-  isToday,
+  isSameDay,
   addMonths,
   subMonths,
+  getDay,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +76,22 @@ interface Igreja {
   nome: string;
 }
 
+// Mesma paleta de cores por igreja usada na tela do Calendário
+const CORES_IGREJAS = [
+  { bg: "bg-blue-100 dark:bg-blue-900/30", border: "border-blue-500", text: "text-blue-700 dark:text-blue-300" },
+  { bg: "bg-green-100 dark:bg-green-900/30", border: "border-green-500", text: "text-green-700 dark:text-green-300" },
+  { bg: "bg-purple-100 dark:bg-purple-900/30", border: "border-purple-500", text: "text-purple-700 dark:text-purple-300" },
+  { bg: "bg-orange-100 dark:bg-orange-900/30", border: "border-orange-500", text: "text-orange-700 dark:text-orange-300" },
+  { bg: "bg-pink-100 dark:bg-pink-900/30", border: "border-pink-500", text: "text-pink-700 dark:text-pink-300" },
+  { bg: "bg-teal-100 dark:bg-teal-900/30", border: "border-teal-500", text: "text-teal-700 dark:text-teal-300" },
+  { bg: "bg-yellow-100 dark:bg-yellow-900/30", border: "border-yellow-500", text: "text-yellow-700 dark:text-yellow-300" },
+  { bg: "bg-red-100 dark:bg-red-900/30", border: "border-red-500", text: "text-red-700 dark:text-red-300" },
+  { bg: "bg-indigo-100 dark:bg-indigo-900/30", border: "border-indigo-500", text: "text-indigo-700 dark:text-indigo-300" },
+  { bg: "bg-cyan-100 dark:bg-cyan-900/30", border: "border-cyan-500", text: "text-cyan-700 dark:text-cyan-300" },
+];
+
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
 export default function ItinerarioPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -79,26 +103,41 @@ export default function ItinerarioPage() {
   const [submitting, setSubmitting] = useState(false);
   const [itens, setItens] = useState<ItinerarioItem[]>([]);
   const [igrejas, setIgrejas] = useState<Igreja[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Mês exibido no calendário
-  const [mesAtual, setMesAtual] = useState<Date>(startOfMonth(new Date()));
+  // Arrastar e soltar
+  const [igrejaArrastada, setIgrejaArrastada] = useState<number | null>(null);
+  const [diaAlvo, setDiaAlvo] = useState<string | null>(null);
 
-  // Modais
+  // Modal
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selecionado, setSelecionado] = useState<ItinerarioItem | null>(null);
-
-  // Formulário
   const [igrejaId, setIgrejaId] = useState<string>("");
   const [dataCulto, setDataCulto] = useState<string>("");
   const [observacoes, setObservacoes] = useState<string>("");
+
+  // Cor de cada igreja (mesma lógica do Calendário)
+  const coresIgrejas = useMemo(() => {
+    const mapa: Record<number, (typeof CORES_IGREJAS)[0]> = {};
+    igrejas.forEach((igreja, index) => {
+      mapa[igreja.id] = CORES_IGREJAS[index % CORES_IGREJAS.length];
+    });
+    return mapa;
+  }, [igrejas]);
+
+  const diasMes = useMemo(
+    () => eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }),
+    [currentDate]
+  );
+  const offsetInicio = useMemo(() => getDay(startOfMonth(currentDate)), [currentDate]);
 
   const fetchItens = useCallback(async () => {
     if (!canAccess) return;
     try {
       setLoading(true);
       const response = await api.get<{ itinerarios: ItinerarioItem[]; total: number }>(
-        `/api/v1/itinerarios/?mes=${mesAtual.getMonth() + 1}&ano=${mesAtual.getFullYear()}`
+        `/api/v1/itinerarios/?mes=${currentDate.getMonth() + 1}&ano=${currentDate.getFullYear()}`
       );
       setItens(response.itinerarios || []);
     } catch (error) {
@@ -111,7 +150,7 @@ export default function ItinerarioPage() {
     } finally {
       setLoading(false);
     }
-  }, [canAccess, mesAtual, toast]);
+  }, [canAccess, currentDate, toast]);
 
   const fetchIgrejas = useCallback(async () => {
     if (!canAccess) return;
@@ -143,6 +182,9 @@ export default function ItinerarioPage() {
     fetchItens();
   }, [fetchItens]);
 
+  const getRegistroDia = (dia: Date) =>
+    itens.find((i) => isSameDay(parseISO(i.data_culto), dia)) || null;
+
   const resetForm = () => {
     setIgrejaId("");
     setDataCulto("");
@@ -150,22 +192,36 @@ export default function ItinerarioPage() {
     setSelecionado(null);
   };
 
-  // Clique em um dia do calendário: abre o modal (novo registro ou edição)
-  const handleClickDia = (dia: Date) => {
-    const iso = format(dia, "yyyy-MM-dd");
-    const existente = itens.find((i) => i.data_culto === iso) || null;
+  // Abre o modal para um dia. Se veio de um arraste, já traz a igreja escolhida.
+  const abrirModalDia = (dia: Date, igrejaSugerida?: number) => {
+    const existente = getRegistroDia(dia);
     setSelecionado(existente);
-    setDataCulto(iso);
-    setIgrejaId(existente ? existente.igreja_id.toString() : "");
+    setDataCulto(format(dia, "yyyy-MM-dd"));
+    setIgrejaId(
+      igrejaSugerida
+        ? igrejaSugerida.toString()
+        : existente
+          ? existente.igreja_id.toString()
+          : ""
+    );
     setObservacoes(existente?.observacoes || "");
     setShowFormModal(true);
+  };
+
+  const handleDrop = (e: React.DragEvent, dia: Date) => {
+    e.preventDefault();
+    const id = igrejaArrastada ?? parseInt(e.dataTransfer.getData("text/plain"));
+    setDiaAlvo(null);
+    setIgrejaArrastada(null);
+    if (!id) return;
+    abrirModalDia(dia, id);
   };
 
   const handleSave = async () => {
     if (!igrejaId || !dataCulto) {
       toast({
         title: "Campos obrigatórios",
-        description: "Selecione a igreja e a data",
+        description: "Selecione a igreja",
         variant: "destructive",
       });
       return;
@@ -217,19 +273,16 @@ export default function ItinerarioPage() {
     }
   };
 
-  const dias = eachDayOfInterval({
-    start: startOfWeek(startOfMonth(mesAtual)),
-    end: endOfWeek(endOfMonth(mesAtual)),
-  });
-  const nomesDias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Cabeçalho */}
+    <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Itinerário do Pastor</h1>
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <CalendarIcon className="h-8 w-8" />
+          Itinerário do Pastor
+        </h1>
         <p className="text-muted-foreground">
-          Clique em um dia do calendário para registrar onde você estará
+          Arraste uma igreja até o dia em que você estará presente
         </p>
       </div>
 
@@ -239,7 +292,7 @@ export default function ItinerarioPage() {
         <div className="text-sm text-blue-800 dark:text-blue-200">
           <strong>Como funciona:</strong> nas datas registradas aqui, a escala gerada{" "}
           <strong>não sorteia pregador</strong> para aquela igreja, pois o pastor já estará
-          presente. O itinerário deve ser cadastrado <strong>antes</strong> de gerar a escala do mês.
+          presente. Cadastre o itinerário <strong>antes</strong> de gerar a escala do mês.
         </div>
       </div>
 
@@ -247,66 +300,152 @@ export default function ItinerarioPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setMesAtual(subMonths(mesAtual, 1))}
-              aria-label="Mês anterior"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <CardTitle className="capitalize">
-              {format(mesAtual, "MMMM 'de' yyyy", { locale: ptBR })}
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setMesAtual(addMonths(mesAtual, 1))}
-              aria-label="Próximo mês"
-            >
-              <ChevronRight className="h-4 w-4" />
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+                aria-label="Mês anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <CardTitle className="text-xl min-w-[200px] text-center">
+                {format(currentDate, "MMMM yyyy", { locale: ptBR })}
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                aria-label="Próximo mês"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button variant="outline" onClick={() => setCurrentDate(new Date())}>
+              Hoje
             </Button>
           </div>
+          <CardDescription>{itens.length} dia(s) no itinerário deste mês</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Igrejas para arrastar */}
+          <div className="mb-4 pb-4 border-b">
+            <p className="text-xs text-muted-foreground mb-2">
+              Arraste uma igreja para um dia do calendário (ou clique no dia):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {igrejas.map((igreja) => {
+                const cores = coresIgrejas[igreja.id];
+                return (
+                  <Badge
+                    key={igreja.id}
+                    variant="outline"
+                    draggable
+                    onDragStart={(e) => {
+                      setIgrejaArrastada(igreja.id);
+                      e.dataTransfer.setData("text/plain", String(igreja.id));
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragEnd={() => {
+                      setIgrejaArrastada(null);
+                      setDiaAlvo(null);
+                    }}
+                    className={cn(
+                      "cursor-grab active:cursor-grabbing select-none py-1 px-2 transition-all hover:scale-105 hover:shadow-sm",
+                      cores?.bg,
+                      cores?.border,
+                      cores?.text,
+                      igrejaArrastada === igreja.id && "opacity-50"
+                    )}
+                  >
+                    <GripVertical className="h-3 w-3 mr-1" />
+                    <Church className="h-3 w-3 mr-1" />
+                    {igreja.nome}
+                  </Badge>
+                );
+              })}
+              {igrejas.length === 0 && (
+                <span className="text-sm text-muted-foreground">Nenhuma igreja encontrada</span>
+              )}
+            </div>
+          </div>
+
           {loading ? (
-            <div className="flex items-center justify-center py-10">
+            <div className="flex items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
             <div className="grid grid-cols-7 gap-1">
-              {nomesDias.map((nome) => (
+              {DIAS_SEMANA.map((dia) => (
                 <div
-                  key={nome}
-                  className="text-center text-xs font-medium text-muted-foreground py-1"
+                  key={dia}
+                  className="text-center font-semibold py-2 text-sm text-muted-foreground"
                 >
-                  {nome}
+                  {dia}
                 </div>
               ))}
-              {dias.map((dia) => {
+
+              {Array.from({ length: offsetInicio }).map((_, i) => (
+                <div key={`empty-${i}`} className="min-h-[100px] bg-muted/20 rounded" />
+              ))}
+
+              {diasMes.map((dia) => {
                 const iso = format(dia, "yyyy-MM-dd");
-                const registro = itens.find((i) => i.data_culto === iso);
-                const doMes = isSameMonth(dia, mesAtual);
+                const registro = getRegistroDia(dia);
+                const cores = registro ? coresIgrejas[registro.igreja_id] : undefined;
+                const isHoje = isSameDay(dia, new Date());
+                const isAlvo = diaAlvo === iso;
+
                 return (
-                  <button
+                  <div
                     key={iso}
-                    type="button"
-                    disabled={!doMes}
-                    onClick={() => handleClickDia(dia)}
+                    onClick={() => abrirModalDia(dia)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (diaAlvo !== iso) setDiaAlvo(iso);
+                    }}
+                    onDragLeave={() => setDiaAlvo((atual) => (atual === iso ? null : atual))}
+                    onDrop={(e) => handleDrop(e, dia)}
                     className={cn(
-                      "min-h-[72px] rounded-md border p-1 text-left align-top transition-colors",
-                      doMes ? "hover:bg-accent" : "opacity-30 cursor-default",
-                      registro && "bg-primary/10 border-primary",
-                      isToday(dia) && "ring-2 ring-primary/50"
+                      "min-h-[100px] p-1 border rounded cursor-pointer transition-colors hover:bg-accent",
+                      isHoje && "ring-2 ring-primary",
+                      !registro && "bg-muted/20",
+                      isAlvo && "bg-primary/10 border-primary border-dashed border-2"
                     )}
                   >
-                    <div className="text-sm font-medium">{format(dia, "d")}</div>
+                    <div
+                      className={cn(
+                        "text-sm font-medium mb-1",
+                        isHoje && "text-primary font-bold"
+                      )}
+                    >
+                      {format(dia, "d")}
+                    </div>
+
                     {registro && (
-                      <div className="mt-1 text-[11px] leading-tight text-primary font-medium break-words">
-                        {registro.igreja_nome || `Igreja #${registro.igreja_id}`}
+                      <div
+                        className={cn(
+                          "text-xs px-1 py-0.5 rounded border-l-2",
+                          cores?.bg,
+                          cores?.border,
+                          cores?.text
+                        )}
+                      >
+                        <div className="flex items-center gap-1 font-medium truncate">
+                          <Church className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">
+                            {registro.igreja_nome || `Igreja #${registro.igreja_id}`}
+                          </span>
+                        </div>
+                        {registro.observacoes && (
+                          <div className="mt-0.5 opacity-80 line-clamp-2 break-words">
+                            {registro.observacoes}
+                          </div>
+                        )}
                       </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -314,11 +453,11 @@ export default function ItinerarioPage() {
         </CardContent>
       </Card>
 
-      {/* Modal adicionar/editar */}
+      {/* Modal: igreja + observação do dia */}
       <Dialog open={showFormModal} onOpenChange={setShowFormModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>{selecionado ? "Editar registro" : "Novo registro"}</DialogTitle>
+            <DialogTitle>{selecionado ? "Editar itinerário" : "Novo itinerário"}</DialogTitle>
             <DialogDescription className="capitalize">
               {dataCulto &&
                 format(parseISO(dataCulto), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
@@ -343,7 +482,7 @@ export default function ItinerarioPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="obs">Observações (opcional)</Label>
+              <Label htmlFor="obs">Observação (opcional)</Label>
               <Textarea
                 id="obs"
                 value={observacoes}
@@ -381,7 +520,7 @@ export default function ItinerarioPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remover registro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Este registro será removido do itinerário. Escalas já geradas não são alteradas.
+              Este dia será removido do itinerário. Escalas já geradas não são alteradas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
