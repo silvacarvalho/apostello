@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "next-themes";
 import { Bell, Moon, Sun, Search, User, Loader2, Check } from "lucide-react";
 import Link from "next/link";
+import { LogoMark } from "./logo";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,9 +132,13 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 lg:px-8">
-      {/* Spacer para sidebar toggle mobile */}
-      <div className="w-10 lg:hidden" />
+    <header className="pt-safe sticky top-0 z-30 border-b border-border/60 bg-card/80 backdrop-blur-lg">
+      <div className="flex h-14 items-center gap-3 px-4 md:px-6 lg:h-16 lg:px-8">
+      {/* Marca (apenas no celular; no desktop fica no menu lateral) */}
+      <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
+        <LogoMark className="h-8 w-8 rounded-lg" />
+        <span className="text-base font-bold tracking-tight">Apostello</span>
+      </Link>
 
       {/* Search */}
       <div className="flex-1 max-w-md hidden md:block">
@@ -141,7 +146,7 @@ export function Header() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar..."
-            className="pl-9 bg-muted/50 border-0 focus-visible:ring-1"
+            className="pl-9 bg-muted/60 border-0 focus-visible:ring-1"
           />
         </div>
       </div>
@@ -153,6 +158,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
+            className="hidden lg:inline-flex"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
             {theme === "dark" ? (
@@ -175,7 +181,7 @@ export function Header() {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80">
             <div className="flex items-center justify-between px-2">
               <DropdownMenuLabel>Notificações</DropdownMenuLabel>
               {countNaoLidas > 0 && (
@@ -238,7 +244,7 @@ export function Header() {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
+            <Button variant="ghost" size="icon" className="hidden rounded-full lg:inline-flex">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={fotoUrl} />
                 <AvatarFallback className="text-xs">
@@ -272,6 +278,7 @@ export function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
       </div>
     </header>
   );

@@ -1234,7 +1234,7 @@ export default function EscalasPage() {
 
       {/* Dialog: Detalhes da Escala */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-[1400px] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:w-[95vw] sm:max-w-[1400px] sm:max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />

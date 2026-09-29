@@ -4,53 +4,62 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Azul sereno e claro */
+    --background: 216 45% 97.5%;
+    --foreground: 224 40% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 40% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-    --chart-1: 221.2 83.2% 53.3%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
+    --popover-foreground: 224 40% 13%;
+    --primary: 226 76% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 60% 95%;
+    --secondary-foreground: 224 40% 20%;
+    --muted: 220 35% 95%;
+    --muted-foreground: 221 12% 42%;
+    --accent: 224 80% 96%;
+    --accent-foreground: 226 70% 38%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 58% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 46%;
+    --warning-foreground: 0 0% 100%;
+    --border: 220 30% 91%;
+    --input: 220 30% 88%;
+    --ring: 226 76% 51%;
+    --radius: 0.875rem;
+    --chart-1: 226 76% 51%;
+    --chart-2: 160 60% 40%;
+    --chart-3: 30 85% 55%;
+    --chart-4: 280 60% 60%;
     --chart-5: 340 75% 55%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 224 30% 8%;
+    --foreground: 220 30% 96%;
+    --card: 224 26% 11.5%;
+    --card-foreground: 220 30% 96%;
+    --popover: 224 26% 11.5%;
+    --popover-foreground: 220 30% 96%;
+    --primary: 224 90% 68%;
+    --primary-foreground: 224 45% 8%;
+    --secondary: 224 22% 18%;
+    --secondary-foreground: 220 30% 96%;
+    --muted: 224 22% 16%;
+    --muted-foreground: 220 14% 68%;
+    --accent: 224 30% 20%;
+    --accent-foreground: 224 90% 80%;
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 50% 46%;
+    --success-foreground: 224 45% 8%;
+    --warning: 38 92% 56%;
+    --warning-foreground: 224 45% 8%;
+    --border: 224 20% 20%;
+    --input: 224 20% 24%;
+    --ring: 224 90% 68%;
   }
 }
 
@@ -58,10 +67,25 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     transition: background-color 0.3s ease, color 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+    overflow-x: clip; /* nunca rolar para os lados no celular */
+  }
+  /* Evita o zoom automático do iOS ao focar em campos */
+  input, select, textarea {
+    font-size: 16px;
+  }
+  @media (min-width: 640px) {
+    input, select, textarea {
+      font-size: inherit;
+    }
   }
 }
 
@@ -72,8 +96,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -88,4 +111,12 @@
 /* Animations */
 .animate-in {
   animation: fade-in 0.3s ease-out, slide-in 0.3s ease-out;
+}
+
+/* Utilitários para app mobile (áreas seguras de notch/barra inferior) */
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
 }

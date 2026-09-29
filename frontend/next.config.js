@@ -9,6 +9,22 @@ const nextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        // O service worker precisa ser sempre revalidado para atualizar o app
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+      {
+        source: '/manifest.webmanifest',
+        headers: [{ key: 'Content-Type', value: 'application/manifest+json' }],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

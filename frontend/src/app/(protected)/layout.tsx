@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Loading } from "@/components/ui/loading";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { BottomNav } from "@/components/layout/bottom-nav";
 
 export default function DashboardLayout({
   children,
@@ -33,7 +34,7 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-dvh items-center justify-center">
         <Loading text="Carregando..." />
       </div>
     );
@@ -44,20 +45,21 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Sidebar */}
+    <div className="flex min-h-dvh bg-background">
+      {/* Menu lateral (desktop) */}
       <Sidebar />
 
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col lg:ml-64">
-        {/* Header */}
+      <div className="flex min-w-0 flex-1 flex-col lg:ml-64">
         <Header />
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+        {/* Espaço extra embaixo no celular por causa da barra de navegação */}
+        <main className="flex-1 p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-6 lg:p-8 lg:pb-8">
           <div className="mx-auto max-w-7xl animate-in">{children}</div>
         </main>
       </div>
+
+      {/* Barra inferior (celular/tablet) */}
+      <BottomNav />
     </div>
   );
 }
