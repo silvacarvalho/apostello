@@ -25,6 +25,7 @@ from app.models.usuario import Usuario, TipoUsuario
 from app.models.igreja import Igreja
 from app.models.indisponibilidade import Indisponibilidade
 from app.models.bloqueio_temporario import BloqueioTemporario
+from app.models.itinerario_pastor import ItinerarioPastor
 from app.schemas.escala import EscalaCreate, EscalaGenerateRequest
 
 logger = logging.getLogger(__name__)
@@ -187,6 +188,16 @@ class EscalaService:
                 [p.id for p in pregadores] + [c.id for c in cantores]
             )
         
+        # Itinerário do pastor: cultos em que o pastor já estará presente
+        itinerario_pastor = {
+            (i.igreja_id, i.data_culto)
+            for i in self.db.query(ItinerarioPastor).filter(
+                ItinerarioPastor.distrito_id == request.distrito_id,
+                ItinerarioPastor.data_culto >= data_inicio_mes,
+                ItinerarioPastor.data_culto <= data_fim_mes
+            ).all()
+        }
+        
         # Horários padrão para igrejas sem horários cadastrados
         from datetime import time
         horarios_padrao = {
@@ -293,7 +304,11 @@ class EscalaService:
             
             # Selecionar pregador baseado na prioridade do dia
             pregador = None
-            if pregadores_disponiveis:
+            pastor_presente = (igreja.id, data_culto) in itinerario_pastor
+            if pastor_presente:
+                # Pastor já estará na igreja nesta data (itinerário): não sorteia pregador
+                logger.info(f"Itinerário do pastor: {igreja.nome} em {data_culto} - sem pregador sorteado")
+            elif pregadores_disponiveis:
                 if dia_semana == DiaSemana.SABADO and request.priorizar_sabado:
                     # Sábados: priorizar score alto
                     pregador = self._selecionar_pessoa(
@@ -405,6 +420,8 @@ class EscalaService:
                 "tema_id": tema_id,
                 "tema_customizado": tema_customizado
             }
+            if pastor_presente:
+                item_data["observacoes"] = "Pastor Distrital presente (itinerário)"
             
             self.item_repo.create(item_data)
             
