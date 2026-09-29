@@ -2,14 +2,25 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Trash2, Edit, Info, MapPinned } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Loader2, Trash2, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  format,
+  parseISO,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isToday,
+  addMonths,
+  subMonths,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -39,6 +50,7 @@ import {
 import { useAuthStore, isPastor, isAdmin, getUserDistritoId } from "@/stores/auth-store";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ItinerarioItem {
   id: number;
@@ -68,8 +80,8 @@ export default function ItinerarioPage() {
   const [itens, setItens] = useState<ItinerarioItem[]>([]);
   const [igrejas, setIgrejas] = useState<Igreja[]>([]);
 
-  // Filtro de mês (formato yyyy-MM)
-  const [mesFiltro, setMesFiltro] = useState<string>(format(new Date(), "yyyy-MM"));
+  // Mês exibido no calendário
+  const [mesAtual, setMesAtual] = useState<Date>(startOfMonth(new Date()));
 
   // Modais
   const [showFormModal, setShowFormModal] = useState(false);
@@ -85,9 +97,8 @@ export default function ItinerarioPage() {
     if (!canAccess) return;
     try {
       setLoading(true);
-      const [ano, mes] = mesFiltro.split("-");
       const response = await api.get<{ itinerarios: ItinerarioItem[]; total: number }>(
-        `/api/v1/itinerarios/?mes=${parseInt(mes)}&ano=${ano}`
+        `/api/v1/itinerarios/?mes=${mesAtual.getMonth() + 1}&ano=${mesAtual.getFullYear()}`
       );
       setItens(response.itinerarios || []);
     } catch (error) {
@@ -100,7 +111,7 @@ export default function ItinerarioPage() {
     } finally {
       setLoading(false);
     }
-  }, [canAccess, mesFiltro, toast]);
+  }, [canAccess, mesAtual, toast]);
 
   const fetchIgrejas = useCallback(async () => {
     if (!canAccess) return;
@@ -139,22 +150,15 @@ export default function ItinerarioPage() {
     setSelecionado(null);
   };
 
-  const handleOpenAdd = () => {
-    resetForm();
+  // Clique em um dia do calendário: abre o modal (novo registro ou edição)
+  const handleClickDia = (dia: Date) => {
+    const iso = format(dia, "yyyy-MM-dd");
+    const existente = itens.find((i) => i.data_culto === iso) || null;
+    setSelecionado(existente);
+    setDataCulto(iso);
+    setIgrejaId(existente ? existente.igreja_id.toString() : "");
+    setObservacoes(existente?.observacoes || "");
     setShowFormModal(true);
-  };
-
-  const handleOpenEdit = (item: ItinerarioItem) => {
-    setSelecionado(item);
-    setIgrejaId(item.igreja_id.toString());
-    setDataCulto(item.data_culto);
-    setObservacoes(item.observacoes || "");
-    setShowFormModal(true);
-  };
-
-  const handleOpenDelete = (item: ItinerarioItem) => {
-    setSelecionado(item);
-    setShowDeleteDialog(true);
   };
 
   const handleSave = async () => {
@@ -202,7 +206,8 @@ export default function ItinerarioPage() {
       await api.delete(`/api/v1/itinerarios/${selecionado.id}`);
       toast({ title: "Sucesso", description: "Itinerário removido" });
       setShowDeleteDialog(false);
-      setSelecionado(null);
+      setShowFormModal(false);
+      resetForm();
       fetchItens();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao remover itinerário";
@@ -212,23 +217,20 @@ export default function ItinerarioPage() {
     }
   };
 
-  const formatarData = (iso: string) =>
-    format(parseISO(iso), "EEEE, dd/MM/yyyy", { locale: ptBR });
+  const dias = eachDayOfInterval({
+    start: startOfWeek(startOfMonth(mesAtual)),
+    end: endOfWeek(endOfMonth(mesAtual)),
+  });
+  const nomesDias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Itinerário do Pastor</h1>
-          <p className="text-muted-foreground">
-            Registre em quais igrejas e datas você estará presente
-          </p>
-        </div>
-        <Button onClick={handleOpenAdd}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Registro
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Itinerário do Pastor</h1>
+        <p className="text-muted-foreground">
+          Clique em um dia do calendário para registrar onde você estará
+        </p>
       </div>
 
       {/* Aviso */}
@@ -241,24 +243,29 @@ export default function ItinerarioPage() {
         </div>
       </div>
 
-      {/* Lista */}
+      {/* Calendário */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <CardTitle>Registros do mês</CardTitle>
-              <CardDescription>{itens.length} registro(s)</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="mes-filtro">Mês</Label>
-              <Input
-                id="mes-filtro"
-                type="month"
-                value={mesFiltro}
-                onChange={(e) => e.target.value && setMesFiltro(e.target.value)}
-                className="w-44"
-              />
-            </div>
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setMesAtual(subMonths(mesAtual, 1))}
+              aria-label="Mês anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <CardTitle className="capitalize">
+              {format(mesAtual, "MMMM 'de' yyyy", { locale: ptBR })}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setMesAtual(addMonths(mesAtual, 1))}
+              aria-label="Próximo mês"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -266,35 +273,42 @@ export default function ItinerarioPage() {
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : itens.length === 0 ? (
-            <div className="flex flex-col items-center py-10 text-muted-foreground">
-              <MapPinned className="h-10 w-10 mb-2" />
-              Nenhum registro neste mês
-            </div>
           ) : (
-            <div className="space-y-2">
-              {itens.map((item) => (
+            <div className="grid grid-cols-7 gap-1">
+              {nomesDias.map((nome) => (
                 <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  key={nome}
+                  className="text-center text-xs font-medium text-muted-foreground py-1"
                 >
-                  <div>
-                    <div className="font-medium capitalize">{formatarData(item.data_culto)}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {item.igreja_nome || `Igreja #${item.igreja_id}`}
-                      {item.observacoes ? ` — ${item.observacoes}` : ""}
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(item)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDelete(item)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  {nome}
                 </div>
               ))}
+              {dias.map((dia) => {
+                const iso = format(dia, "yyyy-MM-dd");
+                const registro = itens.find((i) => i.data_culto === iso);
+                const doMes = isSameMonth(dia, mesAtual);
+                return (
+                  <button
+                    key={iso}
+                    type="button"
+                    disabled={!doMes}
+                    onClick={() => handleClickDia(dia)}
+                    className={cn(
+                      "min-h-[72px] rounded-md border p-1 text-left align-top transition-colors",
+                      doMes ? "hover:bg-accent" : "opacity-30 cursor-default",
+                      registro && "bg-primary/10 border-primary",
+                      isToday(dia) && "ring-2 ring-primary/50"
+                    )}
+                  >
+                    <div className="text-sm font-medium">{format(dia, "d")}</div>
+                    {registro && (
+                      <div className="mt-1 text-[11px] leading-tight text-primary font-medium break-words">
+                        {registro.igreja_nome || `Igreja #${registro.igreja_id}`}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -305,8 +319,9 @@ export default function ItinerarioPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selecionado ? "Editar registro" : "Novo registro"}</DialogTitle>
-            <DialogDescription>
-              Informe a igreja e a data em que o pastor estará presente.
+            <DialogDescription className="capitalize">
+              {dataCulto &&
+                format(parseISO(dataCulto), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </DialogDescription>
           </DialogHeader>
 
@@ -328,16 +343,6 @@ export default function ItinerarioPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="data-culto">Data</Label>
-              <Input
-                id="data-culto"
-                type="date"
-                value={dataCulto}
-                onChange={(e) => setDataCulto(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="obs">Observações (opcional)</Label>
               <Textarea
                 id="obs"
@@ -348,7 +353,17 @@ export default function ItinerarioPage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
+            {selecionado && (
+              <Button
+                variant="outline"
+                className="sm:mr-auto text-destructive"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Remover
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setShowFormModal(false)}>
               Cancelar
             </Button>
