@@ -430,6 +430,12 @@ def listar_escalas(
                     "pregador_confirmou": item.status_confirmacao_pregador.value == "CONFIRMADO" if item.status_confirmacao_pregador else False,
                     "cantor_confirmou": item.status_confirmacao_cantor.value == "CONFIRMADO" if item.status_confirmacao_cantor else False,
                     "pastor_presente": (item.igreja_id, item.data_culto) in itinerario_igreja,
+                    "pastor_nome": (
+                        itinerario_igreja[(item.igreja_id, item.data_culto)].pastor.nome_completo
+                        if (item.igreja_id, item.data_culto) in itinerario_igreja
+                        and itinerario_igreja[(item.igreja_id, item.data_culto)].pastor
+                        else None
+                    ),
                 }
                 
                 # Adicionar dados do pregador
@@ -514,6 +520,12 @@ def listar_escalas(
                     "pregador_confirmou": item.status_confirmacao_pregador.value == "CONFIRMADO" if item.status_confirmacao_pregador else False,
                     "cantor_confirmou": item.status_confirmacao_cantor.value == "CONFIRMADO" if item.status_confirmacao_cantor else False,
                     "pastor_presente": (item.igreja_id, item.data_culto) in itinerario_igreja,
+                    "pastor_nome": (
+                        itinerario_igreja[(item.igreja_id, item.data_culto)].pastor.nome_completo
+                        if (item.igreja_id, item.data_culto) in itinerario_igreja
+                        and itinerario_igreja[(item.igreja_id, item.data_culto)].pastor
+                        else None
+                    ),
                 }
                 
                 # Adicionar dados do pregador

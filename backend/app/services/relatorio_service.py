@@ -25,7 +25,7 @@ from app.models.usuario import Usuario
 from app.models.igreja import Igreja
 from app.models.avaliacao import Avaliacao
 from app.models.distrito import Distrito
-from app.services.itinerario_helper import mapa_itinerario, TEXTO_PASTOR_PRESENTE
+from app.services.itinerario_helper import mapa_itinerario, texto_pastor_presente
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,8 @@ class RelatorioService:
             pregador = self.db.query(Usuario).filter(Usuario.id == item.pregador_id).first() if item.pregador_id else None
             cantor = self.db.query(Usuario).filter(Usuario.id == item.cantor_id).first() if item.cantor_id else None
             texto_pregador = pregador.nome_completo if pregador else (
-                TEXTO_PASTOR_PRESENTE if (item.igreja_id, item.data_culto) in itinerario else "A definir"
+                texto_pastor_presente(itinerario[(item.igreja_id, item.data_culto)])
+                if (item.igreja_id, item.data_culto) in itinerario else "A definir"
             )
             
             dia_semana = dias_semana_pt.get(item.data_culto.weekday(), "") if item.data_culto else ""
@@ -352,7 +353,8 @@ class RelatorioService:
             pregador = self.db.query(Usuario).filter(Usuario.id == item.pregador_id).first() if item.pregador_id else None
             cantor = self.db.query(Usuario).filter(Usuario.id == item.cantor_id).first() if item.cantor_id else None
             texto_pregador = pregador.nome_completo if pregador else (
-                TEXTO_PASTOR_PRESENTE if (item.igreja_id, item.data_culto) in itinerario else "A definir"
+                texto_pastor_presente(itinerario[(item.igreja_id, item.data_culto)])
+                if (item.igreja_id, item.data_culto) in itinerario else "A definir"
             )
             
             dia_semana = dias_semana_pt.get(item.data_culto.weekday(), "") if item.data_culto else ""

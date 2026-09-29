@@ -460,7 +460,7 @@ export default function CalendarioPage() {
                             <div key={item.id} className="text-sm">
                               <p className="font-medium">{item.igreja_nome}</p>
                               <p className="text-muted-foreground">
-                                {item.horario?.substring(0, 5)} - {item.pregador_nome || (item.pastor_presente ? "Pastor presente" : "Sem pregador")}
+                                {item.horario?.substring(0, 5)} - {item.pregador_nome || (item.pastor_presente ? `Pastor presente${item.pastor_nome ? `: ${item.pastor_nome}` : ""}` : "Sem pregador")}
                               </p>
                             </div>
                           ))}

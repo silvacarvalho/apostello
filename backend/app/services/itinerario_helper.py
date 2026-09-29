@@ -33,3 +33,10 @@ def mapa_itinerario(
     if igreja_id:
         query = query.filter(ItinerarioPastor.igreja_id == igreja_id)
     return {(i.igreja_id, i.data_culto): i for i in query.all()}
+
+
+def texto_pastor_presente(itinerario: Optional[ItinerarioPastor]) -> str:
+    """Ex.: 'Pastor presente: João Silva' (ou só 'Pastor presente' sem nome)."""
+    if itinerario is not None and itinerario.pastor:
+        return f"{TEXTO_PASTOR_PRESENTE}: {itinerario.pastor.nome_completo}"
+    return TEXTO_PASTOR_PRESENTE
