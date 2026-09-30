@@ -13,7 +13,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm, mm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 from openpyxl import Workbook
@@ -27,6 +27,9 @@ from app.models.igreja import Igreja
 from app.models.avaliacao import Avaliacao
 from app.models.distrito import Distrito
 from app.services.itinerario_helper import mapa_itinerario, texto_pastor_presente
+from app.services.qr_helper import (
+    resolver_base_url, url_escala_igreja, url_escala_distrito, bloco_qr, grade_qr_igrejas
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +41,9 @@ class RelatorioService:
         self.db = db
 
     # ==================== ESCALA PDF ====================
-    def gerar_escala_pdf(self, escala_id: int, igreja_id: Optional[int] = None) -> BytesIO:
+    def gerar_escala_pdf(
+        self, escala_id: int, igreja_id: Optional[int] = None, base_url: Optional[str] = None
+    ) -> BytesIO:
         """
         Gera PDF da escala mensal.
         Se igreja_id for informado, gera apenas os cultos dessa igreja (formato compacto, uma página).
@@ -148,6 +153,24 @@ class RelatorioService:
                 f"Distrito: {distrito.nome if distrito else 'N/A'} - Status: {status_texto}",
                 subtitle_style
             ))
+        
+        # QR Code para ver a escala online (sem login)
+        base_site = resolver_base_url(base_url)
+        if igreja_id:
+            elements.append(bloco_qr(
+                url_escala_igreja(base_site, igreja_id, escala.mes, escala.ano),
+                "Escala online desta igreja",
+                "Aponte a câmera do celular para ver a escala atualizada",
+                tamanho=2.6 * cm,
+            ))
+        else:
+            elements.append(bloco_qr(
+                url_escala_distrito(base_site, escala.distrito_id, escala.mes, escala.ano),
+                "Todas as escalas do mês",
+                "Aponte a câmera do celular para ver a escala de todas as igrejas",
+                tamanho=2.6 * cm,
+            ))
+        elements.append(Spacer(1, 10))
         
         # Tabela de dados - colunas diferentes se filtrado por igreja
         if igreja_id:
@@ -276,6 +299,25 @@ class RelatorioService:
                 "não há pregador escalado.",
                 legenda_style
             ))
+        
+        # PDF geral: uma página final com o QR Code de cada igreja
+        if not igreja_id:
+            ids_igrejas = []
+            for item in itens:
+                if item.igreja_id not in ids_igrejas:
+                    ids_igrejas.append(item.igreja_id)
+            qrs = []
+            for igr_id in ids_igrejas:
+                igr = self.db.query(Igreja).filter(Igreja.id == igr_id).first()
+                if igr:
+                    qrs.append((igr.nome, url_escala_igreja(base_site, igr.id, escala.mes, escala.ano)))
+            if qrs:
+                elements.append(PageBreak())
+                elements.append(Paragraph(
+                    f"QR Codes por igreja - {escala.mes:02d}/{escala.ano}", title_style
+                ))
+                elements.append(Spacer(1, 12))
+                elements.append(grade_qr_igrejas(qrs, doc.width, colunas=4))
         
         # Rodapé
         elements.append(Spacer(1, 20))

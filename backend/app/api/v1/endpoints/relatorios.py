@@ -23,17 +23,18 @@ router = APIRouter()
 def exportar_escala_pdf(
     escala_id: int,
     igreja_id: Optional[int] = Query(None, description="ID da igreja para filtrar (opcional)"),
+    base_url: Optional[str] = Query(None, description="Endereço do site, usado nos QR Codes"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
     """
-    Exporta a escala mensal em PDF.
+    Exporta a escala mensal em PDF (com QR Codes para ver a escala online).
     Se igreja_id for informado, gera PDF apenas com os cultos dessa igreja.
     """
     service = RelatorioService(db)
     
     try:
-        buffer = service.gerar_escala_pdf(escala_id, igreja_id)
+        buffer = service.gerar_escala_pdf(escala_id, igreja_id, base_url)
         
         filename = f"escala_{escala_id}"
         if igreja_id:

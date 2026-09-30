@@ -474,10 +474,12 @@ export default function EscalasPage() {
     
     setLoadingExport("pdf");
     try {
-      let url = `/api/v1/relatorios/escala/${escalaToExport.id}/pdf`;
+      // base_url: endereço do site que vai dentro do QR Code do PDF
+      const pdfParams = new URLSearchParams({ base_url: window.location.origin });
       if (selectedIgrejaExport && selectedIgrejaExport !== "all") {
-        url += `?igreja_id=${selectedIgrejaExport}`;
+        pdfParams.set("igreja_id", selectedIgrejaExport);
       }
+      const url = `/api/v1/relatorios/escala/${escalaToExport.id}/pdf?${pdfParams.toString()}`;
       
       const blob = await api.downloadBlob(url);
       const igreja = igrejasExport.find(i => i.id.toString() === selectedIgrejaExport);
@@ -550,10 +552,12 @@ export default function EscalasPage() {
     
     setLoadingExport("print");
     try {
-      let url = `/api/v1/relatorios/escala/${escalaToExport.id}/pdf`;
+      // base_url: endereço do site que vai dentro do QR Code do PDF
+      const pdfParams = new URLSearchParams({ base_url: window.location.origin });
       if (selectedIgrejaExport && selectedIgrejaExport !== "all") {
-        url += `?igreja_id=${selectedIgrejaExport}`;
+        pdfParams.set("igreja_id", selectedIgrejaExport);
       }
+      const url = `/api/v1/relatorios/escala/${escalaToExport.id}/pdf?${pdfParams.toString()}`;
       
       const blob = await api.downloadBlob(url);
       const blobUrl = window.URL.createObjectURL(blob);

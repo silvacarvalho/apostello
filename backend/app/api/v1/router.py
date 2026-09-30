@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, usuarios, distritos, igrejas, escalas, 
     avaliacoes, notificacoes, dashboard, configuracoes, horarios, perfil,
-    indisponibilidades, bloqueios, admin, relatorios, temas, itinerarios
+    indisponibilidades, bloqueios, admin, relatorios, temas, itinerarios, publico
 )
 
 api_router = APIRouter()
@@ -29,3 +29,4 @@ api_router.include_router(bloqueios.router, prefix="/bloqueios", tags=["Bloqueio
 api_router.include_router(admin.router, prefix="/admin", tags=["Administração"])
 api_router.include_router(relatorios.router, prefix="/relatorios", tags=["Relatórios"])
 api_router.include_router(itinerarios.router, prefix="/itinerarios", tags=["Itinerário do Pastor"])
+api_router.include_router(publico.router, prefix="/publico", tags=["Escala Pública (QR Code)"])
