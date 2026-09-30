@@ -88,7 +88,7 @@ export default function UsuarioDetalhesPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await api.get(`/api/v1/usuarios/${params.id}`);
+      const response = await api.get<Usuario>(`/api/v1/usuarios/${params.id}`);
       setUsuario(response);
     } catch (error: any) {
       console.error("Erro ao carregar usuário:", error);

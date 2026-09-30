@@ -76,7 +76,7 @@ export default function UsuariosRecusadosPage() {
   const loadUsuarios = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get("/api/v1/usuarios/recusados");
+      const response = await api.get<Usuario[]>("/api/v1/usuarios/recusados");
       setUsuarios(response);
     } catch (error) {
       console.error("Erro ao carregar usuários recusados:", error);

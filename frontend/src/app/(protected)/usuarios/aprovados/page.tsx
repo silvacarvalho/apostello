@@ -53,7 +53,7 @@ export default function UsuariosAprovadosPage() {
   const loadUsuarios = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get("/api/v1/usuarios/aprovados");
+      const response = await api.get<Usuario[]>("/api/v1/usuarios/aprovados");
       setUsuarios(response);
     } catch (error) {
       console.error("Erro ao carregar usuários aprovados:", error);

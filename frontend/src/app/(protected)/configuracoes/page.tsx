@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuthStore, getUserRole, isPastor } from "@/stores/auth-store";
+import { useAuthStore, getUserRole, isPastor, type User as AuthUser } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials, formatCPF, formatPhone } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -70,7 +70,18 @@ export default function ConfiguracoesPage() {
 
   const loadPreferenciasNotificacao = async () => {
     try {
-      const response = await api.get("/api/v1/perfil/me/notificacoes");
+      const response = await api.get<{
+        novas_escalas: boolean;
+        escalas_atribuidas: boolean;
+        lembretes: boolean;
+        avaliacoes: boolean;
+        trocas_escalas: boolean;
+        substituicoes: boolean;
+        email: boolean;
+        push: boolean;
+        sms?: boolean;
+        whatsapp: boolean;
+      }>("/api/v1/perfil/me/notificacoes");
       setNovasEscalas(response.novas_escalas);
       setEscalasAtribuidas(response.escalas_atribuidas);
       setLembretes(response.lembretes);
@@ -111,7 +122,7 @@ export default function ConfiguracoesPage() {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const response = await api.put("/api/v1/perfil/me", {
+      const response = await api.put<AuthUser>("/api/v1/perfil/me", {
         nome_completo: nomeCompleto,
         telefone: telefone || undefined,
         whatsapp: whatsapp || undefined,
@@ -166,7 +177,7 @@ export default function ConfiguracoesPage() {
       const formData = new FormData();
       formData.append("foto", file);
 
-      const updatedUser = await api.upload("/api/v1/perfil/me/foto", formData);
+      const updatedUser = await api.upload<AuthUser>("/api/v1/perfil/me/foto", formData);
       setUser(updatedUser);
       setFotoPreview(`/api/v1/perfil/foto/${updatedUser.id}?t=${Date.now()}`);
 
@@ -188,7 +199,7 @@ export default function ConfiguracoesPage() {
   const handleDeleteFoto = async () => {
     try {
       setIsUploadingFoto(true);
-      const response = await api.delete("/api/v1/perfil/me/foto");
+      const response = await api.delete<AuthUser>("/api/v1/perfil/me/foto");
       setUser(response);
       setFotoPreview(undefined);
 
@@ -449,7 +460,7 @@ export default function ConfiguracoesPage() {
                   <Label htmlFor="cpf">CPF</Label>
                   <Input
                     id="cpf"
-                    value={formatCPF(user.cpf)}
+                    value={user.cpf ? formatCPF(user.cpf) : ""}
                     disabled
                     className="bg-muted"
                   />
