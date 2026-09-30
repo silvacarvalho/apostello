@@ -7,6 +7,7 @@ import { Loading } from "@/components/ui/loading";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { PullToRefresh } from "@/components/pwa/pull-to-refresh";
 
 export default function DashboardLayout({
   children,
@@ -60,6 +61,9 @@ export default function DashboardLayout({
 
       {/* Barra inferior (celular/tablet) */}
       <BottomNav />
+
+      {/* Puxar para atualizar (celular/tablet) */}
+      <PullToRefresh />
     </div>
   );
 }
