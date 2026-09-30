@@ -156,6 +156,10 @@ class RelatorioService:
         
         # QR Code para ver a escala online (sem login)
         base_site = resolver_base_url(base_url)
+        logger.info(
+            "PDF da escala %s com QR Code (site: %s, base_url recebido: %s)",
+            escala_id, base_site, base_url,
+        )
         if igreja_id:
             elements.append(bloco_qr(
                 url_escala_igreja(base_site, igreja_id, escala.mes, escala.ano),
