@@ -10,6 +10,10 @@ export interface User {
   igreja_id: number | null;
   foto_url: string | null;
   score_atual: number | null;
+  cpf?: string | null;
+  telefone?: string | null;
+  whatsapp?: string | null;
+  data_nascimento?: string | null;
 }
 
 interface AuthState {

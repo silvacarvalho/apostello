@@ -503,7 +503,7 @@ export default function NotificacoesPage() {
 
         // Buscar substitutos disponíveis
         setLoadingSubstitutos(true);
-        const substitutos = await api.get(
+        const substitutos = await api.get<any[]>(
           `/api/v1/escalas/itens/${itemEscalaId}/substitutos-disponiveis?tipo=${tipo}`
         );
         setSubstitutosDisponiveis(substitutos);

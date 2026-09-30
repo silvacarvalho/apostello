@@ -336,7 +336,7 @@ export default function EscalasPage() {
         ? `distrito_id=${selectedDistritoId}&skip=${page * itemsPerPage}&limit=${itemsPerPage}`
         : `skip=${page * itemsPerPage}&limit=${itemsPerPage}`;
       
-      const data = await api.get<EscalaListResponse>(`/api/v1/escalas?${params}`);
+      const data = await api.get<EscalaListResponse>(`/api/v1/escalas/?${params}`);
       setEscalas(data.items);
       setTotalEscalas(data.total);
     } catch (err) {
@@ -1277,7 +1277,7 @@ export default function EscalasPage() {
             <Button variant="outline" onClick={() => setIsGenerateDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleGenerate} disabled={generating}>
+            <Button onClick={() => handleGenerate()} disabled={generating}>
               {generating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

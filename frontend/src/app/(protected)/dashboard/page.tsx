@@ -345,7 +345,7 @@ export default function DashboardPage() {
     try {
       setLoadingSubstitutos(true);
       const tipoUsuario = escala.tipo === 'pregador' ? 'PREGADOR' : 'CANTOR';
-      const data = await api.get(`/api/v1/usuarios/disponiveis-para-troca?data_culto=${escala.data_culto}&tipo=${tipoUsuario}`);
+      const data = await api.get<any[]>(`/api/v1/usuarios/disponiveis-para-troca?data_culto=${escala.data_culto}&tipo=${tipoUsuario}`);
       setSubstitutos(data);
     } catch (err: any) {
       console.error("Erro ao buscar substitutos:", err);

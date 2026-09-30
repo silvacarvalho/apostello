@@ -174,7 +174,7 @@ export const api = {
   get: <T>(endpoint: string, token?: string) =>
     fetchApi<T>(endpoint, { method: "GET", token }),
 
-  post: <T>(endpoint: string, data: any, token?: string) =>
+  post: <T>(endpoint: string, data?: any, token?: string) =>
     fetchApi<T>(endpoint, {
       method: "POST",
       body: JSON.stringify(data),
