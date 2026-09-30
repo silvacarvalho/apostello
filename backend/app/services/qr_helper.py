@@ -2,6 +2,7 @@
 Auxiliar para QR Codes da escala pública (usa o reportlab, sem dependências extras)
 """
 from typing import List, Optional, Tuple
+from urllib.parse import urlparse
 
 from reportlab.graphics.barcode.qr import QrCodeWidget
 from reportlab.graphics.shapes import Drawing
@@ -15,18 +16,33 @@ from xml.sax.saxutils import escape as xml_escape
 from app.core.config import settings
 
 
+def _eh_endereco_local(url: str) -> bool:
+    """localhost / 127.0.0.1 só funcionam no próprio computador, nunca no celular."""
+    host = (urlparse(url).hostname or "").lower()
+    return host in ("localhost", "127.0.0.1", "0.0.0.0", "::1") or host.endswith(".localhost")
+
+
 def resolver_base_url(base_url: Optional[str]) -> str:
     """
-    Endereço do site usado dentro do QR Code.
-    Só aceita o endereço informado pelo navegador se ele estiver na lista de
-    origens permitidas (CORS); caso contrário usa FRONTEND_URL.
+    Endereço do site usado dentro do QR Code (precisa abrir no celular de quem escaneia).
+
+    Ordem de escolha:
+    1. FRONTEND_URL, se estiver configurada com um endereço público (não localhost).
+       É assim que o QR Code sempre aponta para o endereço do Cloudflare (ou do site final),
+       mesmo se o PDF foi gerado abrindo o sistema por localhost.
+    2. O endereço do navegador (base_url), se estiver na lista de origens permitidas (CORS).
+    3. FRONTEND_URL (padrão: http://localhost:3000).
     """
+    frontend = settings.FRONTEND_URL.strip().rstrip("/")
+    if frontend and not _eh_endereco_local(frontend):
+        return frontend
+
     permitidos = [o.rstrip("/") for o in settings.CORS_ORIGINS]
     if base_url:
         limpo = base_url.strip().rstrip("/")
         if limpo in permitidos:
             return limpo
-    return settings.FRONTEND_URL.rstrip("/")
+    return frontend
 
 
 def url_escala_igreja(base: str, igreja_id: int, mes: int, ano: int) -> str:

@@ -138,6 +138,7 @@ try {
     $env:DEBUG               = "false"
     $env:CORS_ORIGINS        = '["' + $siteUrl + '","http://localhost:' + $FRONTEND_PORT + '"]'
     $env:NEXT_PUBLIC_API_URL = $apiUrl
+    $env:FRONTEND_URL        = $siteUrl   # endereco que vai dentro dos QR Codes dos PDFs
 
     # ---------------- 4. Backend ----------------
     Write-Step "Preparando o banco de dados (alembic upgrade head)"
